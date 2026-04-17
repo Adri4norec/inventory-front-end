@@ -1,0 +1,121 @@
+<div class="movement-container">
+
+  <div class="header-navigation">
+    <button mat-icon-button (click)="voltar()" matTooltip="Voltar para lista">
+      <mat-icon>arrow_back</mat-icon>
+    </button>
+    <h2 class="header-title">Gestão de Movimentação</h2>
+  </div>
+
+  <mat-card *ngIf="equipamento" class="equipament-card">
+    <mat-card-header class="card-header">
+      <mat-card-title>{{ equipamento?.name }}</mat-card-title>
+      <mat-card-subtitle>
+        Patrimônio: <strong>{{ equipamento?.topo }}</strong> |
+        Status Atual:
+        <span class="status-label" [style.color]="equipamento?.statusName === 'DISPONIVEL' ? 'green' : 'orange'">
+          {{ equipamento?.statusName }}
+        </span>
+      </mat-card-subtitle>
+    </mat-card-header>
+
+    <mat-divider></mat-divider>
+
+    <mat-card-content class="card-content-grid">
+      <div class="info-group">
+        <label>Proprietário</label>
+        <span>{{ equipamento?.proprietaryName }}</span>
+      </div>
+      <div class="info-group">
+        <label>Tipo de Uso</label>
+        <span>{{ equipamento?.usageType }}</span>
+      </div>
+      <div class="info-group">
+        <label>Data de Cadastro</label>
+        <span>{{ equipamento?.dateHour | date:'dd/MM/yyyy' }}</span>
+      </div>
+    </mat-card-content>
+  </mat-card>
+
+  <div class="history-header">
+    <h3 class="history-title">
+      <mat-icon>history</mat-icon>
+      Histórico de Localização e Posse
+    </h3>
+
+    <button mat-raised-button color="primary" (click)="novaMovimentacao()">
+      <mat-icon>add</mat-icon>
+      Nova Movimentação
+    </button>
+  </div>
+
+  <div class="table-container mat-elevation-z2">
+    <table mat-table [dataSource]="historico" class="full-width-table">
+
+      <ng-container matColumnDef="dataHora">
+        <th mat-header-cell *matHeaderCellDef> Data/Hora </th>
+        <td mat-cell *matCellDef="let m"> {{ m.dataHora | date:'dd/MM/yyyy HH:mm' }} </td>
+      </ng-container>
+
+      <ng-container matColumnDef="movementType">
+        <th mat-header-cell *matHeaderCellDef> Tipo </th>
+        <td mat-cell *matCellDef="let m">
+          <span class="movement-type-cell">{{ m.movementType }}</span>
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="responsavel">
+        <th mat-header-cell *matHeaderCellDef> Responsável </th>
+        <td mat-cell *matCellDef="let m"> {{ m.responsavel }} </td>
+      </ng-container>
+
+      <ng-container matColumnDef="projeto">
+        <th mat-header-cell *matHeaderCellDef> Projeto </th>
+        <td mat-cell *matCellDef="let m"> {{ m.projeto }} </td>
+      </ng-container>
+
+      <ng-container matColumnDef="local">
+        <th mat-header-cell *matHeaderCellDef> Local </th>
+        <td mat-cell *matCellDef="let m"> {{ m.local }} </td>
+      </ng-container>
+
+      <ng-container matColumnDef="observacao">
+        <th mat-header-cell *matHeaderCellDef> Observação </th>
+        <td mat-cell *matCellDef="let m">
+          <span class="observation-text">{{ m.observacao || '-' }}</span>
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="actions">
+        <th mat-header-cell *matHeaderCellDef> Ações </th>
+        <td mat-cell *matCellDef="let e">
+
+          <button mat-icon-button [matMenuTriggerFor]="menu">
+            <mat-icon>more_vert</mat-icon>
+          </button>
+
+          <mat-menu #menu="matMenu">
+            <button mat-menu-item type="button" (click)="visualizar(e)">
+              <mat-icon color="primary">visibility</mat-icon>
+              <span>Visualizar</span>
+            </button>
+
+            <button mat-menu-item type="button" (click)="verFotos(e)">
+              <mat-icon color="accent">image</mat-icon>
+              <span>Fotos</span>
+            </button>
+          </mat-menu>
+        </td>
+      </ng-container>
+
+      <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+      <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+
+      <tr class="mat-row" *matNoDataRow>
+        <td class="mat-cell no-data-cell" [attr.colspan]="displayedColumns.length">
+          Nenhuma movimentação registrada para este ativo.
+        </td>
+      </tr>
+    </table>
+  </div>
+</div>

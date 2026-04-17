@@ -1,0 +1,400 @@
+/* ─── Layout ─────────────────────────────────────── */
+.page-wrapper {
+  min-height: 100vh;
+  background: #f0f4f8;
+}
+
+.content {
+  padding: 28px 32px;
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+/* ─── Toolbar ────────────────────────────────────── */
+.page-toolbar {
+  padding: 0 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.toolbar-icon {
+  margin-right: 10px;
+}
+
+.toolbar-title {
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+
+.spacer {
+  flex: 1;
+}
+
+/* ─── Loading ────────────────────────────────────── */
+.loading-container {
+  margin-top: 40px;
+}
+
+.loading-text {
+  text-align: center;
+  color: #5f6368;
+  margin-top: 16px;
+  font-size: 14px;
+}
+
+/* ─── Card ───────────────────────────────────────── */
+.table-card {
+  border-radius: 12px !important;
+  overflow: hidden;
+  margin-top: 8px;
+}
+
+.table-card mat-card-header {
+  padding: 20px 24px 8px;
+  background: #fff;
+}
+
+.table-card mat-card-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 18px !important;
+  font-weight: 600 !important;
+}
+
+.table-card mat-card-subtitle {
+  margin-top: 4px !important;
+  font-size: 13px;
+  color: #6b7280;
+}
+
+/* ─── Tabela ─────────────────────────────────────── */
+.full-width {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.mat-mdc-header-row {
+  background: #f8fafc !important;
+}
+
+.mat-mdc-header-cell {
+  font-weight: 700 !important;
+  font-size: 13px !important;
+  color: #374151 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.mat-mdc-cell {
+  font-size: 14px;
+  color: #1f2937;
+}
+
+.table-row:hover {
+  background: #f0f7ff !important;
+  transition: background 0.2s ease;
+  cursor: default;
+}
+
+.description-cell {
+  max-width: 220px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #6b7280;
+}
+
+/* ─── Ícones nas células ─────────────────────────── */
+.cell-with-icon {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.row-icon {
+  font-size: 20px;
+  width: 20px;
+  height: 20px;
+  color: #9ca3af;
+}
+
+.row-icon.small {
+  font-size: 16px;
+  width: 16px;
+  height: 16px;
+}
+
+/* ─── Status Chips ───────────────────────────────── */
+.status-chip {
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  border-radius: 20px !important;
+  height: 28px !important;
+  padding: 0 10px !important;
+}
+
+.chip-EM_USO {
+  background-color: #dbeafe !important;
+  color: #1e40af !important;
+}
+
+.chip-DISPONIVEL {
+  background-color: #dcfce7 !important;
+  color: #166534 !important;
+}
+
+.chip-QUEBRADO {
+  background-color: #fee2e2 !important;
+  color: #991b1b !important;
+}
+
+.chip-EM_MANUTENCAO {
+  background-color: #fef3c7 !important;
+  color: #92400e !important;
+}
+
+/* ─── Empty State ────────────────────────────────── */
+.empty-cell {
+  text-align: center !important;
+  padding: 48px 0 !important;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  color: #9ca3af;
+}
+
+.empty-state mat-icon {
+  font-size: 48px;
+  width: 48px;
+  height: 48px;
+}
+
+.empty-state p {
+  font-size: 15px;
+  margin: 0;
+}
+
+/* Container dos botões de ação */
+.action-buttons {
+  display: flex;
+  gap: 4px;
+  justify-content: center;
+}
+
+.mat-column-actions {
+  width: 60px;
+  text-align: center;
+}
+
+.header-actions {
+  text-align: center !important;
+}
+
+.action-buttons button mat-icon {
+  font-size: 20px;
+}
+
+.topo-badge {
+  background-color: #f1f3f4;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-family: 'Courier New', Courier, monospace;
+  font-weight: bold;
+  color: #3c4043;
+  border: 1px solid #dadce0;
+}
+
+.mat-column-topo {
+  width: 120px;
+  padding-right: 16px !important;
+}
+
+/* Força a tabela a respeitar o layout fixo */
+.full-width {
+  width: 100%;
+  table-layout: fixed; 
+}
+
+.mat-column-description {
+  max-width: 200px; 
+  min-width: 100px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mat-column-topo {
+  width: 100px;
+}
+
+.topo-badge {
+  background-color: #f1f3f4;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-family: monospace;
+  font-weight: bold;
+  font-size: 12px;
+  border: 1px solid #dadce0;
+}
+
+.full-width {
+  width: 100%;
+  table-layout: fixed; 
+}
+
+.mat-column-description {
+  max-width: 250px; 
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding-right: 15px !important;
+}
+
+.mat-column-description:hover {
+  overflow: visible;
+  white-space: normal;
+  cursor: help;
+}
+
+.mat-column-topo { width: 100px; }
+.mat-column-actions {
+  width: 80px !important; 
+  min-width: 80px !important;
+  text-align: center;
+}
+
+.mat-column-proprietaryName {
+  min-width: 150px;
+  white-space: nowrap;
+}
+
+.mat-column-statusName {
+  min-width: 120px;
+}
+
+.full-width {
+  width: 100%;
+  table-layout: fixed; 
+}
+
+.mat-column-description {
+  max-width: 250px; 
+  min-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mat-column-name {
+  min-width: 120px;
+  font-weight: 500;
+}
+
+th.mat-header-cell {
+  white-space: nowrap !important;
+  color: #333;
+  font-weight: bold;
+  padding: 0 12px !important;
+}
+
+.table-card {
+  overflow-x: auto;
+}
+
+.truncate-text {
+  display: inline-block;
+  max-width: 180px; 
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
+}
+
+.mat-column-perParts {
+  max-width: 200px;
+  padding-right: 8px !important;
+}
+
+.header-with-filter {
+  display: flex;
+  align-items: center;
+  padding: 16px;
+
+  .spacer {
+    flex: 1 1 auto;
+  }
+
+  .filter-controls {
+    display: flex;
+    align-items: center;
+  }
+}
+
+.header-with-filter {
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.filter-center-group {
+  display: flex;
+  align-items: center;
+  gap: 32px; 
+}
+
+.compact-filter {
+  width: 280px !important;
+}
+
+::ng-deep .compact-filter .mat-mdc-form-field-subscript-wrapper {
+  display: none;
+}
+
+.filtro-header {
+  width: 200px;
+}
+
+::ng-deep .filtro-header .mat-mdc-text-field-wrapper {
+  height: 40px !important; 
+  padding: 0 8px !important;
+}
+
+::ng-deep .filtro-header .mat-mdc-form-field-flex {
+  align-items: center !important;
+}
+
+.clear-button {
+  margin: 0 !important;
+  padding: 0 !important;
+  width: 24px !important;
+  height: 24px !important;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+}
+
+.clear-button mat-icon {
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+  color: rgba(0, 0, 0, 0.54); 
+}
+
+.clear-button:hover mat-icon {
+  color: #f44336; 
+}
+
+::ng-deep .compact-filter .mat-mdc-form-field-icon-suffix {
+  display: flex !important;
+  align-items: center !important;
+  gap: 4px; 
+  padding-right: 8px !important;
+}

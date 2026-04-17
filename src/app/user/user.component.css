@@ -1,0 +1,212 @@
+/* ─── Layout Geral ───────────────────────────────── */
+.page-wrapper {
+  min-height: 100vh;
+  background: #f0f4f8;
+}
+
+.content {
+  padding: 28px 32px;
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+/* ─── Toolbar ────────────────────────────────────── */
+.page-toolbar {
+  padding: 0 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.toolbar-icon {
+  margin-right: 10px;
+}
+
+.toolbar-title {
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+
+.spacer {
+  flex: 1;
+}
+
+/* ─── Loading ────────────────────────────────────── */
+.loading-container {
+  margin-top: 40px;
+}
+
+.loading-text {
+  text-align: center;
+  color: #5f6368;
+  margin-top: 16px;
+  font-size: 14px;
+}
+
+/* ─── Card da Tabela ─────────────────────────────── */
+.table-card {
+  border-radius: 12px !important;
+  overflow: hidden;
+  margin-top: 8px;
+  background: #fff;
+}
+
+.table-card mat-card-header {
+  padding: 20px 24px 8px;
+  background: #fff;
+}
+
+.table-card mat-card-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 18px !important;
+  font-weight: 600 !important;
+}
+
+.table-card mat-card-subtitle {
+  margin-top: 4px !important;
+  font-size: 13px;
+  color: #6b7280;
+}
+
+/* ─── Tabela ─────────────────────────────────────── */
+.full-width {
+  width: 100%;
+  table-layout: fixed; 
+  border-collapse: collapse;
+}
+
+.mat-mdc-header-row {
+  background: #f8fafc !important;
+}
+
+.mat-mdc-header-cell {
+  font-weight: 700 !important;
+  font-size: 13px !important;
+  color: #374151 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 0 12px !important;
+  white-space: nowrap !important;
+}
+
+.mat-mdc-cell {
+  font-size: 14px;
+  color: #1f2937;
+  padding: 8px 12px !important;
+}
+
+.table-row:hover {
+  background: #f0f7ff !important;
+  transition: background 0.2s ease;
+  cursor: default;
+}
+
+/* ─── Configuração de Colunas (Usuários) ─────────── */
+
+.mat-column-fullName {
+  width: 25%;
+  font-weight: 500;
+}
+
+.mat-column-email {
+  width: 25%;
+  color: #6b7280;
+}
+
+.mat-column-username {
+  width: 15%;
+}
+
+.mat-column-roleName {
+  width: 20%;
+}
+
+.mat-column-actions {
+  width: 80px !important;
+  text-align: center;
+}
+
+/* Efeito de truncar texto para E-mails longos */
+.email-cell {
+  max-width: 250px; 
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.email-cell:hover {
+  overflow: visible;
+  white-space: normal;
+  cursor: help;
+}
+
+/* ─── Perfil / Role Chips ────────────────────────── */
+.status-chip {
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  border-radius: 20px !important;
+  height: 28px !important;
+  padding: 0 10px !important;
+}
+
+.chip-admin {
+  background-color: #ede9fe !important;
+  color: #5b21b6 !important;
+}
+
+.chip-colaborador {
+  background-color: #e0f2fe !important;
+  color: #075985 !important;
+}
+
+.chip-pendente {
+  background-color: #f3f4f6 !important;
+  color: #374151 !important;
+}
+
+/* ─── Empty State ────────────────────────────────── */
+.empty-cell {
+  text-align: center !important;
+  padding: 48px 0 !important;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  color: #9ca3af;
+}
+
+.empty-state mat-icon {
+  font-size: 48px;
+  width: 48px;
+  height: 48px;
+}
+
+.empty-state p {
+  font-size: 15px;
+  margin: 0;
+}
+
+/* ─── Botões de Ação ─────────────────────────────── */
+.action-buttons {
+  display: flex;
+  gap: 4px;
+  justify-content: center;
+}
+
+.header-actions {
+  text-align: center !important;
+}
+
+/* Responsividade básica */
+@media (max-width: 768px) {
+  .mat-column-username {
+    display: none; /* Esconde username em telas pequenas para não espremer */
+  }
+}

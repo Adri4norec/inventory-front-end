@@ -1,0 +1,56 @@
+<div class="auth-container">
+  <div class="auth-wrapper">
+    <div class="auth-header">
+      <div class="logo-icon">
+        <mat-icon>inventory_2</mat-icon>
+      </div>
+      <h1>Controle de Inventário</h1>
+      <p>Gerencie seus ativos com eficiência e precisão.</p>
+    </div>
+
+    <mat-card class="auth-card" appearance="outlined">
+      <mat-card-content>
+        <h2 class="form-title">Entrar na conta</h2>
+        
+        <form [formGroup]="loginForm" (ngSubmit)="onLogin()">
+          
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Usuário</mat-label>
+            <input matInput formControlName="username" placeholder="Digite seu usuário">
+            <mat-icon matPrefix>person_outline</mat-icon>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Senha</mat-label>
+            <input matInput [type]="hidePassword ? 'password' : 'text'" formControlName="password">
+            <mat-icon matPrefix>lock_open</mat-icon>
+            <button type="button" mat-icon-button matSuffix (click)="hidePassword = !hidePassword" tabindex="-1">
+              <mat-icon>{{hidePassword ? 'visibility_off' : 'visibility'}}</mat-icon>
+            </button>
+          </mat-form-field>
+
+          <div class="error-container" *ngIf="errorMessage">
+            <mat-icon>error_outline</mat-icon>
+            <span>{{ errorMessage }}</span>
+          </div>
+
+          <button mat-flat-button color="primary" class="btn-submit" type="submit" [disabled]="loginForm.invalid">
+            ACESSAR SISTEMA
+          </button>
+          
+          <div class="divider">
+            <span>ou</span>
+          </div>
+
+          <button mat-stroked-button class="btn-register" type="button" routerLink="/register">
+            CRIAR NOVA CONTA
+          </button>
+        </form>
+      </mat-card-content>
+    </mat-card>
+
+    <footer class="auth-footer">
+      &copy; 2024 Sistema de Inventário Profissional
+    </footer>
+  </div>
+</div>

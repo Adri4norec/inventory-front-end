@@ -1,0 +1,90 @@
+<div class="page-wrapper">
+    <mat-toolbar color="primary" class="page-toolbar">
+        <button mat-icon-button (click)="cancelar()" matTooltip="Voltar">
+            <mat-icon>arrow_back</mat-icon>
+        </button>
+        <mat-icon class="toolbar-icon">person_add</mat-icon>
+        <span class="toolbar-title">
+            {{ isVisualizacao ? 'Detalhes do Usuário' : (isEdicao ? 'Editar Usuário' : 'Novo Usuário') }}
+        </span>
+    </mat-toolbar>
+
+    <div class="content">
+        <mat-card appearance="outlined" class="form-card">
+            <mat-card-header>
+                <mat-card-title>
+                    <mat-icon>manage_accounts</mat-icon>
+                    {{ isVisualizacao ? 'Visualizando Usuário' : 'Dados Cadastrais' }}
+                </mat-card-title>
+                <mat-card-subtitle>Informações de acesso e identificação do usuário no sistema</mat-card-subtitle>
+            </mat-card-header>
+
+            <mat-divider></mat-divider>
+
+            <mat-card-content>
+                <form [formGroup]="userForm" (ngSubmit)="salvar()" class="form-grid">
+
+                    <mat-form-field appearance="outline" class="field-full">
+                        <mat-label>Nome Completo</mat-label>
+                        <mat-icon matPrefix>badge</mat-icon>
+                        <input matInput formControlName="fullName" placeholder="Ex: Victor Bruno">
+                        <mat-error *ngIf="userForm.get('fullName')?.hasError('required')">Nome é obrigatório</mat-error>
+                    </mat-form-field>
+
+                    <mat-form-field appearance="outline" class="field-full">
+                        <mat-label>E-mail</mat-label>
+                        <mat-icon matPrefix>email</mat-icon>
+                        <input matInput formControlName="email" type="email" placeholder="vsilva@reconcavo.com.br">
+                        <mat-error *ngIf="userForm.get('email')?.hasError('required')">E-mail é obrigatório</mat-error>
+                    </mat-form-field>
+
+                    <mat-form-field appearance="outline" class="field-half">
+                        <mat-label>Nome de Usuário</mat-label>
+                        <mat-icon matPrefix>account_circle</mat-icon>
+                        <input matInput formControlName="username" placeholder="Ex: vsilva">
+                        <mat-error *ngIf="userForm.get('username')?.hasError('required')">Username é
+                            obrigatório</mat-error>
+                    </mat-form-field>
+
+                    <mat-form-field appearance="outline" class="field-half" *ngIf="!isEdicao && !isVisualizacao">
+                        <mat-label>Senha</mat-label>
+                        <mat-icon matPrefix>lock</mat-icon>
+                        <input matInput formControlName="password" type="password" placeholder="Mínimo 6 caracteres">
+                        <mat-error *ngIf="userForm.get('password')?.hasError('required')">Senha é
+                            obrigatória</mat-error>
+                    </mat-form-field>
+
+                    <mat-form-field appearance="outline" class="field-full">
+                        <mat-label>Perfil de Acesso</mat-label>
+                        <mat-icon matPrefix>admin_panel_settings</mat-icon>
+                        <mat-select formControlName="roleName">
+                            <mat-option [value]="null">Aguardando Permissão</mat-option>
+                            <mat-option *ngFor="let perfil of perfis" [value]="perfil.value">
+                                {{ perfil.label }}
+                            </mat-option>
+                        </mat-select>
+                        <mat-error *ngIf="userForm.get('roleName')?.hasError('required')">
+                            Perfil é obrigatório
+                        </mat-error>
+                    </mat-form-field>
+
+                </form>
+            </mat-card-content>
+
+            <mat-divider></mat-divider>
+
+            <mat-card-actions align="end" class="form-actions">
+                <button mat-stroked-button type="button" (click)="cancelar()" class="btn-cancelar">
+                    <mat-icon>close</mat-icon>
+                    {{ isVisualizacao ? 'Fechar' : 'Cancelar' }}
+                </button>
+
+                <button mat-raised-button color="primary" type="button" *ngIf="!isVisualizacao"
+                    [disabled]="userForm.invalid" (click)="salvar()" class="btn-salvar">
+                    <mat-icon>save</mat-icon>
+                    {{ isEdicao ? 'Atualizar' : 'Salvar' }}
+                </button>
+            </mat-card-actions>
+        </mat-card>
+    </div>
+</div>

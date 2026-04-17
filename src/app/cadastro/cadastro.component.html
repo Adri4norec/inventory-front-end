@@ -1,0 +1,189 @@
+<div class="page-wrapper">
+
+  <mat-toolbar color="primary" class="page-toolbar">
+    <button mat-icon-button (click)="cancelar()" matTooltip="Voltar">
+      <mat-icon>arrow_back</mat-icon>
+    </button>
+    <mat-icon class="toolbar-icon">add_box</mat-icon>
+    <span class="toolbar-title">{{ isVisualizacao ? 'Detalhes do Equipamento' : (isEdicao ? 'Editar Equipamento' :
+      'Cadastro de Equipamento') }}</span>
+  </mat-toolbar>
+
+  <div class="content">
+    <mat-card appearance="outlined" class="form-card">
+
+      <mat-card-header>
+        <mat-card-title>
+          <mat-icon>build</mat-icon>
+          {{ isVisualizacao ? 'Visualizando Registro' : 'Novo Equipamento' }}
+        </mat-card-title>
+        <mat-card-subtitle>Registro de equipamentos e seus acessórios no inventário</mat-card-subtitle>
+      </mat-card-header>
+
+      <mat-divider></mat-divider>
+
+      <mat-card-content>
+        <form [formGroup]="equipamentoForm" (ngSubmit)="salvar()" class="form-grid">
+
+          <mat-form-field appearance="outline" class="field-full">
+            <mat-label>Nome do Equipamento</mat-label>
+            <mat-icon matPrefix>memory</mat-icon>
+            <input matInput formControlName="name" placeholder="Ex: Notebook Dell Latitude">
+            <mat-error *ngIf="equipamentoForm.get('name')?.hasError('required')">
+              Nome é obrigatório
+            </mat-error>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="field-full">
+            <mat-label>Descrição (Marca, Modelo, Especificações)</mat-label>
+            <mat-icon matPrefix>description</mat-icon>
+            <textarea matInput formControlName="description" rows="3"
+              placeholder="Ex: Dell Latitude 5420, i5-11ª geração, 16GB RAM"></textarea>
+            <mat-error *ngIf="equipamentoForm.get('description')?.hasError('required')">
+              Descrição é obrigatória
+            </mat-error>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="field-full">
+            <mat-label>Tombo (Identificador Numérico)</mat-label>
+            <mat-icon matPrefix>tag</mat-icon>
+            <input matInput type="number" formControlName="topo" placeholder="Ex: 1234"
+              (keydown)="bloquearLetras($event)">
+            <mat-error *ngIf="equipamentoForm.get('topo')?.hasError('required')">
+              O campo Tombo é obrigatório
+            </mat-error>
+            <mat-error *ngIf="equipamentoForm.get('topo')?.hasError('pattern')">
+              Apenas números são permitidos
+            </mat-error>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="field-half">
+            <mat-label>Proprietário</mat-label>
+            <mat-icon matPrefix>person</mat-icon>
+            <mat-select formControlName="proprietaryId" placeholder="Selecione um proprietário">
+              <mat-option *ngFor="let p of proprietaries" [value]="p.id">
+                {{ p.name }}
+              </mat-option>
+            </mat-select>
+            <mat-error *ngIf="equipamentoForm.get('proprietaryId')?.hasError('required')">
+              Proprietário é obrigatório
+            </mat-error>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="field-half">
+            <mat-label>Tipo de Uso</mat-label>
+            <mat-icon matPrefix>category</mat-icon>
+            <mat-select formControlName="usageType">
+              <mat-option value="COLABORADOR">
+                <mat-icon>person_pin</mat-icon> Colaborador
+              </mat-option>
+              <mat-option value="INFRAESTRUTURA">
+                <mat-icon>dns</mat-icon> Infraestrutura
+              </mat-option>
+            </mat-select>
+            <mat-error *ngIf="equipamentoForm.get('usageType')?.hasError('required')">
+              Tipo de uso é obrigatório
+            </mat-error>
+          </mat-form-field>
+
+          <div class="field-full accessories-section" formArrayName="perParts">
+            <h3 class="section-subtitle">
+              <mat-icon>extension</mat-icon>
+              Acessórios
+            </h3>
+
+            <div *ngFor="let part of perParts.controls; let i = index; let isLast = last" [formGroupName]="i"
+              class="accessory-row">
+
+              <mat-form-field appearance="outline" class="flex-grow">
+                <mat-label>Nome do Acessório</mat-label>
+                <input matInput formControlName="name" maxlength="50" placeholder="Ex: Mouse, Teclado, Monitor...">
+              </mat-form-field>
+
+              <div class="action-buttons" *ngIf="!isVisualizacao">
+                <button mat-icon-button color="warn" type="button" *ngIf="perParts.length > 1" (click)="removerPeca(i)"
+                  matTooltip="Remover">
+                  <mat-icon>remove_circle_outline</mat-icon>
+                </button>
+
+                <button mat-icon-button color="primary" type="button" *ngIf="isLast" (click)="adicionarPeca()"
+                  matTooltip="Adicionar outro">
+                  <mat-icon>add_circle</mat-icon>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="field-full upload-section">
+            <h3 class="section-subtitle">
+              <mat-icon>photo_camera</mat-icon>
+              Fotos do Equipamento
+            </h3>
+
+            <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 10px;" *ngIf="!isVisualizacao">
+              <button type="button" mat-stroked-button (click)="fileInput.click()">
+                <mat-icon>attach_file</mat-icon>
+                Selecionar Imagens
+              </button>
+              <input #fileInput type="file" (change)="onFileSelected($event)" multiple accept="image/*"
+                style="display: none;">
+
+              <span *ngIf="selectedFiles.length > 0">
+                {{ selectedFiles.length }} novo(s) arquivo(s) selecionado(s)
+              </span>
+            </div>
+
+            <div class="images-list-container"
+              *ngIf="equipamentoForm.getRawValue().imageUrls?.length > 0 || selectedFiles.length > 0">
+              <mat-list>
+                <h4 mat-subheader *ngIf="equipamentoForm.getRawValue().imageUrls?.length > 0">Arquivos Salvos</h4>
+
+                <mat-list-item *ngFor="let url of equipamentoForm.getRawValue().imageUrls">
+                  <mat-icon matListItemIcon>image</mat-icon>
+                  <div matListItemTitle style="white-space: normal; word-break: break-all; font-size: 13px;">
+                    {{ url }}
+                  </div>
+                  <div matListItemLine>Arquivo no servidor</div>
+                </mat-list-item>
+
+                <mat-divider *ngIf="selectedFiles.length > 0"></mat-divider>
+                <h4 mat-subheader *ngIf="selectedFiles.length > 0">Novos Arquivos para Upload</h4>
+
+                <mat-list-item *ngFor="let file of selectedFiles">
+                  <mat-icon matListItemIcon color="primary">upload_file</mat-icon>
+                  <div matListItemTitle style="white-space: normal; word-break: break-all; font-size: 13px;">
+                    {{ file.name }}
+                  </div>
+                  <div matListItemLine>Pronto para salvar</div>
+                </mat-list-item>
+              </mat-list>
+            </div>
+          </div>
+
+        </form>
+      </mat-card-content>
+
+      <mat-divider></mat-divider>
+
+      <mat-card-actions align="end" class="form-actions">
+        <button mat-raised-button style="background-color: #e0e0e0; color: rgba(0,0,0,.87);" type="button"
+          *ngIf="isVisualizacao" (click)="cancelar()" class="btn-fechar">
+          <mat-icon>close</mat-icon>
+          Fechar
+        </button>
+
+        <button mat-stroked-button type="button" *ngIf="!isVisualizacao" (click)="cancelar()" class="btn-cancelar">
+          <mat-icon>close</mat-icon>
+          Cancelar
+        </button>
+
+        <button mat-raised-button color="primary" type="button" *ngIf="!isVisualizacao"
+          [disabled]="equipamentoForm.invalid" (click)="salvar()" class="btn-salvar">
+          <mat-icon>save</mat-icon>
+          {{ isEdicao ? 'Atualizar Equipamento' : 'Salvar Equipamento' }}
+        </button>
+      </mat-card-actions>
+
+    </mat-card>
+  </div>
+</div>
