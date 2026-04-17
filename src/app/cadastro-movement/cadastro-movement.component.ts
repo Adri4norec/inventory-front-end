@@ -42,6 +42,7 @@ export class CadastroMovementComponent implements OnInit {
   equipamentId: string | null = null;
   movementTypes: string[] = [];
   selectedFiles: File[] = [];
+  previsualizacoes: string[] = [];
   isViewMode: boolean = false;
 
   constructor(
@@ -99,7 +100,6 @@ export class CadastroMovementComponent implements OnInit {
 
   configurarOpcoesMovimentacao(status: string) {
     const s = status.toLowerCase();
-
     if (s === 'em manutenção') {
       this.movementTypes = [MovementType.ENTRADA, MovementType.DESCARTE];
     }
@@ -124,6 +124,28 @@ export class CadastroMovementComponent implements OnInit {
       local: ['', Validators.required],
       observacao: ['']
     });
+  }
+
+  onFileSelected(event: any): void {
+    const files: FileList = event.target.files;
+    if (files && files.length > 0) {
+      const novosArquivos = Array.from(files);
+      this.selectedFiles = [...this.selectedFiles, ...novosArquivos];
+
+      novosArquivos.forEach((file: File) => {
+        const reader = new FileReader();
+        reader.onload = (e: any) => {
+          this.previsualizacoes.push(e.target.result);
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+    event.target.value = '';
+  }
+
+  removerArquivo(index: number): void {
+    this.selectedFiles.splice(index, 1);
+    this.previsualizacoes.splice(index, 1);
   }
 
   onSubmit() {
@@ -159,13 +181,6 @@ export class CadastroMovementComponent implements OnInit {
           this.snackBar.open('Erro ao salvar os dados da movimentação.', 'Fechar', { duration: 3000 });
         }
       });
-    }
-  }
-
-  onFileSelected(event: any): void {
-    const files: FileList = event.target.files;
-    if (files) {
-      this.selectedFiles = Array.from(files);
     }
   }
 

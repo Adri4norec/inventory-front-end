@@ -5,8 +5,7 @@
       <mat-icon>arrow_back</mat-icon>
     </button>
     <mat-icon class="toolbar-icon">add_box</mat-icon>
-    <span class="toolbar-title">{{ isVisualizacao ? 'Detalhes do Equipamento' : (isEdicao ? 'Editar Equipamento' :
-      'Cadastro de Equipamento') }}</span>
+    <span class="toolbar-title">{{ isVisualizacao ? 'Detalhes do Equipamento' : (isEdicao ? 'Editar Equipamento' : 'Cadastro de Equipamento') }}</span>
   </mat-toolbar>
 
   <div class="content">
@@ -120,43 +119,40 @@
               Fotos do Equipamento
             </h3>
 
-            <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 10px;" *ngIf="!isVisualizacao">
-              <button type="button" mat-stroked-button (click)="fileInput.click()">
+            <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 20px;" *ngIf="!isVisualizacao">
+              <button type="button" mat-stroked-button color="primary" (click)="fileInput.click()">
                 <mat-icon>attach_file</mat-icon>
                 Selecionar Imagens
               </button>
               <input #fileInput type="file" (change)="onFileSelected($event)" multiple accept="image/*"
                 style="display: none;">
 
-              <span *ngIf="selectedFiles.length > 0">
+              <span *ngIf="selectedFiles.length > 0" style="font-weight: 500;">
                 {{ selectedFiles.length }} novo(s) arquivo(s) selecionado(s)
               </span>
             </div>
 
-            <div class="images-list-container"
-              *ngIf="equipamentoForm.getRawValue().imageUrls?.length > 0 || selectedFiles.length > 0">
-              <mat-list>
-                <h4 mat-subheader *ngIf="equipamentoForm.getRawValue().imageUrls?.length > 0">Arquivos Salvos</h4>
+            <div *ngIf="previsualizacoes.length > 0" style="display: flex; flex-wrap: wrap; gap: 15px; margin-top: 10px;">
+              <div *ngFor="let img of previsualizacoes; let i = index" style="position: relative; width: 110px; height: 110px;">
+                <img [src]="img" style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px; border: 1px solid #ccc;">
+                <button type="button" mat-mini-fab color="warn" 
+                        style="position: absolute; top: -10px; right: -10px; width: 28px; height: 28px; line-height: 28px;" 
+                        (click)="removerArquivo(i)" *ngIf="!isVisualizacao">
+                  <mat-icon style="font-size: 18px;">close</mat-icon>
+                </button>
+                <div style="font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 4px; text-align: center;">
+                  {{ selectedFiles[i].name }}
+                </div>
+              </div>
+            </div>
 
-                <mat-list-item *ngFor="let url of equipamentoForm.getRawValue().imageUrls">
-                  <mat-icon matListItemIcon>image</mat-icon>
-                  <div matListItemTitle style="white-space: normal; word-break: break-all; font-size: 13px;">
-                    {{ url }}
-                  </div>
-                  <div matListItemLine>Arquivo no servidor</div>
-                </mat-list-item>
-
-                <mat-divider *ngIf="selectedFiles.length > 0"></mat-divider>
-                <h4 mat-subheader *ngIf="selectedFiles.length > 0">Novos Arquivos para Upload</h4>
-
-                <mat-list-item *ngFor="let file of selectedFiles">
-                  <mat-icon matListItemIcon color="primary">upload_file</mat-icon>
-                  <div matListItemTitle style="white-space: normal; word-break: break-all; font-size: 13px;">
-                    {{ file.name }}
-                  </div>
-                  <div matListItemLine>Pronto para salvar</div>
-                </mat-list-item>
-              </mat-list>
+            <div *ngIf="equipamentoForm.get('imageUrls')?.value?.length > 0" style="margin-top: 20px;">
+                <h4 style="font-size: 14px; color: #666;">Fotos Atuais no Servidor:</h4>
+                <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+                    <div *ngFor="let url of equipamentoForm.get('imageUrls')?.value" style="width: 80px; height: 80px;">
+                        <img [src]="url" style="width: 100%; height: 100%; object-fit: cover; border-radius: 4px; opacity: 0.7;">
+                    </div>
+                </div>
             </div>
           </div>
 
