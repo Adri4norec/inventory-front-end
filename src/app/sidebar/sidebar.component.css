@@ -1,0 +1,123 @@
+/* --- CONTAINER PRINCIPAL DO MENU --- */
+.sidebar {
+  width: 260px;
+  min-height: 100vh;
+  /* Fundo Azul Indigo Escuro (combina com a sua barra superior) */
+  background-color: #283593; 
+  color: #ffffff;
+  padding: 15px;
+  box-shadow: 3px 0 15px rgba(0,0,0,0.1);
+  font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+}
+
+/* --- LOGO / TÍTULO MENU --- */
+.logo-area {
+  padding-bottom: 20px;
+  margin-bottom: 15px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  text-align: center;
+}
+
+.logo-area h2 {
+  color: #ffffff;
+  margin: 0;
+  font-size: 1.5rem;
+  letter-spacing: 1px;
+}
+
+/* --- LISTAS --- */
+.menu-list, .submenu-list {
+  list-style-type: none;
+  padding: 0;
+  margin: 0;
+}
+
+.menu-item {
+  margin-bottom: 8px;
+}
+
+/* --- CABEÇALHO DO MENU (Equipamentos / Usuários) --- */
+.menu-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 15px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  color: #ffffff; /* Texto branco forte */
+  transition: all 0.2s ease;
+}
+
+/* Efeito ao passar o mouse */
+.menu-header:hover {
+  background-color: #3949ab; /* Azul um pouco mais claro */
+}
+
+/* Quando o menu está clicado/aberto */
+.menu-header.active {
+  background-color: #303f9f;
+  box-shadow: inset 4px 0 0 #ff4081; /* Detalhe lateral rosa */
+}
+
+/* Seta direcional */
+.arrow {
+  font-size: 0.8rem;
+  color: #c5cae9; /* Azul bem clarinho para a seta */
+}
+
+/* --- SUBMENUS --- */
+.submenu-list {
+  padding-left: 10px;
+  margin-top: 5px;
+  margin-bottom: 15px;
+}
+
+.submenu-list a {
+  display: block;
+  padding: 10px 15px 10px 20px;
+  color: #e8eaf6; /* Quase branco, super legível */
+  text-decoration: none;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  font-size: 0.9rem;
+  position: relative;
+}
+
+/* Bolinha indicadora */
+.submenu-list a::before {
+  content: '';
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background-color: #7986cb; /* Bolinha azul clara */
+  transition: all 0.2s ease;
+}
+
+/* Efeito Hover nos submenus */
+.submenu-list a:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  padding-left: 25px; /* Move levemente para a direita */
+}
+
+.submenu-list a:hover::before {
+  background-color: #ff4081; /* Bolinha vira rosa ao passar o mouse */
+}
+
+/* --- LINK ATIVO (Tela atual) --- */
+.active-link {
+  background-color: rgba(255, 255, 255, 0.15) !important;
+  color: #ffffff !important;
+  font-weight: bold;
+}
+
+.active-link::before {
+  background-color: #ff4081 !important; /* Rosa para marcar onde o usuário está */
+  height: 60% !important;
+  border-radius: 2px !important;
+}

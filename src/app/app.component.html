@@ -1,1 +1,18 @@
-<router-outlet></router-outlet>
+<div style="display: flex; min-height: 100vh; background-color: #f1f5f9;">
+  
+  <app-sidebar *ngIf="mostrarLayout && menuAberto"></app-sidebar>
+  
+  <main style="flex: 1; display: flex; flex-direction: column; position: relative;">
+    
+    <header class="topbar" *ngIf="mostrarLayout">
+      <button class="btn-toggle" (click)="toggleMenu()">
+        ☰ 
+      </button>
+    </header>
+
+    <div [style.padding]="mostrarLayout ? '20px' : '0'">
+      <router-outlet></router-outlet>
+    </div>
+
+  </main>
+</div>

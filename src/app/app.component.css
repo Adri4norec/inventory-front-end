@@ -1,0 +1,25 @@
+.topbar {
+  
+  position: absolute; 
+  top: 35px; 
+  left: 25px; 
+  z-index: 1000; 
+  background-color: transparent;
+  box-shadow: none;
+  padding: 0;
+}
+
+.btn-toggle {
+  background-color: transparent; 
+  color: white; 
+  border: none;
+  font-size: 26px;
+  cursor: pointer;
+  padding: 5px;
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.btn-toggle:hover {
+  transform: scale(1.1); 
+  color: #ff4081; 
+}

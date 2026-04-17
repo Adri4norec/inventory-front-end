@@ -1,0 +1,26 @@
+<nav class="sidebar">
+  <div class="logo-area">
+    <h2>Menu</h2>
+  </div>
+
+  <ul class="menu-list">
+    <li *ngFor="let menu of visibleMenus" class="menu-item">
+      
+      <div class="menu-header" (click)="toggleMenu(menu)" [class.active]="menu.expanded">
+        <span>{{ menu.label }}</span>
+        <span class="arrow">{{ menu.expanded ? '▼' : '▶' }}</span>
+      </div>
+      
+    <ul class="submenu-list" *ngIf="menu.expanded && menu.children && menu.children.length > 0">
+        <li *ngFor="let child of menu.children">
+          <a [routerLink]="child.route" 
+             routerLinkActive="active-link" 
+             [routerLinkActiveOptions]="{exact: true}">
+            {{ child.label }}
+          </a>
+        </li>
+      </ul>
+
+    </li>
+  </ul>
+</nav>
