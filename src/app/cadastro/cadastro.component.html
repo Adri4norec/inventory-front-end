@@ -5,7 +5,9 @@
       <mat-icon>arrow_back</mat-icon>
     </button>
     <mat-icon class="toolbar-icon">add_box</mat-icon>
-    <span class="toolbar-title">{{ isVisualizacao ? 'Detalhes do Equipamento' : (isEdicao ? 'Editar Equipamento' : 'Cadastro de Equipamento') }}</span>
+    <span class="toolbar-title">
+      {{ isVisualizacao ? 'Detalhes do Equipamento' : (isEdicao ? 'Editar Equipamento' : 'Cadastro de Equipamento') }}
+    </span>
   </mat-toolbar>
 
   <div class="content">
@@ -27,16 +29,25 @@
           <mat-form-field appearance="outline" class="field-full">
             <mat-label>Nome do Equipamento</mat-label>
             <mat-icon matPrefix>memory</mat-icon>
-            <input matInput formControlName="name" placeholder="Ex: Notebook Dell Latitude">
+            <input matInput formControlName="name" placeholder="Ex: Notebook Dell Latitude" [readonly]="isVisualizacao">
             <mat-error *ngIf="equipamentoForm.get('name')?.hasError('required')">
               Nome é obrigatório
             </mat-error>
           </mat-form-field>
 
           <mat-form-field appearance="outline" class="field-full">
+            <mat-label>Categoria</mat-label>
+            <mat-icon matPrefix>inventory_2</mat-icon>
+            <input matInput formControlName="categoria" placeholder="Ex: Notebook, Monitor, Mobiliário..." [readonly]="isVisualizacao">
+            <mat-error *ngIf="equipamentoForm.get('categoria')?.hasError('required')">
+              Categoria é obrigatória
+            </mat-error>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="field-full">
             <mat-label>Descrição (Marca, Modelo, Especificações)</mat-label>
             <mat-icon matPrefix>description</mat-icon>
-            <textarea matInput formControlName="description" rows="3"
+            <textarea matInput formControlName="description" rows="3" [readonly]="isVisualizacao"
               placeholder="Ex: Dell Latitude 5420, i5-11ª geração, 16GB RAM"></textarea>
             <mat-error *ngIf="equipamentoForm.get('description')?.hasError('required')">
               Descrição é obrigatória
@@ -47,7 +58,7 @@
             <mat-label>Tombo (Identificador Numérico)</mat-label>
             <mat-icon matPrefix>tag</mat-icon>
             <input matInput type="number" formControlName="topo" placeholder="Ex: 1234"
-              (keydown)="bloquearLetras($event)">
+              (keydown)="bloquearLetras($event)" [readonly]="isVisualizacao">
             <mat-error *ngIf="equipamentoForm.get('topo')?.hasError('required')">
               O campo Tombo é obrigatório
             </mat-error>
@@ -96,12 +107,12 @@
 
               <mat-form-field appearance="outline" class="flex-grow">
                 <mat-label>Nome do Acessório</mat-label>
-                <input matInput formControlName="name" maxlength="50" placeholder="Ex: Mouse, Teclado, Monitor...">
+                <input matInput formControlName="name" maxlength="50" placeholder="Ex: Mouse, Teclado..." [readonly]="isVisualizacao">
               </mat-form-field>
 
               <div class="action-buttons" *ngIf="!isVisualizacao">
-                <button mat-icon-button color="warn" type="button" *ngIf="perParts.length > 1" (click)="removerPeca(i)"
-                  matTooltip="Remover">
+                <button mat-icon-button color="warn" type="button" *ngIf="perParts.length > 1"
+                  (click)="removerPeca(i)" matTooltip="Remover">
                   <mat-icon>remove_circle_outline</mat-icon>
                 </button>
 
@@ -132,27 +143,18 @@
               </span>
             </div>
 
-            <div *ngIf="previsualizacoes.length > 0" style="display: flex; flex-wrap: wrap; gap: 15px; margin-top: 10px;">
-              <div *ngFor="let img of previsualizacoes; let i = index" style="position: relative; width: 110px; height: 110px;">
-                <img [src]="img" style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px; border: 1px solid #ccc;">
-                <button type="button" mat-mini-fab color="warn" 
-                        style="position: absolute; top: -10px; right: -10px; width: 28px; height: 28px; line-height: 28px;" 
-                        (click)="removerArquivo(i)" *ngIf="!isVisualizacao">
+            <div *ngIf="previsualizacoes.length > 0"
+              style="display: flex; flex-wrap: wrap; gap: 15px; margin-top: 10px;">
+              <div *ngFor="let img of previsualizacoes; let i = index"
+                style="position: relative; width: 110px; height: 110px;">
+                <img [src]="img"
+                  style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px; border: 1px solid #ccc;">
+                <button type="button" mat-mini-fab color="warn"
+                  style="position: absolute; top: -10px; right: -10px; width: 28px; height: 28px; line-height: 28px;"
+                  (click)="removerArquivo(i)" *ngIf="!isVisualizacao">
                   <mat-icon style="font-size: 18px;">close</mat-icon>
                 </button>
-                <div style="font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 4px; text-align: center;">
-                  {{ selectedFiles[i].name }}
-                </div>
               </div>
-            </div>
-
-            <div *ngIf="equipamentoForm.get('imageUrls')?.value?.length > 0" style="margin-top: 20px;">
-                <h4 style="font-size: 14px; color: #666;">Fotos Atuais no Servidor:</h4>
-                <div style="display: flex; flex-wrap: wrap; gap: 10px;">
-                    <div *ngFor="let url of equipamentoForm.get('imageUrls')?.value" style="width: 80px; height: 80px;">
-                        <img [src]="url" style="width: 100%; height: 100%; object-fit: cover; border-radius: 4px; opacity: 0.7;">
-                    </div>
-                </div>
             </div>
           </div>
 

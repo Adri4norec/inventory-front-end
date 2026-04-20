@@ -4,6 +4,7 @@ export interface EquipmentResponse {
   description: string;
   topo: string;
   dateHour: string;
+  categoria: string;
   usageType: 'COLABORADOR' | 'INFRAESTRUTURA';
   active: boolean;
   proprietaryName: string;

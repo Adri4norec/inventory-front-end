@@ -60,15 +60,16 @@ export class CadastroComponent implements OnInit {
     private snackBar: MatSnackBar,
     private equipmentService: EquipamentService
   ) {
-    this.equipamentoForm = this.fb.group({
-      name: ['', [Validators.required]],
-      description: ['', [Validators.required]],
-      topo: [null, [Validators.required, Validators.pattern("^[0-9]*$")]],
-      proprietaryId: [null, [Validators.required]],
-      usageType: ['', [Validators.required]],
-      perParts: this.fb.array([]),
-      imageUrls: [[]]
-    });
+      this.equipamentoForm = this.fb.group({
+        name: ['', [Validators.required]],
+        description: ['', [Validators.required]],
+        topo: [null, [Validators.required, Validators.pattern("^[0-9]*$")]],
+        categoria: ['', [Validators.required]], // <-- ADICIONE ESTA LINHA AQUI
+        proprietaryId: [null, [Validators.required]],
+        usageType: ['', [Validators.required]],
+        perParts: this.fb.array([]),
+        imageUrls: [[]]
+      });
   }
 
   ngOnInit(): void {
