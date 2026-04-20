@@ -4,6 +4,7 @@ import { RouterModule, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 
 // Angular Material Imports
+import { MatInputModule } from '@angular/material/input';
 import { MatTableModule } from '@angular/material/table';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -52,7 +53,8 @@ import { ProprietaryService } from '../services/equipament/proprietary.service';
     MatFormFieldModule,
     MatSelectModule,
     MatOptionModule,
-    ConfirmDialogComponent
+    ConfirmDialogComponent,
+    MatInputModule
   ],
   templateUrl: './equipament.component.html',
   styleUrls: ['./equipament.component.css']
@@ -67,11 +69,13 @@ export class EquipamentComponent implements OnInit {
   apenasDisponiveis = false;
   proprietaries: any[] = [];
   proprietarioSelecionadoId: string | null = null;
+  termoPesquisa: string = ''; 
 
   displayedColumns: string[] = [
     'name',
     'description',
     'topo',
+    'categoria',
     'statusName',
     'dateHour',
     'usageType',
@@ -211,4 +215,5 @@ export class EquipamentComponent implements OnInit {
     this.proprietarioSelecionadoId = null;
     this.onFilterChange();
   }
+  
 }
