@@ -6,28 +6,64 @@ import { UserComponent } from './user/user.component';
 import { CadastroUserComponent } from './cadastro-user/cadastro-user.component';
 import { MovementComponent } from './movement/movement.component';
 import { CadastroMovementComponent } from './cadastro-movement/cadastro-movement.component';
+import { authGuard } from './guards/auth.guard';
 
 export const routes: Routes = [
-  // Rotas de Autenticação
   { path: '', component: LoginComponent },
   { path: 'login', component: LoginComponent },
 
-  // Rotas de Gestão de Usuários
-  { path: 'users', component: UserComponent },
-  { path: 'users/novo', component: CadastroUserComponent },        
-  { path: 'users/editar/:id', component: CadastroUserComponent },  
-  { path: 'users/visualizar/:id', component: CadastroUserComponent }, 
+  { 
+    path: 'users', 
+    component: UserComponent, 
+    canActivate: [authGuard] 
+  },
+  { 
+    path: 'users/novo', 
+    component: CadastroUserComponent, 
+    canActivate: [authGuard] 
+  },        
+  { 
+    path: 'users/editar/:id', 
+    component: CadastroUserComponent, 
+    canActivate: [authGuard] 
+  },  
+  { 
+    path: 'users/visualizar/:id', 
+    component: CadastroUserComponent, 
+    canActivate: [authGuard] 
+  }, 
 
-  // Rotas de Gestão de Equipamentos
-  { path: 'equipaments', component: EquipamentComponent },
-  { path: 'cadastro', component: CadastroComponent }, 
-  { path: 'cadastro/:id', component: CadastroComponent },
+  { 
+    path: 'equipaments', 
+    component: EquipamentComponent, 
+    canActivate: [authGuard] 
+  },
+  { 
+    path: 'cadastro', 
+    component: CadastroComponent, 
+    canActivate: [authGuard] 
+  }, 
+  { 
+    path: 'cadastro/:id', 
+    component: CadastroComponent, 
+    canActivate: [authGuard] 
+  },
 
-  //Rota de Movimentação
-  { path: 'equipaments/:id/movimentacao', component: MovementComponent },
-  { path: 'equipaments/:id/movimentacao/novo', component: CadastroMovementComponent },
-  { path: 'movimentacao/visualizar/:id', component: CadastroMovementComponent },
+  { 
+    path: 'equipaments/:id/movimentacao', 
+    component: MovementComponent, 
+    canActivate: [authGuard] 
+  },
+  { 
+    path: 'equipaments/:id/movimentacao/novo', 
+    component: CadastroMovementComponent, 
+    canActivate: [authGuard] 
+  },
+  { 
+    path: 'movimentacao/visualizar/:id', 
+    component: CadastroMovementComponent, 
+    canActivate: [authGuard] 
+  },
 
-  // Rota Curinga
   { path: '**', redirectTo: '' }
 ];

@@ -46,26 +46,33 @@ export class LoginComponent {
   }
 
   onLogin() {
-    if (this.loginForm.invalid) return;
+  if (this.loginForm.invalid) return;
 
-    this.errorMessage = '';
-    const authData = this.loginForm.value;
+  this.errorMessage = '';
+  const authData = this.loginForm.value;
 
-    this.userService.login(authData).subscribe({
-      next: (response) => {
-        localStorage.setItem('user', response.username);
-        this.router.navigate(['/equipaments']);
-      },
-      error: (err) => {
-        const rawMessage = err.error?.message || err.error || '';
-        if (rawMessage.includes('USER_NOT_FOUND')) {
-          this.errorMessage = 'Usuário não cadastrado. Crie uma conta para acessar o sistema.';
-        } else if (rawMessage.includes('INVALID_PASSWORD')) {
-          this.errorMessage = 'Senha ou usuário incorreto.';
-        } else {
-          this.errorMessage = 'Erro de conexão com o servidor.';
-        }
+  this.userService.login(authData).subscribe({
+    next: (response) => {
+      localStorage.setItem('token', response.token);
+      localStorage.setItem('user', response.username);
+      this.router.navigate(['/equipaments']);
+    },
+    error: (err) => {
+      console.error('Objeto de erro completo:', err); // Investigação
+      
+      const errorBody = err.error;
+      const message = typeof errorBody === 'string' ? errorBody : errorBody?.message || '';
+
+      if (message.includes('USER_NOT_FOUND')) {
+        this.errorMessage = 'Usuário não cadastrado.';
+      } else if (message.includes('INVALID_PASSWORD') || err.status === 401) {
+        this.errorMessage = 'Senha ou usuário incorreto.';
+      } else if (err.status === 0) {
+        this.errorMessage = 'O servidor parece estar desligado ou houve erro de CORS.';
+      } else {
+        this.errorMessage = 'Erro inesperado: ' + (message || 'Erro de conexão.');
       }
-    });
-  }
+    }
+  });
+}
 }

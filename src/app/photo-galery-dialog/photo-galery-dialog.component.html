@@ -1,1 +1,37 @@
-<p>photo-galery-dialog works!</p>
+<div class="dialog-container">
+  <h2 mat-dialog-title class="dialog-title">
+    <mat-icon>collections</mat-icon>
+    Galeria de Fotos
+  </h2>
+  
+  <mat-divider></mat-divider>
+
+  <mat-dialog-content class="gallery-content">
+    <div class="photo-grid" *ngIf="data.urls && data.urls.length > 0; else noPhotos">
+      <div class="photo-item" *ngFor="let url of data.urls">
+        <div class="image-wrapper">
+          <img [src]="'http://localhost:8080/uploads/' + url"
+               [alt]="url"
+               (click)="openImageFull(url)">
+        </div>
+        <span class="file-name" [matTooltip]="url">{{ url }}</span>
+      </div>
+    </div>
+
+    <ng-template #noPhotos>
+      <div class="empty-state">
+        <mat-icon>image_not_supported</mat-icon>
+        <p>Nenhuma imagem encontrada para este registro.</p>
+      </div>
+    </ng-template>
+  </mat-dialog-content>
+
+  <mat-divider></mat-divider>
+
+  <mat-dialog-actions align="end">
+    <button mat-raised-button color="primary" (click)="onClose()">
+      <mat-icon>close</mat-icon>
+      Fechar
+    </button>
+  </mat-dialog-actions>
+</div>
