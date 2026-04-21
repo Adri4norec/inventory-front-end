@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
+import { AuthService } from '../services/auth/auth.service';
 
 // 1. Adicionamos o "expanded?: boolean" na interface
 export interface MenuItem {
@@ -19,7 +20,7 @@ export interface MenuItem {
   styleUrls: ['./sidebar.component.css']
 })
 export class SidebarComponent implements OnInit {
-  userRole: string = 'ADMIN'; 
+  userRole: string = 'ADMIN';
 
   allMenus: MenuItem[] = [
     {
@@ -44,15 +45,27 @@ export class SidebarComponent implements OnInit {
 
   visibleMenus: MenuItem[] = [];
 
+  constructor(private authService: AuthService) {}
+
   ngOnInit(): void {
+    // Obtém o role do usuário do AuthService
+    this.userRole = this.authService.getUserRole() || 'ADMIN';
     this.visibleMenus = this.filterMenus(this.allMenus, this.userRole);
+
+    // Inscreve-se para mudanças no role (em caso de logout/login)
+    this.authService.userRole$.subscribe(role => {
+      if (role) {
+        this.userRole = role;
+        this.visibleMenus = this.filterMenus(this.allMenus, this.userRole);
+      }
+    });
   }
 
   // 2. Criamos a função de clique
   toggleMenu(menu: MenuItem): void {
     // Se você quiser que ao abrir um, os outros fechem automaticamente, descomente a linha abaixo:
     // this.visibleMenus.forEach(m => { if (m !== menu) m.expanded = false; });
-    
+
     // Inverte o estado (se for true vira false, se for false vira true)
     menu.expanded = !menu.expanded;
   }

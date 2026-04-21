@@ -11,6 +11,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
 import { UserService } from '../../services/user/user.service';
+import { AuthService } from '../../services/auth/auth.service';
 
 @Component({
   selector: 'app-login',
@@ -36,6 +37,7 @@ export class LoginComponent {
   constructor(
     private fb: FormBuilder,
     private userService: UserService,
+    private authService: AuthService,
     private router: Router
   ) {
     // Inicializando o formulário reativo com validações
@@ -55,10 +57,12 @@ export class LoginComponent {
     next: (response) => {
       localStorage.setItem('token', response.token);
       localStorage.setItem('user', response.username);
+      localStorage.setItem('userRole', response.roleName);
+      this.authService.setUserRole(response.roleName as 'ADMIN' | 'COLABORADOR');
       this.router.navigate(['/equipaments']);
     },
     error: (err) => {
-      console.error('Objeto de erro completo:', err); // Investigação
+      console.error('Objeto de erro completo:', err); 
       
       const errorBody = err.error;
       const message = typeof errorBody === 'string' ? errorBody : errorBody?.message || '';

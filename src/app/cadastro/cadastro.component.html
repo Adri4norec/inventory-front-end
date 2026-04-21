@@ -1,5 +1,4 @@
 <div class="page-wrapper">
-
   <mat-toolbar color="primary" class="page-toolbar">
     <button mat-icon-button (click)="cancelar()" matTooltip="Voltar">
       <mat-icon>arrow_back</mat-icon>
@@ -12,11 +11,10 @@
 
   <div class="content">
     <mat-card appearance="outlined" class="form-card">
-
       <mat-card-header>
         <mat-card-title>
           <mat-icon>build</mat-icon>
-          {{ isVisualizacao ? 'Visualizando Registro' : 'Novo Equipamento' }}
+          {{ isVisualizacao ? 'Visualizando Registro' : (isEdicao ? 'Editando Registro' : 'Novo Equipamento') }}
         </mat-card-title>
         <mat-card-subtitle>Registro de equipamentos e seus acessórios no inventário</mat-card-subtitle>
       </mat-card-header>
@@ -101,21 +99,17 @@
               <mat-icon>extension</mat-icon>
               Acessórios
             </h3>
-
             <div *ngFor="let part of perParts.controls; let i = index; let isLast = last" [formGroupName]="i"
               class="accessory-row">
-
               <mat-form-field appearance="outline" class="flex-grow">
                 <mat-label>Nome do Acessório</mat-label>
                 <input matInput formControlName="name" maxlength="50" placeholder="Ex: Mouse, Teclado..." [readonly]="isVisualizacao">
               </mat-form-field>
-
               <div class="action-buttons" *ngIf="!isVisualizacao">
                 <button mat-icon-button color="warn" type="button" *ngIf="perParts.length > 1"
                   (click)="removerPeca(i)" matTooltip="Remover">
                   <mat-icon>remove_circle_outline</mat-icon>
                 </button>
-
                 <button mat-icon-button color="primary" type="button" *ngIf="isLast" (click)="adicionarPeca()"
                   matTooltip="Adicionar outro">
                   <mat-icon>add_circle</mat-icon>
@@ -137,7 +131,6 @@
               </button>
               <input #fileInput type="file" (change)="onFileSelected($event)" multiple accept="image/*"
                 style="display: none;">
-
               <span *ngIf="selectedFiles.length > 0" style="font-weight: 500;">
                 {{ selectedFiles.length }} novo(s) arquivo(s) selecionado(s)
               </span>
@@ -169,19 +162,16 @@
           <mat-icon>close</mat-icon>
           Fechar
         </button>
-
         <button mat-stroked-button type="button" *ngIf="!isVisualizacao" (click)="cancelar()" class="btn-cancelar">
           <mat-icon>close</mat-icon>
           Cancelar
         </button>
-
         <button mat-raised-button color="primary" type="button" *ngIf="!isVisualizacao"
           [disabled]="equipamentoForm.invalid" (click)="salvar()" class="btn-salvar">
           <mat-icon>save</mat-icon>
           {{ isEdicao ? 'Atualizar Equipamento' : 'Salvar Equipamento' }}
         </button>
       </mat-card-actions>
-
     </mat-card>
   </div>
 </div>

@@ -4,7 +4,7 @@
     <mat-icon class="toolbar-icon">devices</mat-icon>
     <span class="toolbar-title">Equipamentos</span>
     <span class="spacer"></span>
-    <button mat-raised-button color="accent" routerLink="/cadastro">
+    <button *ngIf="!isColaborador" mat-raised-button color="accent" routerLink="/cadastro">
       <mat-icon>add</mat-icon>
       Novo Equipamento
     </button>
@@ -31,12 +31,14 @@
 
         <div class="filter-center-group">
 
-          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="compact-filter" style="margin-right: 15px; width: 300px;">
+          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="compact-filter"
+            style="margin-right: 15px; width: 300px;">
             <mat-label>Pesquisar Equipamento</mat-label>
             <mat-icon matPrefix>search</mat-icon>
-            <input matInput [(ngModel)]="termoPesquisa" (keyup.enter)="onFilterChange()" placeholder="Nome,Tombo ou Categoria">
-            
-            <button *ngIf="termoPesquisa" matSuffix mat-icon-button aria-label="Limpar" (click)="termoPesquisa=''; onFilterChange()">
+
+            <input matInput #searchInput [value]="termoPesquisa" (input)="onSearchKeyUp($event)"
+              placeholder="Nome, Tombo ou Categoria" autocomplete="off"> <button *ngIf="termoPesquisa" matSuffix
+              mat-icon-button aria-label="Limpar" (click)="limparPesquisa(); searchInput.focus()">
               <mat-icon>close</mat-icon>
             </button>
           </mat-form-field>
@@ -73,8 +75,8 @@
           </ng-container>
 
           <ng-container matColumnDef="categoria">
-          <th mat-header-cell *matHeaderCellDef> Categoria </th>
-          <td mat-cell *matCellDef="let element"> {{ element.categoria }} </td>
+            <th mat-header-cell *matHeaderCellDef> Categoria </th>
+            <td mat-cell *matCellDef="let element"> {{ element.categoria }} </td>
           </ng-container>
 
           <ng-container matColumnDef="statusName">
@@ -123,7 +125,8 @@
                   <span>Visualizar</span>
                 </button>
 
-                <button mat-menu-item *ngIf="e.statusName !== 'Indisponível'" (click)="irParaMovimentacao(e.id)">
+                <button mat-menu-item *ngIf="!isColaborador && e.statusName !== 'Indisponível'"
+                  (click)="irParaMovimentacao(e.id)">
                   <mat-icon color="primary">swap_horiz</mat-icon>
                   <span>Movimentar</span>
                 </button>
@@ -133,12 +136,12 @@
                   <span>Fotos</span>
                 </button>
 
-                <button mat-menu-item (click)="editarEquipamento(e)">
+                <button mat-menu-item *ngIf="!isColaborador" (click)="editarEquipamento(e)">
                   <mat-icon>edit</mat-icon>
                   <span>Editar</span>
                 </button>
 
-                <button mat-menu-item (click)="excluirEquipamento(e)">
+                <button mat-menu-item *ngIf="!isColaborador" (click)="excluirEquipamento(e)">
                   <mat-icon color="warn">delete</mat-icon>
                   <span>Excluir</span>
                 </button>

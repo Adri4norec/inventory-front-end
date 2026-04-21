@@ -60,16 +60,16 @@ export class CadastroComponent implements OnInit {
     private snackBar: MatSnackBar,
     private equipmentService: EquipamentService
   ) {
-      this.equipamentoForm = this.fb.group({
-        name: ['', [Validators.required]],
-        description: ['', [Validators.required]],
-        topo: [null, [Validators.required, Validators.pattern("^[0-9]*$")]],
-        categoria: ['', [Validators.required]], // <-- ADICIONE ESTA LINHA AQUI
-        proprietaryId: [null, [Validators.required]],
-        usageType: ['', [Validators.required]],
-        perParts: this.fb.array([]),
-        imageUrls: [[]]
-      });
+    this.equipamentoForm = this.fb.group({
+      name: ['', [Validators.required]],
+      description: ['', [Validators.required]],
+      topo: [null, [Validators.required, Validators.pattern("^[0-9]*$")]],
+      categoria: ['', [Validators.required]],
+      proprietaryId: [null, [Validators.required]],
+      usageType: ['', [Validators.required]],
+      perParts: this.fb.array([]),
+      imageUrls: [[]]
+    });
   }
 
   ngOnInit(): void {
@@ -113,8 +113,18 @@ export class CadastroComponent implements OnInit {
   }
 
   removerArquivo(index: number): void {
-    this.selectedFiles.splice(index, 1);
+    const imgRemovida = this.previsualizacoes[index];
     this.previsualizacoes.splice(index, 1);
+
+    if (imgRemovida.startsWith('data:')) {
+      const indexArquivo = this.selectedFiles.findIndex(file => file.name === file.name);
+      this.selectedFiles.splice(indexArquivo, 1);
+    } else {
+      const urlsAtuais = this.equipamentoForm.get('imageUrls')?.value as string[];
+      // Extrai apenas o nome do arquivo da URL completa para comparar com o array original do banco
+      const novasUrls = urlsAtuais.filter(url => !imgRemovida.endsWith(url));
+      this.equipamentoForm.get('imageUrls')?.setValue(novasUrls);
+    }
   }
 
   adicionarPeca(name = '', serialNumber = ''): void {
@@ -139,9 +149,19 @@ export class CadastroComponent implements OnInit {
           name: equipamento.name,
           description: equipamento.description,
           topo: equipamento.topo,
+          categoria: equipamento.categoria,
           usageType: equipamento.usageType,
           imageUrls: equipamento.imageUrls || []
         });
+
+        if (equipamento.imageUrls) {
+          this.previsualizacoes = equipamento.imageUrls.map(url => {
+            if (url.startsWith('http') || url.startsWith('data:')) {
+              return url;
+            }
+            return `http://localhost:8080/uploads/${url}`;
+          });
+        }
 
         this.perParts.clear();
         if (equipamento.perParts && equipamento.perParts.length > 0) {

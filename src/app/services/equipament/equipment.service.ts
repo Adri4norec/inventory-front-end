@@ -50,4 +50,17 @@ export class EquipamentService {
     });
     return this.http.post<EquipmentResponse>(`${this.API}/${id}/images`, formData);
   }
+
+  search(
+    term: string,
+    page: number,
+    size: number
+  ): Observable<any> {
+    const params = new HttpParams()
+      .set('term', term)
+      .set('page', page.toString())
+      .set('size', size.toString());
+
+    return this.http.get<any>(`${this.API}/search`, { params });
+  }
 }

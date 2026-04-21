@@ -1,7 +1,9 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
+import { Subject, Subscription } from 'rxjs';
+import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 
 // Angular Material Imports
 import { MatInputModule } from '@angular/material/input';
@@ -14,7 +16,7 @@ import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatMenuModule } from '@angular/material/menu';
-import { MatDividerModule, MatDivider } from '@angular/material/divider';
+import { MatDividerModule } from '@angular/material/divider';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
@@ -27,7 +29,7 @@ import { PhotoGaleryDialogComponent } from '../photo-galery-dialog/photo-galery-
 import { ConfirmDialogComponent } from './confirm_dialog/confirm-dialog.component';
 import { EquipmentResponse } from '../models/equipaments/equipament.model';
 import { EquipamentService } from '../services/equipament/equipment.service';
-import { ProprietaryService } from '../services/equipament/proprietary.service';
+import { AuthService } from '../services/auth/auth.service';
 
 @Component({
   selector: 'app-equipament',
@@ -45,7 +47,6 @@ import { ProprietaryService } from '../services/equipament/proprietary.service';
     MatChipsModule,
     MatTooltipModule,
     MatMenuModule,
-    MatDivider,
     MatDividerModule,
     MatDialogModule,
     MatPaginatorModule,
@@ -53,13 +54,15 @@ import { ProprietaryService } from '../services/equipament/proprietary.service';
     MatFormFieldModule,
     MatSelectModule,
     MatOptionModule,
-    ConfirmDialogComponent,
     MatInputModule
   ],
   templateUrl: './equipament.component.html',
   styleUrls: ['./equipament.component.css']
 })
-export class EquipamentComponent implements OnInit {
+export class EquipamentComponent implements OnInit, OnDestroy {
+  // Referência para manter o foco no input de pesquisa
+  @ViewChild('searchInput') searchInput!: ElementRef<HTMLInputElement>;
+
   equipamentos: EquipmentResponse[] = [];
   isLoading = true;
   totalElements = 0;
@@ -67,9 +70,12 @@ export class EquipamentComponent implements OnInit {
   pageIndex = 0;
 
   apenasDisponiveis = false;
-  proprietaries: any[] = [];
-  proprietarioSelecionadoId: string | null = null;
-  termoPesquisa: string = ''; 
+  termoPesquisa: string = '';
+
+  isColaborador = false;
+
+  private searchSubject = new Subject<string>();
+  private searchSubscription?: Subscription;
 
   displayedColumns: string[] = [
     'name',
@@ -86,39 +92,72 @@ export class EquipamentComponent implements OnInit {
 
   constructor(
     private equipmentService: EquipamentService,
-    private proprietaryService: ProprietaryService,
+    private authService: AuthService,
     private dialog: MatDialog,
     private router: Router
   ) { }
 
   ngOnInit(): void {
-    this.carregarProprietarios();
+    this.isColaborador = this.authService.isColaborador();
+
+    this.searchSubscription = this.searchSubject.pipe(
+      debounceTime(400),
+      distinctUntilChanged()
+    ).subscribe(term => {
+      this.termoPesquisa = term;
+      this.onFilterChange();
+    });
+
     this.carregarDados();
   }
 
-  carregarProprietarios(): void {
-    this.proprietaryService.listAll().subscribe({
-      next: (data) => {
-        this.proprietaries = data;
-      },
-      error: (err) => console.error('Erro ao buscar proprietários', err)
-    });
+  ngOnDestroy(): void {
+    this.searchSubscription?.unsubscribe();
   }
 
   carregarDados(page = this.pageIndex, size = this.pageSize): void {
     this.isLoading = true;
-    this.equipmentService.list(page, size, this.apenasDisponiveis, this.proprietarioSelecionadoId).subscribe({
-      next: (response) => {
-        this.equipamentos = response.content || [];
-        this.totalElements = response.totalElements;
-        this.pageIndex = response.number;
-        this.isLoading = false;
-      },
-      error: (err) => {
-        console.error('Erro ao carregar equipamentos:', err);
-        this.isLoading = false;
+
+    if (this.termoPesquisa && this.termoPesquisa.trim() !== '') {
+      this.equipmentService.search(this.termoPesquisa, page, size).subscribe({
+        next: (response: any) => this.processarResposta(response),
+        error: (err: any) => this.lidarComErro('Erro na pesquisa', err)
+      });
+    } else {
+      this.equipmentService.list(page, size, this.apenasDisponiveis, null).subscribe({
+        next: (response: any) => this.processarResposta(response),
+        error: (err: any) => this.lidarComErro('Erro ao carregar dados', err)
+      });
+    }
+  }
+
+  private processarResposta(response: any): void {
+    this.equipamentos = response.content || [];
+    this.totalElements = response.totalElements;
+    this.pageIndex = response.number;
+    this.isLoading = false;
+
+    // Garante que o cursor permaneça no input após a atualização dos dados
+    this.devolverFoco();
+  }
+
+  private lidarComErro(mensagem: string, err: any): void {
+    console.error(mensagem, err);
+    this.isLoading = false;
+    this.devolverFoco();
+  }
+
+  private devolverFoco(): void {
+    setTimeout(() => {
+      if (this.searchInput) {
+        this.searchInput.nativeElement.focus();
       }
-    });
+    }, 0);
+  }
+
+  onSearchKeyUp(event: Event): void {
+    const target = event.target as HTMLInputElement;
+    this.searchSubject.next(target.value);
   }
 
   onFilterChange(): void {
@@ -130,16 +169,6 @@ export class EquipamentComponent implements OnInit {
     this.pageIndex = e.pageIndex;
     this.pageSize = e.pageSize;
     this.carregarDados(this.pageIndex, this.pageSize);
-  }
-
-  getStatusIcon(status: string): string {
-    const icons: Record<string, string> = {
-      EM_USO: 'play_circle',
-      DISPONIVEL: 'check_circle',
-      QUEBRADO: 'cancel',
-      EM_MANUTENCAO: 'build_circle',
-    };
-    return icons[status] ?? 'help';
   }
 
   getStatusLabel(status: string): string {
@@ -156,7 +185,6 @@ export class EquipamentComponent implements OnInit {
     if (!equipamento.perParts || equipamento.perParts.length === 0) {
       return '(N/A)';
     }
-
     return equipamento.perParts
       .map(part => part.name)
       .sort((a, b) => a.localeCompare(b))
@@ -178,12 +206,9 @@ export class EquipamentComponent implements OnInit {
       if (result) {
         this.isLoading = true;
         this.equipmentService.delete(equipamento.id).subscribe({
-          next: () => {
-            this.carregarDados(this.pageIndex, this.pageSize);
-          },
-          error: (err) => {
+          next: () => this.carregarDados(this.pageIndex, this.pageSize),
+          error: () => {
             this.isLoading = false;
-            console.error('Erro ao excluir:', err);
             alert('Erro ao tentar excluir o equipamento.');
           }
         });
@@ -192,28 +217,29 @@ export class EquipamentComponent implements OnInit {
   }
 
   visualizar(e: EquipmentResponse): void {
-    this.router.navigate(['/cadastro', e.id], { queryParams: { mode: 'view' } });
+    this.router.navigate(['/cadastro', e.id], {
+      queryParams: {
+        mode: 'view',
+        showPhotos: true
+      }
+    });
   }
 
   verFotos(equipamento: any): void {
     this.dialog.open(PhotoGaleryDialogComponent, {
       width: '850px',
       maxWidth: '90vw',
-      data: {
-        urls: equipamento.imageUrls
-      }
+      data: { urls: equipamento.imageUrls }
     });
   }
 
   irParaMovimentacao(id: string): void {
-    console.log('Navegando para a movimentação do equipamento:', id);
     this.router.navigate(['/equipaments', id, 'movimentacao']);
   }
 
-  limparProprietario(event: Event): void {
-    event.stopPropagation();
-    this.proprietarioSelecionadoId = null;
-    this.onFilterChange();
+  limparPesquisa(): void {
+    this.termoPesquisa = '';
+    this.searchSubject.next('');
+    this.devolverFoco();
   }
-  
 }
