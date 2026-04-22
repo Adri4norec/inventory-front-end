@@ -5,7 +5,6 @@ import { LoginComponent } from './pages/login/login.component';
 import { UserComponent } from './user/user.component';
 import { CadastroUserComponent } from './cadastro-user/cadastro-user.component';
 import { MovementComponent } from './movement/movement.component';
-import { CadastroMovementComponent } from './cadastro-movement/cadastro-movement.component';
 import { authGuard } from './guards/auth.guard';
 
 export const routes: Routes = [
@@ -55,13 +54,8 @@ export const routes: Routes = [
     canActivate: [authGuard] 
   },
   { 
-    path: 'equipaments/:id/movimentacao/novo', 
-    component: CadastroMovementComponent, 
-    canActivate: [authGuard] 
-  },
-  { 
-    path: 'movimentacao/visualizar/:id', 
-    component: CadastroMovementComponent, 
+    path: 'movimentacao/visualizar/:movementId', 
+    component: MovementComponent, 
     canActivate: [authGuard] 
   },
 
