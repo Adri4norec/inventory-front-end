@@ -1,9 +1,7 @@
-import { Component, OnInit, OnDestroy, ViewChild, ElementRef } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { Subject, Subscription } from 'rxjs';
-import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 
 // Angular Material Imports
 import { MatInputModule } from '@angular/material/input';
@@ -23,6 +21,10 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
 import { MatOptionModule } from '@angular/material/core';
+
+// NOVO: Imports para o Filtro de Data
+import { MatDatepickerModule } from '@angular/material/datepicker';
+import { MatNativeDateModule } from '@angular/material/core';
 
 // Componentes e Serviços
 import { PhotoGaleryDialogComponent } from '../photo-galery-dialog/photo-galery-dialog.component';
@@ -54,39 +56,43 @@ import { AuthService } from '../services/auth/auth.service';
     MatFormFieldModule,
     MatSelectModule,
     MatOptionModule,
-    MatInputModule
+    MatInputModule,
+    MatDatepickerModule,
+    MatNativeDateModule
   ],
   templateUrl: './equipament.component.html',
   styleUrls: ['./equipament.component.css']
 })
-export class EquipamentComponent implements OnInit, OnDestroy {
-  // Referência para manter o foco no input de pesquisa
-  @ViewChild('searchInput') searchInput!: ElementRef<HTMLInputElement>;
-
+export class EquipamentComponent implements OnInit {
+  
   equipamentos: EquipmentResponse[] = [];
   isLoading = true;
   totalElements = 0;
   pageSize = 10;
   pageIndex = 0;
-
-  apenasDisponiveis = false;
-  termoPesquisa: string = '';
-
   isColaborador = false;
 
-  private searchSubject = new Subject<string>();
-  private searchSubscription?: Subscription;
+  // NOVO: Objeto centralizador de filtros
+  filtros = {
+    nome: '',
+    categoria: '',
+    tombo: '',
+    caracteristicas: '',
+    dataInicio: null as Date | null,
+    dataFim: null as Date | null,
+    status: ''
+  };
 
+  // REORDENADO: 'categoria' primeiro, 'name' depois, e 'topo' corrigido para 'tombo'
   displayedColumns: string[] = [
+    'categoria',
     'name',
     'description',
-    'topo',
-    'categoria',
+    'tombo',
     'statusName',
     'dateHour',
     'usageType',
     'proprietaryName',
-    'perParts',
     'actions'
   ];
 
@@ -99,36 +105,38 @@ export class EquipamentComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.isColaborador = this.authService.isColaborador();
-
-    this.searchSubscription = this.searchSubject.pipe(
-      debounceTime(400),
-      distinctUntilChanged()
-    ).subscribe(term => {
-      this.termoPesquisa = term;
-      this.onFilterChange();
-    });
-
     this.carregarDados();
   }
 
-  ngOnDestroy(): void {
-    this.searchSubscription?.unsubscribe();
+  // NOVO: Aplica os filtros e volta para a primeira página
+  aplicarFiltros(): void {
+    this.pageIndex = 0;
+    this.carregarDados();
   }
 
+  // NOVO: Limpa tudo e busca a tabela no padrão
+  limparFiltros(): void {
+    this.filtros = {
+      nome: '',
+      categoria: '',
+      tombo: '',
+      caracteristicas: '',
+      dataInicio: null,
+      dataFim: null,
+      status: ''
+    };
+    this.aplicarFiltros();
+  }
+
+  // ATUALIZADO: Envia o objeto de filtros para o Service
   carregarDados(page = this.pageIndex, size = this.pageSize): void {
     this.isLoading = true;
 
-    if (this.termoPesquisa && this.termoPesquisa.trim() !== '') {
-      this.equipmentService.search(this.termoPesquisa, page, size).subscribe({
-        next: (response: any) => this.processarResposta(response),
-        error: (err: any) => this.lidarComErro('Erro na pesquisa', err)
-      });
-    } else {
-      this.equipmentService.list(page, size, this.apenasDisponiveis, null).subscribe({
-        next: (response: any) => this.processarResposta(response),
-        error: (err: any) => this.lidarComErro('Erro ao carregar dados', err)
-      });
-    }
+    // Atenção: Este método 'advancedSearch' precisará ser criado no seu EquipamentService
+    this.equipmentService.advancedSearch(this.filtros, page, size).subscribe({
+      next: (response: any) => this.processarResposta(response),
+      error: (err: any) => this.lidarComErro('Erro ao carregar dados', err)
+    });
   }
 
   private processarResposta(response: any): void {
@@ -136,33 +144,11 @@ export class EquipamentComponent implements OnInit, OnDestroy {
     this.totalElements = response.totalElements;
     this.pageIndex = response.number;
     this.isLoading = false;
-
-    // Garante que o cursor permaneça no input após a atualização dos dados
-    this.devolverFoco();
   }
 
   private lidarComErro(mensagem: string, err: any): void {
     console.error(mensagem, err);
     this.isLoading = false;
-    this.devolverFoco();
-  }
-
-  private devolverFoco(): void {
-    setTimeout(() => {
-      if (this.searchInput) {
-        this.searchInput.nativeElement.focus();
-      }
-    }, 0);
-  }
-
-  onSearchKeyUp(event: Event): void {
-    const target = event.target as HTMLInputElement;
-    this.searchSubject.next(target.value);
-  }
-
-  onFilterChange(): void {
-    this.pageIndex = 0;
-    this.carregarDados();
   }
 
   handlePageEvent(e: PageEvent): void {
@@ -235,11 +221,5 @@ export class EquipamentComponent implements OnInit, OnDestroy {
 
   irParaMovimentacao(id: string): void {
     this.router.navigate(['/equipaments', id, 'movimentacao']);
-  }
-
-  limparPesquisa(): void {
-    this.termoPesquisa = '';
-    this.searchSubject.next('');
-    this.devolverFoco();
   }
 }
