@@ -72,7 +72,6 @@ export class EquipamentComponent implements OnInit {
   pageIndex = 0;
   isColaborador = false;
 
-  // Objeto centralizador de filtros
   filtros = {
     nome: '',
     categoria: '',
@@ -83,7 +82,6 @@ export class EquipamentComponent implements OnInit {
     status: ''
   };
 
-  // Nomes das colunas conforme definido no HTML e mapeados no DTO (uso de 'topo' ao invés de 'tombo')
   displayedColumns: string[] = [
     'categoria',
     'name',
@@ -105,17 +103,14 @@ export class EquipamentComponent implements OnInit {
 
   ngOnInit(): void {
     this.isColaborador = this.authService.isColaborador();
-    // A tabela agora nasce com os dados carregados
     this.carregarDados();
   }
 
-  // Aplica os filtros e volta para a primeira página
   aplicarFiltros(): void {
     this.pageIndex = 0;
     this.carregarDados();
   }
 
-  // Limpa tudo e busca a tabela no padrão
   limparFiltros(): void {
     this.filtros = {
       nome: '',
@@ -129,7 +124,6 @@ export class EquipamentComponent implements OnInit {
     this.aplicarFiltros();
   }
 
-  // Envia o objeto de filtros para o Service
   carregarDados(page = this.pageIndex, size = this.pageSize): void {
     this.isLoading = true;
 
@@ -162,7 +156,7 @@ export class EquipamentComponent implements OnInit {
       EM_USO: 'Em Uso',
       DISPONIVEL: 'Disponível',
       INDISPONIVEL: 'Indisponível',
-      EM_MANUTENCAO: 'Manutenção',
+      EM_MANUTENCAO: 'Em Manutenção',
     };
 
     console.log('Status recebido:', status);
