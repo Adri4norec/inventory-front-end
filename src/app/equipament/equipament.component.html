@@ -33,8 +33,9 @@
         <mat-select [(ngModel)]="filtros.status" (selectionChange)="aplicarFiltros()">
           <mat-option value="">Todos</mat-option>
           <mat-option value="DISPONIVEL">Disponível</mat-option>
+          <mat-option value="EM_USO">Em Uso</mat-option>
           <mat-option value="INDISPONIVEL">Indisponível</mat-option>
-          <mat-option value="EM_MANUTENCAO">Manutenção</mat-option>
+          <mat-option value="EM_MANUTENCAO">Em Manutenção</mat-option>
         </mat-select>
       </mat-form-field>
 

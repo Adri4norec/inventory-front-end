@@ -141,7 +141,7 @@ export class MovementComponent implements OnInit {
   configurarOpcoesMovimentacao(status: string): void {
     const s = status.trim().toLowerCase();
     
-    if (s === 'em manutenção' || s === 'manutencao') {
+    if (s === 'Em manutenção' || s === 'Em manutencao') {
       // Em manutenção: Entrada ou Descarte
       this.movementTypes = [MovementType.ENTRADA, MovementType.DESCARTE];
       this.movementForm.get('movementType')?.enable();
