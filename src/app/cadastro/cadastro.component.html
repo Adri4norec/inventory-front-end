@@ -50,12 +50,12 @@
                 <mat-icon>desktop_windows</mat-icon> Monitor
               </mat-option>
 
-              <mat-option value="TECLADO">
-                <mat-icon>keyboard</mat-icon> Teclado
+            <mat-option value="ACESSORIO">
+                <mat-icon>keyboard</mat-icon> Acessório
               </mat-option>
 
-              <mat-option value="MOUSE">
-                <mat-icon>mouse</mat-icon> Mouse
+            <mat-option value="DESKTOP">
+                <mat-icon>desktop</mat-icon> Desktop
               </mat-option>
 
               <mat-option value="CELULAR">
@@ -70,23 +70,23 @@
 
           <!-- Descrição -->
           <mat-form-field appearance="outline" class="field-full">
-            <mat-label>Descrição (Marca, Modelo, Especificações)</mat-label>
+            <mat-label>Características (Marca, Modelo, Especificações)</mat-label>
             <mat-icon matPrefix>description</mat-icon>
             <textarea matInput formControlName="description" rows="3" [readonly]="isVisualizacao"
               placeholder="Ex: Dell Latitude 5420, i5-11ª geração, 16GB RAM"></textarea>
             <mat-error *ngIf="equipamentoForm.get('description')?.hasError('required')">
-              Descrição é obrigatória
+              Características é obrigatória
             </mat-error>
           </mat-form-field>
 
-          <!-- Tombo -->
+          <!-- ID -->
           <mat-form-field appearance="outline" class="field-full">
-            <mat-label>Tombo (Identificador Numérico)</mat-label>
+            <mat-label>Identificador (Identificador Numérico)</mat-label>
             <mat-icon matPrefix>tag</mat-icon>
             <input matInput type="number" formControlName="topo" placeholder="Ex: 1234"
               (keydown)="bloquearLetras($event)" [readonly]="isVisualizacao">
             <mat-error *ngIf="equipamentoForm.get('topo')?.hasError('required')">
-              O campo Tombo é obrigatório
+              O campo ID é obrigatório
             </mat-error>
             <mat-error *ngIf="equipamentoForm.get('topo')?.hasError('pattern')">
               Apenas números são permitidos
