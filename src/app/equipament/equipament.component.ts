@@ -22,7 +22,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
 import { MatOptionModule } from '@angular/material/core';
 
-// NOVO: Imports para o Filtro de Data
+// Imports para o Filtro de Data
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
 
@@ -64,7 +64,7 @@ import { AuthService } from '../services/auth/auth.service';
   styleUrls: ['./equipament.component.css']
 })
 export class EquipamentComponent implements OnInit {
-  
+
   equipamentos: EquipmentResponse[] = [];
   isLoading = true;
   totalElements = 0;
@@ -72,7 +72,7 @@ export class EquipamentComponent implements OnInit {
   pageIndex = 0;
   isColaborador = false;
 
-  // NOVO: Objeto centralizador de filtros
+  // Objeto centralizador de filtros
   filtros = {
     nome: '',
     categoria: '',
@@ -83,12 +83,12 @@ export class EquipamentComponent implements OnInit {
     status: ''
   };
 
-  // REORDENADO: 'categoria' primeiro, 'name' depois, e 'topo' corrigido para 'tombo'
+  // Nomes das colunas conforme definido no HTML e mapeados no DTO (uso de 'topo' ao invés de 'tombo')
   displayedColumns: string[] = [
     'categoria',
     'name',
     'description',
-    'tombo',
+    'tombo', 
     'statusName',
     'dateHour',
     'usageType',
@@ -105,16 +105,17 @@ export class EquipamentComponent implements OnInit {
 
   ngOnInit(): void {
     this.isColaborador = this.authService.isColaborador();
+    // A tabela agora nasce com os dados carregados
     this.carregarDados();
   }
 
-  // NOVO: Aplica os filtros e volta para a primeira página
+  // Aplica os filtros e volta para a primeira página
   aplicarFiltros(): void {
     this.pageIndex = 0;
     this.carregarDados();
   }
 
-  // NOVO: Limpa tudo e busca a tabela no padrão
+  // Limpa tudo e busca a tabela no padrão
   limparFiltros(): void {
     this.filtros = {
       nome: '',
@@ -128,11 +129,10 @@ export class EquipamentComponent implements OnInit {
     this.aplicarFiltros();
   }
 
-  // ATUALIZADO: Envia o objeto de filtros para o Service
+  // Envia o objeto de filtros para o Service
   carregarDados(page = this.pageIndex, size = this.pageSize): void {
     this.isLoading = true;
 
-    // Atenção: Este método 'advancedSearch' precisará ser criado no seu EquipamentService
     this.equipmentService.advancedSearch(this.filtros, page, size).subscribe({
       next: (response: any) => this.processarResposta(response),
       error: (err: any) => this.lidarComErro('Erro ao carregar dados', err)
