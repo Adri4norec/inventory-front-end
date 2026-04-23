@@ -24,7 +24,7 @@ export class SidebarComponent implements OnInit {
 
   allMenus: MenuItem[] = [
     {
-      label: 'Equipamentos',
+      label: 'Inventário',
       allowedRoles: ['ADMIN', 'COLABORADOR'],
       expanded: false, // Começa fechado
       children: [
