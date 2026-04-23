@@ -63,7 +63,10 @@ export class CadastroComponent implements OnInit {
     this.equipamentoForm = this.fb.group({
       name: ['', [Validators.required]],
       description: ['', [Validators.required]],
-      topo: [null, [Validators.required, Validators.pattern("^[0-9]*$")]],
+      
+      // ALTERAÇÃO AQUI: Removido o Validators.required para permitir geração automática no Back-end
+      topo: [null, [Validators.pattern("^[0-9]*$")]], 
+      
       categoria: ['', [Validators.required]],
       proprietaryId: [null, [Validators.required]],
       usageType: ['', [Validators.required]],
@@ -121,7 +124,6 @@ export class CadastroComponent implements OnInit {
       this.selectedFiles.splice(indexArquivo, 1);
     } else {
       const urlsAtuais = this.equipamentoForm.get('imageUrls')?.value as string[];
-      // Extrai apenas o nome do arquivo da URL completa para comparar com o array original do banco
       const novasUrls = urlsAtuais.filter(url => !imgRemovida.endsWith(url));
       this.equipamentoForm.get('imageUrls')?.setValue(novasUrls);
     }

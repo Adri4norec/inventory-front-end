@@ -3,6 +3,7 @@ export interface EquipmentResponse {
   name: string;
   description: string;
   topo: string;
+  codigo: string;
   dateHour: string;
   categoria: string;
   usageType: 'COLABORADOR' | 'INFRAESTRUTURA';

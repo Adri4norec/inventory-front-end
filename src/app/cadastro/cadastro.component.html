@@ -24,7 +24,6 @@
       <mat-card-content>
         <form [formGroup]="equipamentoForm" (ngSubmit)="salvar()" class="form-grid">
 
-          <!-- Nome -->
           <mat-form-field appearance="outline" class="field-full">
             <mat-label>Nome do Equipamento</mat-label>
             <mat-icon matPrefix>memory</mat-icon>
@@ -34,7 +33,6 @@
             </mat-error>
           </mat-form-field>
 
-          <!-- Categoria (AJUSTADO) -->
           <mat-form-field appearance="outline" class="field-full">
             <mat-label>Categoria</mat-label>
             <mat-icon matPrefix>inventory_2</mat-icon>
@@ -50,11 +48,11 @@
                 <mat-icon>desktop_windows</mat-icon> Monitor
               </mat-option>
 
-            <mat-option value="ACESSORIO">
+              <mat-option value="ACESSORIO">
                 <mat-icon>keyboard</mat-icon> Acessório
               </mat-option>
 
-            <mat-option value="DESKTOP">
+              <mat-option value="DESKTOP">
                 <mat-icon>desktop</mat-icon> Desktop
               </mat-option>
 
@@ -68,7 +66,6 @@
             </mat-error>
           </mat-form-field>
 
-          <!-- Descrição -->
           <mat-form-field appearance="outline" class="field-full">
             <mat-label>Características (Marca, Modelo, Especificações)</mat-label>
             <mat-icon matPrefix>description</mat-icon>
@@ -79,21 +76,19 @@
             </mat-error>
           </mat-form-field>
 
-          <!-- ID -->
           <mat-form-field appearance="outline" class="field-full">
-            <mat-label>Identificador (Identificador Numérico)</mat-label>
+            <mat-label>Tombo / Identificador (Opcional)</mat-label>
             <mat-icon matPrefix>tag</mat-icon>
             <input matInput type="number" formControlName="topo" placeholder="Ex: 1234"
               (keydown)="bloquearLetras($event)" [readonly]="isVisualizacao">
-            <mat-error *ngIf="equipamentoForm.get('topo')?.hasError('required')">
-              O campo ID é obrigatório
-            </mat-error>
+            
+            <mat-hint *ngIf="!isVisualizacao">Se deixado em branco, um código será gerado automaticamente.</mat-hint>
+            
             <mat-error *ngIf="equipamentoForm.get('topo')?.hasError('pattern')">
               Apenas números são permitidos
             </mat-error>
           </mat-form-field>
 
-          <!-- Proprietário -->
           <mat-form-field appearance="outline" class="field-half">
             <mat-label>Proprietário</mat-label>
             <mat-icon matPrefix>person</mat-icon>
@@ -107,7 +102,6 @@
             </mat-error>
           </mat-form-field>
 
-          <!-- Tipo de Uso -->
           <mat-form-field appearance="outline" class="field-half">
             <mat-label>Tipo de Uso</mat-label>
             <mat-icon matPrefix>category</mat-icon>
@@ -124,7 +118,6 @@
             </mat-error>
           </mat-form-field>
 
-          <!-- Fotos -->
           <div class="field-full upload-section">
             <h3 class="section-subtitle">
               <mat-icon>photo_camera</mat-icon>
