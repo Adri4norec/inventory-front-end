@@ -47,9 +47,7 @@ export class EquipamentService {
     if (filtros.categoria) params = params.set('categoria', filtros.categoria);
     if (filtros.tombo) params = params.set('tombo', filtros.tombo);
     if (filtros.caracteristicas) params = params.set('caracteristicas', filtros.caracteristicas);
-    
-    // Mantendo o mesmo padrão de nomenclatura que você usou no método list()
-    if (filtros.apenasDisponiveis) params = params.set('apenasDisponiveis', 'true');
+    if (filtros.status) params = params.set('status', filtros.status);
 
     // 3. Tratamento das Datas (Converte o objeto Date do Angular para a String 'YYYY-MM-DD' do SQL/Java)
     if (filtros.dataInicio) {
