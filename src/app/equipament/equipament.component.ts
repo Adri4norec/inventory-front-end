@@ -161,9 +161,12 @@ export class EquipamentComponent implements OnInit {
     const labels: Record<string, string> = {
       EM_USO: 'Em Uso',
       DISPONIVEL: 'Disponível',
-      QUEBRADO: 'Quebrado',
+      INDISPONIVEL: 'Indisponível',
       EM_MANUTENCAO: 'Manutenção',
     };
+
+    console.log('Status recebido:', status);
+
     return labels[status] ?? status ?? 'Sem Status';
   }
 

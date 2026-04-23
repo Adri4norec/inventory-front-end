@@ -101,7 +101,7 @@
           <th mat-header-cell *matHeaderCellDef> Status </th>
           <td mat-cell *matCellDef="let element"> 
              <span class="status-chip chip-{{element.statusName}}">
-                {{ getStatusLabel(element.status) }}
+                {{ getStatusLabel(element.statusName) }}
              </span>
           </td>
         </ng-container>
