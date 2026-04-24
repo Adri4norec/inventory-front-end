@@ -19,6 +19,7 @@ export interface MovementResponse {
   equipamentId: string;
   equipamentName: string;
   movementType: MovementType;
+  justification?: string;
   projeto: string;
   responsavel: string;
   local: string;

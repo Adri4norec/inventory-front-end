@@ -8,38 +8,44 @@
   <mat-card appearance="outlined" class="filter-card">
     <div style="display: flex; gap: 15px; flex-wrap: wrap; align-items: center;">
 
-      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="compact-filter" style="flex: 1; min-width: 150px;">
+      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="compact-filter"
+        style="flex: 1; min-width: 150px;">
         <mat-label>Nome</mat-label>
         <input matInput [(ngModel)]="filtros.nome" (keyup.enter)="aplicarFiltros()">
       </mat-form-field>
 
-      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="compact-filter" style="flex: 1; min-width: 150px;">
+      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="compact-filter"
+        style="flex: 1; min-width: 150px;">
         <mat-label>Categoria</mat-label>
         <input matInput [(ngModel)]="filtros.categoria" (keyup.enter)="aplicarFiltros()">
       </mat-form-field>
 
-      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="compact-filter" style="flex: 1; min-width: 120px;">
+      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="compact-filter"
+        style="flex: 1; min-width: 120px;">
         <mat-label>ID</mat-label>
         <input matInput [(ngModel)]="filtros.tombo" (keyup.enter)="aplicarFiltros()">
       </mat-form-field>
 
-      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="compact-filter" style="flex: 1; min-width: 150px;">
+      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="compact-filter"
+        style="flex: 1; min-width: 150px;">
         <mat-label>Características</mat-label>
         <input matInput [(ngModel)]="filtros.caracteristicas" (keyup.enter)="aplicarFiltros()">
       </mat-form-field>
 
-      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="compact-filter" style="flex: 1; min-width: 140px;">
+      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="compact-filter"
+        style="flex: 1; min-width: 140px;">
         <mat-label>Status</mat-label>
         <mat-select [(ngModel)]="filtros.status" (selectionChange)="aplicarFiltros()">
           <mat-option value="">Todos</mat-option>
           <mat-option value="DISPONIVEL">Disponível</mat-option>
           <mat-option value="EM_USO">Em Uso</mat-option>
           <mat-option value="INDISPONIVEL">Indisponível</mat-option>
-          <mat-option value="EM_MANUTENCAO">Em Manutenção</mat-option>
+          <mat-option value="EM_MANUTENCAO">Manutenção</mat-option>
         </mat-select>
       </mat-form-field>
 
-      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="compact-filter" style="flex: 1.5; min-width: 200px;">
+      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="compact-filter"
+        style="flex: 1.5; min-width: 200px;">
         <mat-label>Período de Aquisição</mat-label>
         <mat-date-range-input [rangePicker]="picker">
           <input matStartDate placeholder="Início" [(ngModel)]="filtros.dataInicio">
@@ -53,7 +59,7 @@
         <button mat-flat-button color="primary" (click)="aplicarFiltros()">
           <mat-icon>search</mat-icon> Buscar
         </button>
-        
+
         <button mat-icon-button color="warn" (click)="limparFiltros()" matTooltip="Limpar Filtros">
           <mat-icon>clear</mat-icon>
         </button>
@@ -68,7 +74,7 @@
   </div>
 
   <mat-card *ngIf="!isLoading" appearance="outlined" class="table-card">
-    
+
     <div style="overflow-x: auto;">
       <table mat-table [dataSource]="equipamentos">
 
@@ -79,8 +85,8 @@
 
         <ng-container matColumnDef="name">
           <th mat-header-cell *matHeaderCellDef> Nome </th>
-          <td mat-cell *matCellDef="let element"> 
-            <strong>{{element.name}}</strong> 
+          <td mat-cell *matCellDef="let element">
+            <strong>{{element.name}}</strong>
           </td>
         </ng-container>
 
@@ -93,31 +99,30 @@
           </td>
         </ng-container>
 
-    <ng-container matColumnDef="tombo">
-      <th mat-header-cell *matHeaderCellDef> ID / Tombo </th>
-      <td mat-cell *matCellDef="let element">
-        <div style="display: flex; align-items: center; gap: 8px;">
-          
-          <mat-icon *ngIf="element.codigo?.startsWith('C')" 
-                    style="font-size: 18px; width: 18px; height: 18px; color: #673ab7;"
-                    matTooltip="Código gerado automaticamente">
-            auto_fix_high
-          </mat-icon>
+        <ng-container matColumnDef="tombo">
+          <th mat-header-cell *matHeaderCellDef> ID / Tombo </th>
+          <td mat-cell *matCellDef="let element">
+            <div style="display: flex; align-items: center; gap: 8px;">
 
-          <span [style.color]="element.codigo?.startsWith('C') ? '#673ab7' : 'inherit'"
-                [style.font-weight]="'500'">
-            {{ element.codigo || element.topo || '-' }}
-          </span>
-        </div>
-      </td>
-    </ng-container>
+              <mat-icon *ngIf="element.codigo?.startsWith('C')"
+                style="font-size: 18px; width: 18px; height: 18px; color: #673ab7;"
+                matTooltip="Código gerado automaticamente">
+                auto_fix_high
+              </mat-icon>
+
+              <span [style.color]="element.codigo?.startsWith('C') ? '#673ab7' : 'inherit'" [style.font-weight]="'500'">
+                {{ element.codigo || element.topo || '-' }}
+              </span>
+            </div>
+          </td>
+        </ng-container>
 
         <ng-container matColumnDef="statusName">
           <th mat-header-cell *matHeaderCellDef> Status </th>
-          <td mat-cell *matCellDef="let element"> 
-             <span class="status-chip chip-{{element.statusName}}">
-                {{ getStatusLabel(element.statusName) }}
-             </span>
+          <td mat-cell *matCellDef="let element">
+            <span class="status-chip chip-{{element.statusName}}">
+              {{ getStatusLabel(element.statusName) }}
+            </span>
           </td>
         </ng-container>
 
@@ -139,31 +144,35 @@
         <ng-container matColumnDef="actions">
           <th mat-header-cell *matHeaderCellDef style="text-align: right;"> Ações </th>
           <td mat-cell *matCellDef="let element" style="text-align: right;">
-            
+
             <button mat-icon-button [matMenuTriggerFor]="menu" aria-label="Ações do equipamento">
               <mat-icon>more_vert</mat-icon>
             </button>
-            
+
             <mat-menu #menu="matMenu">
               <button mat-menu-item (click)="visualizar(element)">
                 <mat-icon color="primary">visibility</mat-icon>
                 <span>Visualizar</span>
               </button>
+
               <button mat-menu-item *ngIf="element.imageUrls?.length" (click)="verFotos(element)">
                 <mat-icon color="accent">photo_library</mat-icon>
                 <span>Ver Fotos</span>
               </button>
-              <button mat-menu-item (click)="irParaMovimentacao(element.id)">
+
+              <button mat-menu-item *ngIf="element.statusName !== 'INDISPONIVEL'"
+                (click)="irParaMovimentacao(element.id)">
                 <mat-icon color="primary">swap_horiz</mat-icon>
                 <span>Movimentações</span>
               </button>
 
               <mat-divider *ngIf="!isColaborador"></mat-divider>
-              
+
               <button mat-menu-item *ngIf="!isColaborador" (click)="editarEquipamento(element)">
                 <mat-icon color="primary">edit</mat-icon>
                 <span>Editar</span>
               </button>
+
               <button mat-menu-item *ngIf="!isColaborador" (click)="excluirEquipamento(element)">
                 <mat-icon color="warn">delete</mat-icon>
                 <span>Excluir</span>
@@ -184,13 +193,9 @@
       </table>
     </div>
 
-    <mat-paginator [length]="totalElements"
-                   [pageSize]="pageSize"
-                   [pageSizeOptions]="[5, 10, 25, 100]"
-                   [pageIndex]="pageIndex"
-                   (page)="handlePageEvent($event)"
-                   aria-label="Selecione a página"
-                   style="border-top: 1px solid #eee;">
+    <mat-paginator [length]="totalElements" [pageSize]="pageSize" [pageSizeOptions]="[5, 10, 25, 100]"
+      [pageIndex]="pageIndex" (page)="handlePageEvent($event)" aria-label="Selecione a página"
+      style="border-top: 1px solid #eee;">
     </mat-paginator>
 
   </mat-card>
