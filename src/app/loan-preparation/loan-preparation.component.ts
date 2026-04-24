@@ -19,8 +19,11 @@ import { MatNativeDateModule } from '@angular/material/core';
 import { EquipamentService } from '../services/equipament/equipment.service';
 import { LoanService } from '../services/loan/loan.service';
 import { UserService } from '../services/user/user.service';
-import { EquipmentLoanResponse, LoanRequest } from '../models/equipaments/equipament.model';
+
+// --- CORREÇÃO 1: Importando do lugar certo (pasta loans) ---
+import { EquipmentLoanResponse } from '../models/loans/loans.model';
 import { UserResponse } from '../models/users/UserResponse';
+import { LoanRequest } from '../models/equipaments/equipament.model';
 
 @Component({
   selector: 'app-loan-preparation',
@@ -74,16 +77,9 @@ export class LoanPreparationComponent implements OnInit {
     this.userService.listAll().subscribe({
       next: (response: any) => {
         const listaBruta = response.content ? response.content : response;
-
-        console.log('Dados que chegaram do Java:', listaBruta);
-
-        this.collaborators = listaBruta.filter((u: UserResponse) => {
-          return u.roleName === 'COLABORADOR';
-        });
-
-        console.log('Colaboradores após o filtro:', this.collaborators);
+        this.collaborators = listaBruta.filter((u: UserResponse) => u.roleName === 'COLABORADOR');
       },
-      error: (err) => {
+      error: (err: any) => {
         console.error('Erro na requisição:', err);
         this.exibirMensagemErro('Erro ao carregar lista de colaboradores');
       }
@@ -96,12 +92,13 @@ export class LoanPreparationComponent implements OnInit {
 
     this.loading = true;
     this.loanService.findByCodeToLoan(topo).subscribe({
-      next: (data) => {
+      // --- CORREÇÃO 2: Tipagem explícita no data ---
+      next: (data: EquipmentLoanResponse) => {
         this.equipmentInfo = data;
         this.loanForm.patchValue({ equipmentId: data.id });
         this.loading = false;
       },
-      error: (err) => {
+      error: (err: any) => {
         this.equipmentInfo = null;
         this.loading = false;
         this.exibirMensagemErro(err.error?.message || 'Equipamento não encontrado');
@@ -123,17 +120,18 @@ export class LoanPreparationComponent implements OnInit {
       observation: 'Preparação iniciada via sistema'
     };
 
-    this.loanService.saveLoanPreparation(request).subscribe({
+    // --- CORREÇÃO 3: Garantindo que o nome do método bata com o LoanService unificado ---
+    this.loanService.prepareLoan(request).subscribe({
       next: () => {
         this.snackBar.open('Empréstimo iniciado!', 'OK', { duration: 3000 });
         this.router.navigate(['/loans']);
       },
-      error: (err) => this.exibirMensagemErro(err.error?.message || 'Erro ao salvar')
+      error: (err: any) => this.exibirMensagemErro(err.error?.message || 'Erro ao salvar')
     });
   }
 
   cancelar(): void {
-    this.router.navigate(['/equipaments']);
+    this.router.navigate(['/loans']); // Alterado para voltar para a sua lista
   }
 
   bloquearLetras(event: KeyboardEvent): void {

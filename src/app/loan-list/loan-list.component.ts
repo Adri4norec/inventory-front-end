@@ -7,8 +7,9 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 
-// import { LoanService } from '../../services/loan/loan.service';
-// import { LoanResponse } from '../../models/loans/loan.model';
+// Importações do Serviço e Modelo
+import { LoanService } from '../services/loan/loan.service';
+import { LoanListResponse } from '../models/loans/loans.model';
 
 @Component({
   selector: 'app-loan-list',
@@ -38,20 +39,24 @@ export class LoanListComponent implements OnInit {
     'acoes'
   ];
   
-  dataSource: any[] = []; // Depois substitua 'any' por 'LoanResponse'
+  dataSource: LoanListResponse[] = []; 
 
-  constructor(
-    // private loanService: LoanService
-  ) {}
+  constructor(private loanService: LoanService) {}
 
   ngOnInit(): void {
     this.loadLoans();
   }
 
   loadLoans(): void {
-    // this.loanService.listAvailableAndInUse().subscribe(data => {
-    //   this.dataSource = data;
-    // });
+    this.loanService.getLoansList().subscribe({
+      next: (data) => {
+        this.dataSource = data;
+        console.log('Dados recebidos do Java:', data);
+      },
+      error: (err) => {
+        console.error('Erro ao buscar lista de empréstimos do Java:', err);
+      }
+    });
   }
 
   performLoan(id: string): void {
