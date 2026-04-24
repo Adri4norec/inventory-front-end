@@ -13,6 +13,8 @@ import { MatDividerModule } from '@angular/material/divider';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSelectModule } from '@angular/material/select';
+import { MatDatepickerModule } from '@angular/material/datepicker'; 
+import { MatNativeDateModule } from '@angular/material/core';
 
 import { EquipamentService } from '../services/equipament/equipment.service';
 import { LoanService } from '../services/loan/loan.service';
@@ -35,7 +37,9 @@ import { UserResponse } from '../models/users/UserResponse';
     MatDividerModule,
     MatSnackBarModule,
     MatTooltipModule,
-    MatSelectModule
+    MatSelectModule,
+    MatDatepickerModule, 
+    MatNativeDateModule
   ],
   templateUrl: './loan-preparation.component.html',
   styleUrls: ['./loan-preparation.component.scss']
@@ -57,8 +61,8 @@ export class LoanPreparationComponent implements OnInit {
     this.loanForm = this.fb.group({
       tomboSearch: ['', [Validators.required]],
       equipmentId: ['', [Validators.required]],
-      collaboratorId: ['', [Validators.required]],
-      loanDate: [new Date().toISOString(), [Validators.required]]
+      colaboradorId: ['', [Validators.required]],
+      loanDate: [new Date().toISOString().substring(0, 16), [Validators.required]]
     });
   }
 
@@ -113,7 +117,7 @@ export class LoanPreparationComponent implements OnInit {
 
     const request: LoanRequest = {
       equipmentId: this.loanForm.value.equipmentId,
-      collaboratorId: this.loanForm.value.collaboratorId,
+      colaboradorId: this.loanForm.value.colaboradorId,
       loanDate: this.loanForm.value.loanDate,
       helpdeskTicket: 'N/A',
       observation: 'Preparação iniciada via sistema'

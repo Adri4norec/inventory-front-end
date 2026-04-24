@@ -13,17 +13,36 @@
       </mat-card-header>
 
       <mat-card-content>
-        <form [formGroup]="loanForm" class="form-grid">
+        <form [formGroup]="loanForm" class="form-container">
           
-          <mat-form-field appearance="outline" class="field-full">
-            <mat-label>Tombo / Identificador</mat-label>
-            <input matInput formControlName="tomboSearch" (keydown)="bloquearLetras($event)" (keyup.enter)="buscarEquipamento()">
-            <button mat-icon-button matSuffix (click)="buscarEquipamento()" type="button">
-              <mat-icon>search</mat-icon>
-            </button>
-          </mat-form-field>
+          <div class="row-inputs">
+            <mat-form-field appearance="outline">
+              <mat-label>Tombo / Identificador</mat-label>
+              <input matInput formControlName="tomboSearch" (keydown)="bloquearLetras($event)" (keyup.enter)="buscarEquipamento()">
+              <button mat-icon-button matSuffix (click)="buscarEquipamento()" type="button">
+                <mat-icon>search</mat-icon>
+              </button>
+            </mat-form-field>
 
-          <div *ngIf="equipmentInfo" class="field-full equipment-info-banner">
+            <mat-form-field appearance="outline">
+              <mat-label>Colaborador Destinatário</mat-label>
+              <mat-select formControlName="colaboradorId">
+                <mat-option *ngFor="let colab of collaborators" [value]="colab.id">
+                  {{ colab.fullName }}
+                </mat-option>
+              </mat-select>
+              <mat-error *ngIf="loanForm.get('colaboradorId')?.hasError('required')">Obrigatório</mat-error>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline">
+              <mat-label>Data do Empréstimo</mat-label>
+              <input matInput [matDatepicker]="picker" formControlName="loanDate" placeholder="DD/MM/AAAA" (click)="picker.open()">
+              <mat-datepicker-toggle matSuffix [for]="picker"></mat-datepicker-toggle>
+              <mat-datepicker #picker></mat-datepicker>
+            </mat-form-field>
+          </div>
+
+          <div *ngIf="equipmentInfo" class="equipment-info-banner">
             <div class="info-item">
               <mat-icon>laptop</mat-icon>
               <span><strong>Modelo:</strong> {{ equipmentInfo.name }}</span>
@@ -37,16 +56,6 @@
               <span><strong>Status:</strong> {{ equipmentInfo.statusName }}</span>
             </div>
           </div>
-
-          <mat-form-field appearance="outline" class="field-full">
-            <mat-label>Colaborador Destinatário</mat-label>
-            <mat-select formControlName="collaboratorId">
-              <mat-option *ngFor="let colab of collaborators" [value]="colab.id">
-                {{ colab.fullName }}
-              </mat-option>
-            </mat-select>
-            <mat-error *ngIf="loanForm.get('collaboratorId')?.hasError('required')">Selecione um colaborador</mat-error>
-          </mat-form-field>
 
         </form>
       </mat-card-content>

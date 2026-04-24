@@ -48,7 +48,7 @@ export interface EquipmentLoanResponse {
 
 export interface LoanRequest {
   equipmentId: string;
-  collaboratorId: string;
+  colaboradorId: string;
   loanDate: string;
   helpdeskTicket: string;
   observation: string;
