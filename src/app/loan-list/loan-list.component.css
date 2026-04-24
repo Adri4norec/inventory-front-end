@@ -1,0 +1,129 @@
+
+
+/* ─── Layout Principal ───────────────────────────────────────── */
+.page-wrapper {
+  min-height: 100vh;
+  background: #f0f4f8;
+  padding: 0; 
+  /* O segredo para o menu não sumir: 
+     Se o seu menu lateral é fixo, o wrapper precisa desse respiro */
+  display: flex;
+  flex-direction: column;
+}
+
+/* ─── Barra Azul (Toolbar) ───────────────────────────────────── */
+.page-toolbar {
+  position: sticky;
+  top: 0;
+  /* Diminuímos o z-index para o botão do menu lateral aparecer sobre ela */
+  z-index: 998; 
+  width: 100%;
+  border-radius: 0; 
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  margin-bottom: 24px;
+  
+  /* Se o menu estiver aberto, o texto não pode bater nele. 
+     Ajuste este padding para o título ficar centralizado/visível */
+  padding: 0 24px 0 80px !important; 
+}
+
+/* ─── Cards (Filtros e Tabela) ───────────────────────────────── */
+.filter-card, .table-card {
+  /* Margens laterais para os cards não colarem no menu lateral */
+  margin: 0 24px 24px 24px; 
+  border-radius: 8px !important;
+  z-index: 997;
+}
+
+
+/* =========================================
+   ESTILOS DA TABELA
+   ========================================= */
+
+table {
+  width: 100%;
+}
+
+/* Cabeçalho da tabela */
+th.mat-header-cell {
+  font-weight: bold;
+  color: #333;
+  font-size: 13px;
+  text-transform: uppercase;
+}
+
+/* Efeito de Hover nas linhas da tabela (Perfumaria) */
+.element-row {
+  transition: background-color 0.2s ease;
+}
+
+.element-row:hover {
+  background-color: #f5f5f5; /* Cinza bem clarinho ao passar o mouse */
+  cursor: pointer;
+}
+
+/* Limita o tamanho do texto muito longo com '...' */
+.truncate-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 250px;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+/* =========================================
+   BADGES (PÍLULAS DE STATUS)
+   ========================================= */
+
+.badge {
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  display: inline-block;
+  text-align: center;
+}
+
+.badge-success {
+  background-color: #e8f5e9; /* Fundo verde claro */
+  color: #2e7d32;            /* Texto verde escuro */
+}
+
+.badge-warning {
+  background-color: #fff3e0; /* Fundo laranja claro */
+  color: #ef6c00;            /* Texto laranja escuro */
+}
+
+/* =========================================
+   ESTADO VAZIO (QUANDO NÃO HÁ DADOS)
+   ========================================= */
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  color: #757575;
+  text-align: center;
+}
+
+.empty-state .empty-icon {
+  font-size: 48px;
+  width: 48px;
+  height: 48px;
+  margin-bottom: 16px;
+  color: #bdbdbd;
+}
+
+.empty-state h3 {
+  margin: 0 0 8px 0;
+  color: #424242;
+  font-size: 18px;
+}
+
+.empty-state p {
+  margin: 0;
+  font-size: 14px;
+}

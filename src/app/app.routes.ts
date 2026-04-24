@@ -6,6 +6,7 @@ import { UserComponent } from './user/user.component';
 import { CadastroUserComponent } from './cadastro-user/cadastro-user.component';
 import { MovementComponent } from './movement/movement.component';
 import { authGuard } from './guards/auth.guard';
+import { LoanListComponent } from './loan-list/loan-list.component';
 
 export const routes: Routes = [
   { path: '', component: LoginComponent },
@@ -58,6 +59,10 @@ export const routes: Routes = [
     component: MovementComponent, 
     canActivate: [authGuard] 
   },
-
+  {
+    path: 'loans',
+    component: LoanListComponent,
+    canActivate: [authGuard]
+  },
   { path: '**', redirectTo: '' }
 ];
