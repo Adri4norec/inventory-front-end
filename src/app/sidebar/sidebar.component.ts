@@ -40,6 +40,14 @@ export class SidebarComponent implements OnInit {
         { label: 'Lista de Usuários', route: '/users', allowedRoles: ['ADMIN'] },
         { label: 'Novo Usuário', route: '/users/novo', allowedRoles: ['ADMIN'] }
       ]
+    },
+    {
+      label: 'Empréstimos',
+      allowedRoles: ['ADMIN', 'COLABORADOR'],
+      expanded: false, // Começa fechado
+      children: [
+        { label: 'Lista de Empréstimos', route: '/loans', allowedRoles: ['ADMIN', 'COLABORADOR'] }
+      ]
     }
   ];
 
