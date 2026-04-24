@@ -7,6 +7,7 @@ import { CadastroUserComponent } from './cadastro-user/cadastro-user.component';
 import { MovementComponent } from './movement/movement.component';
 import { authGuard } from './guards/auth.guard';
 import { LoanListComponent } from './loan-list/loan-list.component';
+import { LoanPreparationComponent } from './loan-preparation/loan-preparation.component';
 
 export const routes: Routes = [
   { path: '', component: LoginComponent },
@@ -46,6 +47,12 @@ export const routes: Routes = [
   { 
     path: 'cadastro/:id', 
     component: CadastroComponent, 
+    canActivate: [authGuard] 
+  },
+
+  { 
+    path: 'equipaments/loan-preparation', 
+    component: LoanPreparationComponent, 
     canActivate: [authGuard] 
   },
 

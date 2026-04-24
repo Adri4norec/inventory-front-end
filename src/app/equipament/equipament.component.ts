@@ -156,7 +156,7 @@ export class EquipamentComponent implements OnInit {
       EM_USO: 'Em Uso',
       DISPONIVEL: 'Disponível',
       INDISPONIVEL: 'Indisponível',
-      EM_MANUTENCAO: 'Em Manutenção',
+      EM_MANUTENCAO: 'Manutenção',
     };
 
     console.log('Status recebido:', status);

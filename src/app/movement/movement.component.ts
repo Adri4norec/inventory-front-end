@@ -27,23 +27,10 @@ import { MovementRequest, MovementResponse, MovementType } from '../models/movem
   selector: 'app-movement',
   standalone: true,
   imports: [
-    CommonModule,
-    RouterModule,
-    ReactiveFormsModule,
-    MatCardModule,
-    MatTableModule,
-    MatButtonModule,
-    MatIconModule,
-    MatDividerModule,
-    MatMenuModule,
-    MatToolbarModule,
-    MatTooltipModule,
-    MatDialogModule,
-    MatChipsModule,
-    MatFormFieldModule,
-    MatInputModule,
-    MatSelectModule,
-    MatSnackBarModule
+    CommonModule, RouterModule, ReactiveFormsModule, MatCardModule, MatTableModule,
+    MatButtonModule, MatIconModule, MatDividerModule, MatMenuModule, MatToolbarModule,
+    MatTooltipModule, MatDialogModule, MatChipsModule, MatFormFieldModule, MatInputModule,
+    MatSelectModule, MatSnackBarModule
   ],
   templateUrl: './movement.component.html',
   styleUrls: ['./movement.component.css']
@@ -83,14 +70,28 @@ export class MovementComponent implements OnInit {
     } else if (equipmentId) {
       this.equipamentId = equipmentId;
       this.carregarDados();
-    } else {
-      console.error('Identificador de equipamento ou movimenta��o n�o encontrado.');
     }
+    
+    this.movementForm.get('movementType')?.valueChanges.subscribe(value => {
+      const justificationControl = this.movementForm.get('justification');
+      const obsControl = this.movementForm.get('observacao');
+      
+      if (value === MovementType.DESCARTE) {
+        justificationControl?.setValidators([Validators.required]);
+        obsControl?.setValidators([Validators.required]);
+      } else {
+        justificationControl?.clearValidators();
+        obsControl?.clearValidators();
+      }
+      justificationControl?.updateValueAndValidity();
+      obsControl?.updateValueAndValidity();
+    });
   }
 
   private initForm(): void {
     this.movementForm = this.fb.group({
       movementType: ['', Validators.required],
+      justification: [''],
       responsavel: ['', Validators.required],
       projeto: ['', Validators.required],
       local: ['', Validators.required],
@@ -103,18 +104,9 @@ export class MovementComponent implements OnInit {
       next: (movement) => {
         this.viewedMovement = movement;
         this.equipamentId = movement.equipamentId;
-        this.movementForm.patchValue({
-          movementType: movement.movementType,
-          responsavel: movement.responsavel,
-          projeto: movement.projeto,
-          local: movement.local,
-          observacao: movement.observacao
-        });
+        this.movementForm.patchValue(movement);
         this.movementForm.disable();
         this.carregarDados();
-      },
-      error: (err) => {
-        console.error('Erro ao carregar movimenta��o', err);
       }
     });
   }
@@ -126,38 +118,24 @@ export class MovementComponent implements OnInit {
         if (!this.isViewMode) {
           this.configurarOpcoesMovimentacao(this.equipamento?.statusName || '');
         }
-      },
-      error: (err) => console.error('Erro ao carregar equipamento', err)
+      }
     });
 
     this.movementService.findHistoryByEquipament(this.equipamentId, 0, 10).subscribe({
-      next: (res: any) => {
-        this.historico = res.content || res;
-      },
-      error: (err) => console.error('Erro ao carregar hist�rico', err)
+      next: (res: any) => this.historico = res.content || res
     });
   }
 
   configurarOpcoesMovimentacao(status: string): void {
     const s = status.trim().toLowerCase();
-    
-    if (s === 'Em manutenção' || s === 'Em manutencao') {
-      // Em manutenção: Entrada ou Descarte
+    if (s === 'em manutenção' || s === 'em manutencao') {
       this.movementTypes = [MovementType.ENTRADA, MovementType.DESCARTE];
-      this.movementForm.get('movementType')?.enable();
     } else if (s === 'disponível' || s === 'disponivel') {
-      // Disponível: Entrada, Manutenção, Descarte
-      this.movementTypes = [MovementType.ENTRADA, MovementType.MANUTENCAO, MovementType.DESCARTE];
-      this.movementForm.get('movementType')?.enable();
+      this.movementTypes = [MovementType.SAIDA, MovementType.MANUTENCAO, MovementType.DESCARTE];
     } else if (s === 'em uso') {
-      // Em Uso: Entrada (fixo e bloqueado)
-      this.movementTypes = [MovementType.ENTRADA];
-      this.movementForm.get('movementType')?.setValue(MovementType.ENTRADA);
-      this.movementForm.get('movementType')?.disable();
+      this.movementTypes = [MovementType.ENTRADA, MovementType.MANUTENCAO];
     } else {
-      // Padrão: todas as opções
       this.movementTypes = Object.values(MovementType);
-      this.movementForm.get('movementType')?.enable();
     }
   }
 
@@ -166,12 +144,9 @@ export class MovementComponent implements OnInit {
     if (files && files.length > 0) {
       const novosArquivos = Array.from(files);
       this.selectedFiles = [...this.selectedFiles, ...novosArquivos];
-
       novosArquivos.forEach((file: File) => {
         const reader = new FileReader();
-        reader.onload = (e: any) => {
-          this.previsualizacoes.push(e.target.result);
-        };
+        reader.onload = (e: any) => this.previsualizacoes.push(e.target.result);
         reader.readAsDataURL(file);
       });
     }
@@ -184,61 +159,42 @@ export class MovementComponent implements OnInit {
   }
 
   onSubmit(): void {
-    if (this.isViewMode) {
-      return;
-    }
+    if (this.movementForm.invalid) return;
 
     if (this.selectedFiles.length === 0) {
-      this.snackBar.open('� obrigat�rio anexar pelo menos uma imagem para registrar a movimenta��o.', 'Aviso', { duration: 4000 });
+      this.snackBar.open('Anexe pelo menos uma imagem.', 'Aviso', { duration: 4000 });
       return;
     }
 
-    if (this.movementForm.valid && this.equipamentId) {
-      const dados: MovementRequest = {
-        equipamentId: this.equipamentId,
-        ...this.movementForm.getRawValue()
-      };
+    const dados: MovementRequest = {
+      equipamentId: this.equipamentId,
+      ...this.movementForm.getRawValue()
+    };
 
-      this.movementService.save(dados).subscribe({
-        next: (response) => {
-          this.movementService.uploadImages(response.id, this.selectedFiles).subscribe({
-            next: () => {
-              this.snackBar.open('Movimenta��o e imagens registradas com sucesso!', 'Sucesso', { duration: 3000 });
-              this.resetForm();
-              this.carregarDados();
-            },
-            error: (err) => {
-              console.error('Erro no upload:', err);
-              this.snackBar.open('Movimenta��o salva, mas houve um erro ao processar as imagens.', 'Aviso', { duration: 5000 });
-              this.resetForm();
-              this.carregarDados();
-            }
-          });
-        },
-        error: (err) => {
-          console.error(err);
-          this.snackBar.open('Erro ao salvar os dados da movimenta��o.', 'Fechar', { duration: 3000 });
-        }
-      });
-    }
+    this.movementService.save(dados).subscribe({
+      next: (response) => {
+        this.movementService.uploadImages(response.id, this.selectedFiles).subscribe({
+          next: () => {
+            this.snackBar.open('Sucesso!', 'Sucesso', { duration: 3000 });
+            this.resetForm();
+            this.carregarDados();
+          }
+        });
+      }
+    });
   }
 
   private resetForm(): void {
     this.selectedFiles = [];
     this.previsualizacoes = [];
     this.movementForm.reset();
-    if (this.equipamento) {
-      this.configurarOpcoesMovimentacao(this.equipamento.statusName || '');
-    }
+    if (this.equipamento) this.configurarOpcoesMovimentacao(this.equipamento.statusName || '');
   }
 
   verFotos(e: any): void {
     this.dialog.open(PhotoGaleryDialogComponent, {
       width: '850px',
-      maxWidth: '90vw',
-      data: {
-        urls: e.imageUrls
-      }
+      data: { urls: e.imageUrls }
     });
   }
 

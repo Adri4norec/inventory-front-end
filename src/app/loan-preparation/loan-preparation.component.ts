@@ -1,0 +1,144 @@
+import { Component, OnInit } from '@angular/core';
+import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
+import { CommonModule } from '@angular/common';
+import { Router } from '@angular/router';
+
+import { MatToolbarModule } from '@angular/material/toolbar';
+import { MatCardModule } from '@angular/material/card';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
+import { MatDividerModule } from '@angular/material/divider';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatSelectModule } from '@angular/material/select';
+
+import { EquipamentService } from '../services/equipament/equipment.service';
+import { LoanService } from '../services/loan/loan.service';
+import { UserService } from '../services/user/user.service';
+import { EquipmentLoanResponse, LoanRequest } from '../models/equipaments/equipament.model';
+import { UserResponse } from '../models/users/UserResponse';
+
+@Component({
+  selector: 'app-loan-preparation',
+  standalone: true,
+  imports: [
+    CommonModule,
+    ReactiveFormsModule,
+    MatToolbarModule,
+    MatCardModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatButtonModule,
+    MatIconModule,
+    MatDividerModule,
+    MatSnackBarModule,
+    MatTooltipModule,
+    MatSelectModule
+  ],
+  templateUrl: './loan-preparation.component.html',
+  styleUrls: ['./loan-preparation.component.scss']
+})
+export class LoanPreparationComponent implements OnInit {
+  loanForm: FormGroup;
+  equipmentInfo: EquipmentLoanResponse | null = null;
+  collaborators: UserResponse[] = [];
+  loading = false;
+
+  constructor(
+    private fb: FormBuilder,
+    private router: Router,
+    private equipmentService: EquipamentService,
+    private loanService: LoanService,
+    private userService: UserService,
+    private snackBar: MatSnackBar
+  ) {
+    this.loanForm = this.fb.group({
+      tomboSearch: ['', [Validators.required]],
+      equipmentId: ['', [Validators.required]],
+      collaboratorId: ['', [Validators.required]],
+      loanDate: [new Date().toISOString(), [Validators.required]]
+    });
+  }
+
+  ngOnInit(): void {
+    this.carregarColaboradores();
+  }
+
+  carregarColaboradores(): void {
+    this.userService.listAll().subscribe({
+      next: (response: any) => {
+        const listaBruta = response.content ? response.content : response;
+
+        console.log('Dados que chegaram do Java:', listaBruta);
+
+        this.collaborators = listaBruta.filter((u: UserResponse) => {
+          return u.roleName === 'COLABORADOR';
+        });
+
+        console.log('Colaboradores após o filtro:', this.collaborators);
+      },
+      error: (err) => {
+        console.error('Erro na requisição:', err);
+        this.exibirMensagemErro('Erro ao carregar lista de colaboradores');
+      }
+    });
+  }
+
+  buscarEquipamento(): void {
+    const topo = this.loanForm.get('tomboSearch')?.value;
+    if (!topo) return;
+
+    this.loading = true;
+    this.loanService.findByCodeToLoan(topo).subscribe({
+      next: (data) => {
+        this.equipmentInfo = data;
+        this.loanForm.patchValue({ equipmentId: data.id });
+        this.loading = false;
+      },
+      error: (err) => {
+        this.equipmentInfo = null;
+        this.loading = false;
+        this.exibirMensagemErro(err.error?.message || 'Equipamento não encontrado');
+      }
+    });
+  }
+
+  salvar(): void {
+    if (this.loanForm.invalid || !this.equipmentInfo) {
+      this.loanForm.markAllAsTouched();
+      return;
+    }
+
+    const request: LoanRequest = {
+      equipmentId: this.loanForm.value.equipmentId,
+      collaboratorId: this.loanForm.value.collaboratorId,
+      loanDate: this.loanForm.value.loanDate,
+      helpdeskTicket: 'N/A',
+      observation: 'Preparação iniciada via sistema'
+    };
+
+    this.loanService.saveLoanPreparation(request).subscribe({
+      next: () => {
+        this.snackBar.open('Empréstimo iniciado!', 'OK', { duration: 3000 });
+        this.router.navigate(['/loans']);
+      },
+      error: (err) => this.exibirMensagemErro(err.error?.message || 'Erro ao salvar')
+    });
+  }
+
+  cancelar(): void {
+    this.router.navigate(['/equipaments']);
+  }
+
+  bloquearLetras(event: KeyboardEvent): void {
+    const permitidas = ['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight'];
+    if (permitidas.includes(event.key) || event.ctrlKey || event.metaKey) return;
+    if (!/^[0-9]$/.test(event.key)) event.preventDefault();
+  }
+
+  private exibirMensagemErro(msg: string): void {
+    this.snackBar.open(msg, 'Fechar', { duration: 5000, panelClass: ['error-snackbar'] });
+  }
+}
