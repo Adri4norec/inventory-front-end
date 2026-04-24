@@ -1,24 +1,30 @@
-import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
-import { EquipmentLoanResponse, LoanRequest } from '../../models/equipaments/equipament.model';
+import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { LoanListResponse, EquipmentLoanResponse } from '../../models/loans/loans.model';
 
-@Injectable({ providedIn: 'root' })
+@Injectable({
+  providedIn: 'root'
+})
 export class LoanService {
-  // Ajuste para a URL do seu Java
-  private apiUrl = 'http://localhost:8080/api/loans'; 
+  
+  // Caminho batendo no Controller do Java que vi na foto (v1)
+  private apiUrl = 'http://localhost:8080/api/v1/loans'; 
 
   constructor(private http: HttpClient) {}
 
-  private readonly API = 'http://localhost:8080/api/v1/loans';
-  
-    constructor(private http: HttpClient) { }
-
-    findByCodeToLoan(topo: string): Observable<EquipmentLoanResponse> {
-    return this.http.get<EquipmentLoanResponse>(`${this.API}/loan/check/${topo}`);
+  // MÉTODO SEU (Listagem)
+  getLoansList(): Observable<LoanListResponse[]> {
+    return this.http.get<LoanListResponse[]>(this.apiUrl);
   }
 
-  saveLoanPreparation(loan: LoanRequest): Observable<any> {
-    return this.http.post(`${this.API}/loan/prepare`, loan);
+  // MÉTODO DELE (Busca por Tombo)
+  findByCodeToLoan(topo: string): Observable<EquipmentLoanResponse> {
+    return this.http.get<EquipmentLoanResponse>(`${this.apiUrl}/loan/check/${topo}`);
+  }
+
+  // MÉTODO DELE (Salvar Preparação)
+  prepareLoan(request: any): Observable<void> {
+    return this.http.post<void>(`${this.apiUrl}/loan/prepare`, request);
   }
 }

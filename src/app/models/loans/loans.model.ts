@@ -1,3 +1,6 @@
+import { SafeResourceUrl } from '@angular/platform-browser';
+
+// A SUA INTERFACE (Listagem)
 export interface LoanListResponse {
   id: string;
   codigo: string;
@@ -7,4 +10,14 @@ export interface LoanListResponse {
   status: string;
   loanDate?: string;
   expectedReturnDate?: string;
+}
+
+// A INTERFACE DELE (Preparação/Busca)
+export interface EquipmentLoanResponse {
+  id: string;
+  name: string;
+  description: string;
+  statusName: string;
+  categoryName: string;
+  topo: number;
 }
