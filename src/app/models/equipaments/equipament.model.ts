@@ -36,3 +36,20 @@ export interface PerPartResponse {
   name: string;
   serialNumber: string;
 }
+
+export interface EquipmentLoanResponse {
+  id: string;
+  name: string;
+  description: string;
+  statusName: string;
+  categoryName: string;
+  topo: string;
+}
+
+export interface LoanRequest {
+  equipmentId: string;
+  collaboratorId: string;
+  loanDate: string;
+  helpdeskTicket: string;
+  observation: string;
+}

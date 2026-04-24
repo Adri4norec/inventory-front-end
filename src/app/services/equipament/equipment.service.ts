@@ -1,7 +1,12 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { EquipmentRequest, EquipmentResponse, PageResponse } from '../../models/equipaments/equipament.model';
+import { EquipmentLoanResponse, 
+  EquipmentRequest, 
+  EquipmentResponse, 
+  LoanRequest, 
+  PageResponse 
+} from '../../models/equipaments/equipament.model';
 
 @Injectable({ providedIn: 'root' })
 export class EquipamentService {

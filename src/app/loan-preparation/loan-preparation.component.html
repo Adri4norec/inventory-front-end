@@ -1,0 +1,62 @@
+<div class="page-wrapper">
+  <mat-toolbar color="primary" class="page-toolbar">
+    <button mat-icon-button (click)="cancelar()">
+      <mat-icon>arrow_back</mat-icon>
+    </button>
+    <span>Empréstimo</span>
+  </mat-toolbar>
+
+  <div class="content">
+    <mat-card appearance="outlined" class="form-card">
+      <mat-card-header>
+        <mat-card-title>Identificação</mat-card-title>
+      </mat-card-header>
+
+      <mat-card-content>
+        <form [formGroup]="loanForm" class="form-grid">
+          
+          <mat-form-field appearance="outline" class="field-full">
+            <mat-label>Tombo / Identificador</mat-label>
+            <input matInput formControlName="tomboSearch" (keydown)="bloquearLetras($event)" (keyup.enter)="buscarEquipamento()">
+            <button mat-icon-button matSuffix (click)="buscarEquipamento()" type="button">
+              <mat-icon>search</mat-icon>
+            </button>
+          </mat-form-field>
+
+          <div *ngIf="equipmentInfo" class="field-full equipment-info-banner">
+            <div class="info-item">
+              <mat-icon>laptop</mat-icon>
+              <span><strong>Modelo:</strong> {{ equipmentInfo.name }}</span>
+            </div>
+            <div class="info-item">
+              <mat-icon>category</mat-icon>
+              <span><strong>Categoria:</strong> {{ equipmentInfo.categoryName }}</span>
+            </div>
+            <div class="info-item">
+              <mat-icon>info</mat-icon>
+              <span><strong>Status:</strong> {{ equipmentInfo.statusName }}</span>
+            </div>
+          </div>
+
+          <mat-form-field appearance="outline" class="field-full">
+            <mat-label>Colaborador Destinatário</mat-label>
+            <mat-select formControlName="collaboratorId">
+              <mat-option *ngFor="let colab of collaborators" [value]="colab.id">
+                {{ colab.fullName }}
+              </mat-option>
+            </mat-select>
+            <mat-error *ngIf="loanForm.get('collaboratorId')?.hasError('required')">Selecione um colaborador</mat-error>
+          </mat-form-field>
+
+        </form>
+      </mat-card-content>
+
+      <mat-card-actions align="end">
+        <button mat-button (click)="cancelar()">Cancelar</button>
+        <button mat-raised-button color="primary" [disabled]="loanForm.invalid || !equipmentInfo" (click)="salvar()">
+          Confirmar
+        </button>
+      </mat-card-actions>
+    </mat-card>
+  </div>
+</div>
