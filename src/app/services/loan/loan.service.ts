@@ -2,7 +2,7 @@ import { Injectable, Inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { HttpClient, HttpParams, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { LoanListResponse, EquipmentLoanResponse } from '../../models/loans/loans.model';
+import { LoanListResponse, EquipmentLoanResponse, UserSearchResponse } from '../../models/loans/loans.model';
 
 @Injectable({
   providedIn: 'root'
@@ -78,8 +78,8 @@ export class LoanService {
     return this.http.post<void>(`${this.apiUrl}/${id}/return`, {}, this.getOptions());
   }
 
-  buscarColaboradores(nome: string): Observable<any[]> {
+  buscarColaboradores(nome: string): Observable<UserSearchResponse[]> {
     const params = new HttpParams().set('nome', nome);
-    return this.http.get<any[]>(`${this.apiUrl}/users/search`, { params });
-  }
+    return this.http.get<UserSearchResponse[]>(`${this.apiUrl}/loans/search-users`, { params });
+}
 }

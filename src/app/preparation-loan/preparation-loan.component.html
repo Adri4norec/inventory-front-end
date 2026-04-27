@@ -1,183 +1,194 @@
 <div class="page-wrapper">
-  <mat-toolbar color="primary" class="page-toolbar">
-    <button mat-icon-button (click)="voltar()" matTooltip="Voltar para lista">
-      <mat-icon>arrow_back</mat-icon>
-    </button>
-    <span class="toolbar-title">Preparação de Empréstimo</span>
-  </mat-toolbar>
+    <mat-toolbar color="primary" class="page-toolbar">
+        <button mat-icon-button (click)="voltar()" matTooltip="Voltar para lista">
+            <mat-icon>arrow_back</mat-icon>
+        </button>
+        <span class="toolbar-title">Preparação de Empréstimo</span>
+    </mat-toolbar>
 
-  <div class="content">
-    <mat-card *ngIf="equipamento" class="form-card" appearance="outlined">
-      <mat-card-header>
-        <mat-card-title>
-          <mat-icon>devices</mat-icon>
-          {{ equipamento?.name }}
-        </mat-card-title>
-        <mat-card-subtitle>
-          Status Atual:
-          <span class="status-label" [style.color]="equipamento?.statusName === 'DISPONIVEL' ? 'green' : 'orange'">
-            {{ equipamento?.statusName }}
-          </span>
-        </mat-card-subtitle>
-      </mat-card-header>
+    <div class="content">
+        <mat-card *ngIf="equipamento" class="form-card" appearance="outlined">
+            <mat-card-header>
+                <mat-card-title>
+                    <mat-icon>devices</mat-icon>
+                    {{ equipamento?.name }}
+                </mat-card-title>
+                <mat-card-subtitle>
+                    Status Atual:
+                    <span class="status-label"
+                        [style.color]="equipamento?.statusName === 'DISPONIVEL' ? 'green' : 'orange'">
+                        {{ equipamento?.statusName }}
+                    </span>
+                </mat-card-subtitle>
+            </mat-card-header>
 
-      <mat-divider></mat-divider>
+            <mat-divider></mat-divider>
 
-      <mat-card-content class="equipment-details">
-        <div class="details-row">
-          <div class="detail-item">
-            <label>Patrimônio</label>
-            <span><strong>{{ equipamento?.topo }}</strong></span>
-          </div>
-          <div class="detail-item">
-            <label>Proprietário</label>
-            <span>{{ equipamento?.proprietaryName }}</span>
-          </div>
-          <div class="detail-item">
-            <label>Tipo de Uso</label>
-            <span>{{ equipamento?.usageType }}</span>
-          </div>
-          <div class="detail-item">
-            <label>Data de Cadastro</label>
-            <span>{{ equipamento?.dateHour | date:'dd/MM/yyyy' }}</span>
-          </div>
+            <mat-card-content class="equipment-details">
+                <div class="details-row">
+                    <div class="detail-item">
+                        <label>Patrimônio</label>
+                        <span><strong>{{ equipamento?.topo }}</strong></span>
+                    </div>
+                    <div class="detail-item">
+                        <label>Proprietário</label>
+                        <span>{{ equipamento?.proprietaryName }}</span>
+                    </div>
+                    <div class="detail-item">
+                        <label>Tipo de Uso</label>
+                        <span>{{ equipamento?.usageType }}</span>
+                    </div>
+                    <div class="detail-item">
+                        <label>Data de Cadastro</label>
+                        <span>{{ equipamento?.dateHour | date:'dd/MM/yyyy' }}</span>
+                    </div>
+                </div>
+            </mat-card-content>
+        </mat-card>
+
+        <mat-card class="form-card" *ngIf="equipamento" appearance="outlined">
+            <mat-card-header>
+                <mat-card-title>
+                    <mat-icon>edit</mat-icon>
+                    Preparar Empréstimo
+                </mat-card-title>
+                <mat-card-subtitle>Prepare o empréstimo do equipamento selecionado</mat-card-subtitle>
+            </mat-card-header>
+
+            <mat-divider></mat-divider>
+
+            <mat-card-content>
+                <form [formGroup]="loanForm" class="form-grid">
+
+                    <mat-form-field appearance="outline" class="field-half">
+                        <mat-label>Status</mat-label>
+                        <mat-icon matPrefix>swap_horiz</mat-icon>
+                        <mat-select formControlName="loanType">
+                            <mat-option *ngFor="let tipo of loanTypes" [value]="tipo">
+                                {{ tipo }}
+                            </mat-option>
+                        </mat-select>
+                    </mat-form-field>
+
+                    <mat-form-field appearance="outline" class="field-half">
+                        <mat-label>Responsável</mat-label>
+                        <mat-icon matPrefix>person</mat-icon>
+
+                        <input type="text" matInput formControlName="responsavel" [matAutocomplete]="auto"
+                            placeholder="Digite pelo menos 3 letras...">
+
+                        <mat-autocomplete #auto="matAutocomplete" [displayWith]="displayFn">
+                            <mat-option *ngIf="filteredUsers.length === 0" disabled>
+                                Nenhum colaborador encontrado
+                            </mat-option>
+
+                            <mat-option *ngFor="let user of filteredUsers" [value]="user">
+                                {{ user.fullName }}
+                            </mat-option>
+                        </mat-autocomplete>
+
+                        <mat-error *ngIf="loanForm.get('responsavel')?.hasError('required')">
+                            O responsável é obrigatório
+                        </mat-error>
+                    </mat-form-field>
+
+                    <mat-form-field appearance="outline" class="field-half">
+                        <mat-label>Projeto</mat-label>
+                        <mat-icon matPrefix>work</mat-icon>
+                        <input matInput formControlName="projeto" />
+                    </mat-form-field>
+
+                    <mat-form-field appearance="outline" class="field-full">
+                        <mat-label>Observações</mat-label>
+                        <mat-icon matPrefix>notes</mat-icon>
+                        <textarea matInput formControlName="observacao" rows="4"></textarea>
+                    </mat-form-field>
+
+                    <div class="field-full upload-section">
+                        <h3 class="section-subtitle">
+                            <mat-icon>photo_camera</mat-icon>
+                            Fotos do Empréstimo
+                        </h3>
+                        <div class="upload-row">
+                            <button type="button" mat-stroked-button color="primary" (click)="fileInput.click()">
+                                <mat-icon>attach_file</mat-icon>
+                                Selecionar Imagens
+                            </button>
+                            <input #fileInput type="file" (change)="onFileSelected($event)" multiple accept="image/*"
+                                style="display: none;" />
+                            <span *ngIf="selectedFiles.length > 0" class="selected-count">
+                                {{ selectedFiles.length }} arquivo(s) selecionado(s)
+                            </span>
+                        </div>
+                        <div *ngIf="previsualizacoes.length > 0" class="preview-list">
+                            <div *ngFor="let img of previsualizacoes; let i = index" class="preview-item">
+                                <img [src]="img" alt="Prévia" />
+                                <button mat-mini-fab color="warn" type="button" (click)="removerArquivo(i)">
+                                    <mat-icon>close</mat-icon>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </mat-card-content>
+
+            <mat-divider></mat-divider>
+
+            <mat-card-actions class="form-actions space-between-actions">
+                <button mat-stroked-button type="button" (click)="voltar()" class="btn-cancelar">
+                    <mat-icon>close</mat-icon> Cancelar
+                </button>
+                <button mat-raised-button color="primary" type="submit" [disabled]="loanForm.invalid"
+                    (click)="onSubmit()" class="btn-salvar">
+                    <mat-icon>check_circle</mat-icon> Confirmar e Salvar
+                </button>
+            </mat-card-actions>
+        </mat-card>
+
+        <div class="history-header">
+            <h3 class="history-title"><mat-icon>history</mat-icon> Histórico de Empréstimos</h3>
         </div>
-      </mat-card-content>
-    </mat-card>
 
-    <mat-card class="form-card" *ngIf="equipamento" appearance="outlined">
-      <mat-card-header>
-        <mat-card-title>
-          <mat-icon>edit</mat-icon>
-          Preparar Empréstimo
-        </mat-card-title>
-        <mat-card-subtitle>Prepare o empréstimo do equipamento selecionado</mat-card-subtitle>
-      </mat-card-header>
-
-      <mat-divider></mat-divider>
-
-      <mat-card-content>
-        <form [formGroup]="loanForm" class="form-grid">
-
-          <mat-form-field appearance="outline" class="field-half">
-            <mat-label>Status</mat-label>
-            <mat-icon matPrefix>swap_horiz</mat-icon>
-            <mat-select formControlName="loanType">
-              <mat-option *ngFor="let tipo of loanTypes" [value]="tipo">
-                {{ tipo }}
-              </mat-option>
-            </mat-select>
-          </mat-form-field>
-
-          <mat-form-field appearance="outline" class="field-half">
-            <mat-label>Responsável</mat-label>
-            <mat-icon matPrefix>person</mat-icon>
-            <input type="text"
-                   matInput
-                   formControlName="responsavel"
-                   [matAutocomplete]="auto">
-            <mat-autocomplete #auto="matAutocomplete" [displayWith]="displayFn">
-              <mat-option *ngFor="let user of filteredUsers" [value]="user">
-                {{ user.name }}
-              </mat-option>
-            </mat-autocomplete>
-          </mat-form-field>
-
-          <mat-form-field appearance="outline" class="field-half">
-            <mat-label>Projeto</mat-label>
-            <mat-icon matPrefix>work</mat-icon>
-            <input matInput formControlName="projeto" />
-          </mat-form-field>
-
-          <mat-form-field appearance="outline" class="field-full">
-            <mat-label>Observações</mat-label>
-            <mat-icon matPrefix>notes</mat-icon>
-            <textarea matInput formControlName="observacao" rows="4"></textarea>
-          </mat-form-field>
-
-          <div class="field-full upload-section">
-            <h3 class="section-subtitle">
-              <mat-icon>photo_camera</mat-icon>
-              Fotos do Empréstimo
-            </h3>
-            <div class="upload-row">
-              <button type="button" mat-stroked-button color="primary" (click)="fileInput.click()">
-                <mat-icon>attach_file</mat-icon>
-                Selecionar Imagens
-              </button>
-              <input #fileInput type="file" (change)="onFileSelected($event)" multiple accept="image/*" style="display: none;" />
-              <span *ngIf="selectedFiles.length > 0" class="selected-count">
-                {{ selectedFiles.length }} arquivo(s) selecionado(s)
-              </span>
-            </div>
-            <div *ngIf="previsualizacoes.length > 0" class="preview-list">
-              <div *ngFor="let img of previsualizacoes; let i = index" class="preview-item">
-                <img [src]="img" alt="Prévia" />
-                <button mat-mini-fab color="warn" type="button" (click)="removerArquivo(i)">
-                  <mat-icon>close</mat-icon>
-                </button>
-              </div>
-            </div>
-          </div>
-        </form>
-      </mat-card-content>
-
-      <mat-divider></mat-divider>
-
-      <mat-card-actions class="form-actions space-between-actions">
-        <button mat-stroked-button type="button" (click)="voltar()" class="btn-cancelar">
-          <mat-icon>close</mat-icon> Cancelar
-        </button>
-        <button mat-raised-button color="primary" type="submit" [disabled]="loanForm.invalid" (click)="onSubmit()" class="btn-salvar">
-          <mat-icon>check_circle</mat-icon> Confirmar e Salvar
-        </button>
-      </mat-card-actions>
-    </mat-card>
-
-    <div class="history-header">
-      <h3 class="history-title"><mat-icon>history</mat-icon> Histórico de Empréstimos</h3>
+        <mat-card class="table-card" appearance="outlined">
+            <mat-card-content>
+                <table mat-table [dataSource]="historico" class="full-width-table">
+                    <ng-container matColumnDef="dataHora">
+                        <th mat-header-cell *matHeaderCellDef> Data/Hora </th>
+                        <td mat-cell *matCellDef="let m"> {{ m.dataHora | date:'dd/MM/yyyy HH:mm' }} </td>
+                    </ng-container>
+                    <ng-container matColumnDef="loanType">
+                        <th mat-header-cell *matHeaderCellDef> Tipo </th>
+                        <td mat-cell *matCellDef="let m">
+                            {{ m.loanType }}
+                        </td>
+                    </ng-container>
+                    <ng-container matColumnDef="responsavel">
+                        <th mat-header-cell *matHeaderCellDef> Responsável </th>
+                        <td mat-cell *matCellDef="let m"> {{ m.responsavel }} </td>
+                    </ng-container>
+                    <ng-container matColumnDef="projeto">
+                        <th mat-header-cell *matHeaderCellDef> Projeto </th>
+                        <td mat-cell *matCellDef="let m"> {{ m.projeto }} </td>
+                    </ng-container>
+                    <ng-container matColumnDef="observacao">
+                        <th mat-header-cell *matHeaderCellDef> Observação </th>
+                        <td mat-cell *matCellDef="let m"> {{ m.observacao || '-' }} </td>
+                    </ng-container>
+                    <ng-container matColumnDef="actions">
+                        <th mat-header-cell *matHeaderCellDef> Ações </th>
+                        <td mat-cell *matCellDef="let e">
+                            <button mat-icon-button [matMenuTriggerFor]="menu"><mat-icon>more_vert</mat-icon></button>
+                            <mat-menu #menu="matMenu">
+                                <button mat-menu-item (click)="verFotos(e)">
+                                    <mat-icon color="accent">image</mat-icon> Fotos
+                                </button>
+                            </mat-menu>
+                        </td>
+                    </ng-container>
+                    <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+                    <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+                </table>
+            </mat-card-content>
+        </mat-card>
     </div>
-
-    <mat-card class="table-card" appearance="outlined">
-      <mat-card-content>
-        <table mat-table [dataSource]="historico" class="full-width-table">
-          <ng-container matColumnDef="dataHora">
-            <th mat-header-cell *matHeaderCellDef> Data/Hora </th>
-            <td mat-cell *matCellDef="let m"> {{ m.dataHora | date:'dd/MM/yyyy HH:mm' }} </td>
-          </ng-container>
-          <ng-container matColumnDef="loanType">
-            <th mat-header-cell *matHeaderCellDef> Tipo </th>
-            <td mat-cell *matCellDef="let m"> 
-                {{ m.loanType }}
-            </td>
-          </ng-container>
-          <ng-container matColumnDef="responsavel">
-            <th mat-header-cell *matHeaderCellDef> Responsável </th>
-            <td mat-cell *matCellDef="let m"> {{ m.responsavel }} </td>
-          </ng-container>
-          <ng-container matColumnDef="projeto">
-            <th mat-header-cell *matHeaderCellDef> Projeto </th>
-            <td mat-cell *matCellDef="let m"> {{ m.projeto }} </td>
-          </ng-container>
-          <ng-container matColumnDef="observacao">
-            <th mat-header-cell *matHeaderCellDef> Observação </th>
-            <td mat-cell *matCellDef="let m"> {{ m.observacao || '-' }} </td>
-          </ng-container>
-          <ng-container matColumnDef="actions">
-            <th mat-header-cell *matHeaderCellDef> Ações </th>
-            <td mat-cell *matCellDef="let e">
-              <button mat-icon-button [matMenuTriggerFor]="menu"><mat-icon>more_vert</mat-icon></button>
-              <mat-menu #menu="matMenu">
-                <button mat-menu-item (click)="verFotos(e)">
-                  <mat-icon color="accent">image</mat-icon> Fotos
-                </button>
-              </mat-menu>
-            </td>
-          </ng-container>
-          <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-          <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
-        </table>
-      </mat-card-content>
-    </mat-card>
-  </div>
 </div>

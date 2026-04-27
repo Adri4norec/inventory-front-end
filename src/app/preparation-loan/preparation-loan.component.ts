@@ -24,7 +24,7 @@ import { EquipamentService } from '../services/equipament/equipment.service';
 import { MovementService } from '../services/movement/movement.service';
 import { LoanService } from '../services/loan/loan.service';
 import { PhotoGaleryDialogComponent } from '../photo-galery-dialog/photo-galery-dialog.component';
-import { LoanType } from '../models/loans/loans.model';
+import { LoanType, UserSearchResponse } from '../models/loans/loans.model';
 
 @Component({
   selector: 'app-preparation-loan',
@@ -60,7 +60,7 @@ export class PreparationLoanComponent implements OnInit {
   loanTypes: string[] = [];
   selectedFiles: File[] = [];
   previsualizacoes: string[] = [];
-  filteredUsers: any[] = [];
+  filteredUsers: UserSearchResponse[] = [];
   displayedColumns: string[] = ['dataHora', 'loanType', 'responsavel', 'projeto', 'observacao', 'actions'];
 
   constructor(
@@ -87,12 +87,15 @@ export class PreparationLoanComponent implements OnInit {
       debounceTime(300),
       distinctUntilChanged(),
       switchMap(value => {
-        if (typeof value === 'string' && value.length >= 3) {
-          return this.loanService.buscarColaboradores(value);
+        const search = typeof value === 'string' ? value : '';
+        if (search.length >= 3) {
+          return this.loanService.buscarColaboradores(search);
         }
         return of([]);
       })
-    ).subscribe(users => this.filteredUsers = users);
+    ).subscribe(users => {
+      this.filteredUsers = users;
+    });
   }
 
   private initForm(): void {
@@ -104,8 +107,8 @@ export class PreparationLoanComponent implements OnInit {
     });
   }
 
-  displayFn(user: any): string {
-    return user && user.name ? user.name : '';
+  displayFn(user: UserSearchResponse): string {
+    return user && user.fullName ? user.fullName : '';
   }
 
   carregarEquipamento(): void {

@@ -27,3 +27,8 @@ export enum LoanType {
   AUARDANDO_ASSINATURA = 'AUARDANDO_ASSINATURA',
   EM_USO = 'EM_USO'
 }
+
+export interface UserSearchResponse {
+    id: string;       
+    fullName: string; 
+}
