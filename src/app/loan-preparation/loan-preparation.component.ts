@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatCardModule } from '@angular/material/card';
@@ -56,6 +56,7 @@ export class LoanPreparationComponent implements OnInit {
   constructor(
     private fb: FormBuilder,
     private router: Router,
+    private route: ActivatedRoute,
     private equipmentService: EquipamentService,
     private loanService: LoanService,
     private userService: UserService,
@@ -71,6 +72,14 @@ export class LoanPreparationComponent implements OnInit {
 
   ngOnInit(): void {
     this.carregarColaboradores();
+
+    this.route.queryParams.subscribe(params => {
+      const tombo = params['tombo'];
+      if (tombo) {
+        this.loanForm.patchValue({ tomboSearch: tombo });
+        this.buscarEquipamento();
+      }
+    });
   }
 
   carregarColaboradores(): void {
