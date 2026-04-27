@@ -8,13 +8,13 @@ import { LoanListResponse, EquipmentLoanResponse } from '../../models/loans/loan
   providedIn: 'root'
 })
 export class LoanService {
-  
-  private readonly apiUrl = 'http://localhost:8080/api/v1/loans'; 
+
+  private readonly apiUrl = 'http://localhost:8080/api/v1/loans';
 
   constructor(
     private http: HttpClient,
     @Inject(PLATFORM_ID) private platformId: Object
-  ) {}
+  ) { }
 
   /**
    * Método privado para centralizar a criação dos headers com Token.
@@ -22,14 +22,14 @@ export class LoanService {
    */
   private getOptions() {
     let headers = new HttpHeaders();
-    
+
     if (isPlatformBrowser(this.platformId)) {
       const token = localStorage.getItem('access_token');
       if (token) {
         headers = headers.set('Authorization', `Bearer ${token}`);
       }
     }
-    
+
     return { headers };
   }
 
@@ -39,7 +39,7 @@ export class LoanService {
 
   advancedSearch(filtros: any, page: number, size: number): Observable<any> {
     const options = this.getOptions();
-    
+
     let params = new HttpParams()
       .set('page', page.toString())
       .set('size', size.toString());
@@ -76,5 +76,10 @@ export class LoanService {
 
   registerReturn(id: string): Observable<void> {
     return this.http.post<void>(`${this.apiUrl}/${id}/return`, {}, this.getOptions());
+  }
+
+  buscarColaboradores(nome: string): Observable<any[]> {
+    const params = new HttpParams().set('nome', nome);
+    return this.http.get<any[]>(`${this.apiUrl}/users/search`, { params });
   }
 }
