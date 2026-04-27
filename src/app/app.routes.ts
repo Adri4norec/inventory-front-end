@@ -8,6 +8,7 @@ import { MovementComponent } from './movement/movement.component';
 import { authGuard } from './guards/auth.guard';
 import { LoanListComponent } from './loan-list/loan-list.component';
 import { LoanPreparationComponent } from './loan-preparation/loan-preparation.component';
+import { PreparationLoanComponent } from './preparation-loan/preparation-loan.component';
 
 export const routes: Routes = [
   { path: '', component: LoginComponent },
@@ -53,6 +54,12 @@ export const routes: Routes = [
   { 
     path: 'equipaments/loan-preparation', 
     component: LoanPreparationComponent, 
+    canActivate: [authGuard] 
+  },
+
+  { 
+    path: 'equipaments/:id/preparation-loan', 
+    component: PreparationLoanComponent, 
     canActivate: [authGuard] 
   },
 

@@ -221,14 +221,6 @@ export class EquipamentComponent implements OnInit {
   }
 
   iniciarEmprestimo(equipamento: EquipmentResponse): void {
-    const tombo = equipamento.codigo || equipamento.topo?.toString();
-    if (!tombo) {
-      alert('Não foi possível iniciar o empréstimo: código do equipamento ausente.');
-      return;
-    }
-
-    this.router.navigate(['/equipaments/loan-preparation'], {
-      queryParams: { tombo }
-    });
+    this.router.navigate(['/equipaments', equipamento.id, 'preparation-loan']);
   }
 }

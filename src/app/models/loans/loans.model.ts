@@ -21,3 +21,9 @@ export interface EquipmentLoanResponse {
   categoryName: string;
   topo: number;
 }
+
+export enum LoanType {
+  EM_PREPARACAO = 'EM_PREPARACAO',
+  AUARDANDO_ASSINATURA = 'AUARDANDO_ASSINATURA',
+  EM_USO = 'EM_USO'
+}
