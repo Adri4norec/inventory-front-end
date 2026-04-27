@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { debounceTime, distinctUntilChanged, switchMap, of } from 'rxjs';
 
 import { MatCardModule } from '@angular/material/card';
 import { MatTableModule } from '@angular/material/table';
@@ -17,9 +18,11 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatAutocompleteModule } from '@angular/material/autocomplete';
 
 import { EquipamentService } from '../services/equipament/equipment.service';
 import { MovementService } from '../services/movement/movement.service';
+import { LoanService } from '../services/loan/loan.service';
 import { PhotoGaleryDialogComponent } from '../photo-galery-dialog/photo-galery-dialog.component';
 import { LoanType } from '../models/loans/loans.model';
 
@@ -27,10 +30,24 @@ import { LoanType } from '../models/loans/loans.model';
   selector: 'app-preparation-loan',
   standalone: true,
   imports: [
-    CommonModule, RouterModule, ReactiveFormsModule, MatCardModule, MatTableModule,
-    MatButtonModule, MatIconModule, MatDividerModule, MatMenuModule, MatToolbarModule,
-    MatTooltipModule, MatDialogModule, MatChipsModule, MatFormFieldModule, MatInputModule,
-    MatSelectModule, MatSnackBarModule
+    CommonModule, 
+    RouterModule, 
+    ReactiveFormsModule, 
+    MatCardModule, 
+    MatTableModule,
+    MatButtonModule, 
+    MatIconModule, 
+    MatDividerModule, 
+    MatMenuModule, 
+    MatToolbarModule,
+    MatTooltipModule, 
+    MatDialogModule, 
+    MatChipsModule, 
+    MatFormFieldModule, 
+    MatInputModule,
+    MatSelectModule, 
+    MatSnackBarModule,
+    MatAutocompleteModule
   ],
   templateUrl: './preparation-loan.component.html',
   styleUrls: ['./preparation-loan.component.css']
@@ -43,12 +60,14 @@ export class PreparationLoanComponent implements OnInit {
   loanTypes: string[] = [];
   selectedFiles: File[] = [];
   previsualizacoes: string[] = [];
-  displayedColumns: string[] = ['dataHora', 'loanType', 'responsavel', 'projeto', 'local', 'observacao', 'actions'];
+  filteredUsers: any[] = [];
+  displayedColumns: string[] = ['dataHora', 'loanType', 'responsavel', 'projeto', 'observacao', 'actions'];
 
   constructor(
     private route: ActivatedRoute,
     private equipamentService: EquipamentService,
     private movementService: MovementService,
+    private loanService: LoanService,
     private router: Router,
     private dialog: MatDialog,
     private fb: FormBuilder,
@@ -63,6 +82,17 @@ export class PreparationLoanComponent implements OnInit {
       this.equipamentId = equipmentId;
       this.carregarEquipamento();
     }
+
+    this.loanForm.get('responsavel')?.valueChanges.pipe(
+      debounceTime(300),
+      distinctUntilChanged(),
+      switchMap(value => {
+        if (typeof value === 'string' && value.length >= 3) {
+          return this.loanService.buscarColaboradores(value);
+        }
+        return of([]);
+      })
+    ).subscribe(users => this.filteredUsers = users);
   }
 
   private initForm(): void {
@@ -70,12 +100,13 @@ export class PreparationLoanComponent implements OnInit {
       loanType: ['', Validators.required],
       responsavel: ['', Validators.required],
       projeto: ['', Validators.required],
-      local: ['', Validators.required],
       observacao: ['']
     });
   }
 
-
+  displayFn(user: any): string {
+    return user && user.name ? user.name : '';
+  }
 
   carregarEquipamento(): void {
     this.equipamentService.findById(this.equipamentId).subscribe({
@@ -85,14 +116,12 @@ export class PreparationLoanComponent implements OnInit {
       }
     });
 
-    // Load loan history (using movement service for now)
     this.movementService.findHistoryByEquipament(this.equipamentId, 0, 10).subscribe({
       next: (res: any) => this.historico = res.content || res
     });
   }
 
   configurarOpcoesEmprestimo(status: string): void {
-    // For loans, always allow preparation
     this.loanTypes = Object.values(LoanType);
   }
 
@@ -118,9 +147,25 @@ export class PreparationLoanComponent implements OnInit {
   onSubmit(): void {
     if (this.loanForm.invalid) return;
 
-    // TODO: Implement loan submission logic
-    this.snackBar.open('Empréstimo preparado com sucesso!', 'Sucesso', { duration: 3000 });
-    this.resetForm();
+    const formValue = this.loanForm.value;
+
+    const request = {
+      equipmentId: this.equipamentId,
+      colaboradorId: formValue.responsavel.id,
+      helpdeskTicket: formValue.projeto,
+      loanDate: new Date().toISOString(),
+      observation: formValue.observacao
+    };
+
+    this.loanService.prepareLoan(request).subscribe({
+      next: () => {
+        this.snackBar.open('Empréstimo preparado com sucesso!', 'Sucesso', { duration: 3000 });
+        this.router.navigate(['/equipaments']);
+      },
+      error: () => {
+        this.snackBar.open('Erro ao salvar empréstimo.', 'Erro', { duration: 3000 });
+      }
+    });
   }
 
   private resetForm(): void {

@@ -8,13 +8,13 @@ import { LoanListResponse, EquipmentLoanResponse } from '../../models/loans/loan
   providedIn: 'root'
 })
 export class LoanService {
-  
-  private apiUrl = 'http://localhost:8080/api/v1/loans'; 
+
+  private apiUrl = 'http://localhost:8080/api/v1/loans';
 
   constructor(
     private http: HttpClient,
     @Inject(PLATFORM_ID) private platformId: Object
-  ) {}
+  ) { }
 
   getLoansList(): Observable<LoanListResponse[]> {
     let headers: any = {};
@@ -55,5 +55,11 @@ export class LoanService {
 
   prepareLoan(request: any): Observable<void> {
     return this.http.post<void>(`${this.apiUrl}/loan/prepare`, request);
+  }
+
+  // No loan.service.ts
+  buscarColaboradores(nome: string): Observable<any[]> {
+    const params = new HttpParams().set('nome', nome);
+    return this.http.get<any[]>(`${this.apiUrl}/users/search`, { params });
   }
 }
