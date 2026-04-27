@@ -1,3 +1,38 @@
+/* ─── Layout Principal ───────────────────────────────────────── */
+.page-wrapper {
+  min-height: 100vh;
+  background: #f0f4f8;
+  padding: 0; 
+  /* O segredo para o menu não sumir: 
+     Se o seu menu lateral é fixo, o wrapper precisa desse respiro */
+  display: flex;
+  flex-direction: column;
+}
+
+/* ─── Barra Azul (Toolbar) ───────────────────────────────────── */
+.page-toolbar {
+  position: sticky;
+  top: 0;
+  /* Diminuímos o z-index para o botão do menu lateral aparecer sobre ela */
+  z-index: 998; 
+  width: 100%;
+  border-radius: 0; 
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  margin-bottom: 24px;
+  
+  /* Se o menu estiver aberto, o texto não pode bater nele. 
+     Ajuste este padding para o título ficar centralizado/visível */
+  padding: 0 24px 0 80px !important; 
+}
+
+/* ─── Cards (Filtros e Tabela) ───────────────────────────────── */
+.filter-card, .table-card {
+  /* Margens laterais para os cards não colarem no menu lateral */
+  margin: 0 24px 24px 24px; 
+  border-radius: 8px !important;
+  z-index: 997;
+}
+
 .form-container {
   display: flex;
   flex-direction: column;

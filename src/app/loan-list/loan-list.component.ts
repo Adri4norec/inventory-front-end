@@ -98,7 +98,10 @@ export class LoanListComponent implements OnInit {
   }
 
   private processarResposta(response: any): void {
-    this.dataSource = response.content || [];
+    this.dataSource = (response.content || []).filter(
+      (item: LoanListResponse) => item.status !== 'DISPONIVEL'
+    );
+
     this.totalElements = response.totalElements;
     this.pageIndex = response.number;
     this.isLoading = false;
@@ -117,7 +120,6 @@ export class LoanListComponent implements OnInit {
 
   formatStatus(status: string): string {
     const statusMap: any = {
-      'DISPONIVEL': 'Disponível',
       'PREPARACAO': 'Em Preparação',
       'AGUARDANDO_ASSINATURA': 'Aguardando Assinatura',
       'ENTREGUE': 'Em Uso',
@@ -127,7 +129,6 @@ export class LoanListComponent implements OnInit {
   }
 
   getStatusClass(status: string): string {
-    if (status === 'DISPONIVEL') return 'badge-success';
     if (status === 'ENTREGUE' || status === 'Em usu') return 'badge-info';
     return 'badge-warning';
   }
