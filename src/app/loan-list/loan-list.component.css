@@ -95,9 +95,37 @@ th.mat-header-cell {
   color: #ef6c00;            /* Texto laranja escuro */
 }
 
-/* =========================================
-   ESTADO VAZIO (QUANDO NÃO HÁ DADOS)
-   ========================================= */
+/* ─── Ajustes dos Filtros ────────────────────────────────────── */
+::ng-deep .compact-filter .mat-mdc-form-field-subscript-wrapper {
+  display: none; 
+}
+
+/* ─── Largura Fixa das Colunas ─────── */
+.mat-column-codigo { width: 10%; min-width: 100px; }
+.mat-column-categoria { width: 15%; min-width: 120px; }
+.mat-column-name { width: 20%; min-width: 150px; font-weight: 500; }
+.mat-column-description { width: 20%; min-width: 150px; }
+.mat-column-status { width: 12%; min-width: 120px; }
+.mat-column-loanDate { width: 10%; min-width: 100px; }
+.mat-column-expectedReturnDate { width: 10%; min-width: 100px; }
+.mat-column-acoes { width: 80px; text-align: center; padding-right: 8px !important; }
+
+/* ─── Características (Truncamento de Texto) ─────────────────── */
+.truncate-text {
+  display: block;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #6b7280;
+}
+
+/* ─── Loading Text ───────────────────────────────────────────── */
+.loading-text {
+  margin-top: 16px;
+  color: #666;
+  font-size: 14px;
+}
 
 .empty-state {
   display: flex;

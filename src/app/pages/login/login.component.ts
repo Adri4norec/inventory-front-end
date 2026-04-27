@@ -17,8 +17,8 @@ import { AuthService } from '../../services/auth/auth.service';
   selector: 'app-login',
   standalone: true,
   imports: [
-    CommonModule, 
-    ReactiveFormsModule, 
+    CommonModule,
+    ReactiveFormsModule,
     RouterModule,
     MatCardModule,
     MatFormFieldModule,
@@ -48,35 +48,35 @@ export class LoginComponent {
   }
 
   onLogin() {
-  if (this.loginForm.invalid) return;
+    if (this.loginForm.invalid) return;
 
-  this.errorMessage = '';
-  const authData = this.loginForm.value;
+    this.errorMessage = '';
+    const authData = this.loginForm.value;
 
-  this.userService.login(authData).subscribe({
-    next: (response) => {
-      localStorage.setItem('token', response.token);
-      localStorage.setItem('user', response.username);
-      localStorage.setItem('userRole', response.roleName);
-      this.authService.setUserRole(response.roleName as 'ADMIN' | 'COLABORADOR');
-      this.router.navigate(['/equipaments']);
-    },
-    error: (err) => {
-      console.error('Objeto de erro completo:', err); 
-      
-      const errorBody = err.error;
-      const message = typeof errorBody === 'string' ? errorBody : errorBody?.message || '';
+    this.userService.login(authData).subscribe({
+      next: (response) => {
+        localStorage.setItem('token', response.token);
+        localStorage.setItem('user', response.username);
+        localStorage.setItem('userRole', response.roleName);
+        this.authService.setUserRole(response.roleName as 'ADMIN' | 'COLABORADOR');
+        this.router.navigate(['/equipaments']);
+      },
+      error: (err) => {
+        console.error('Objeto de erro completo:', err);
 
-      if (message.includes('USER_NOT_FOUND')) {
-        this.errorMessage = 'Usuário não cadastrado.';
-      } else if (message.includes('INVALID_PASSWORD') || err.status === 401) {
-        this.errorMessage = 'Senha ou usuário incorreto.';
-      } else if (err.status === 0) {
-        this.errorMessage = 'O servidor parece estar desligado ou houve erro de CORS.';
-      } else {
-        this.errorMessage = 'Erro inesperado: ' + (message || 'Erro de conexão.');
+        const errorBody = err.error;
+        const message = typeof errorBody === 'string' ? errorBody : errorBody?.message || '';
+
+        if (message.includes('USER_NOT_FOUND')) {
+          this.errorMessage = 'Usuário não cadastrado.';
+        } else if (message.includes('INVALID_PASSWORD') || err.status === 401) {
+          this.errorMessage = 'Senha ou usuário incorreto.';
+        } else if (err.status === 0) {
+          this.errorMessage = 'O servidor parece estar desligado ou houve erro de CORS.';
+        } else {
+          this.errorMessage = 'Erro inesperado: ' + (message || 'Erro de conexão.');
+        }
       }
-    }
-  });
-}
+    });
+  }
 }
