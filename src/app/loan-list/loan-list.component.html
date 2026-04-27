@@ -1,6 +1,5 @@
 <div class="page-wrapper">
   <mat-toolbar color="primary" class="page-toolbar">
-    <mat-icon class="toolbar-icon">swap_horiz</mat-icon>
     <span class="toolbar-title">Controle de Empréstimos</span>
   </mat-toolbar>
 
@@ -36,7 +35,6 @@
         <mat-label>Status</mat-label>
         <mat-select [(ngModel)]="filtros.status" (selectionChange)="aplicarFiltros()">
           <mat-option value="">Todos</mat-option>
-          <mat-option value="DISPONIVEL">Disponível</mat-option>
           <mat-option value="PREPARACAO">Em Preparação</mat-option>
           <mat-option value="AGUARDANDO_ASSINATURA">Aguardando Assinatura</mat-option>
           <mat-option value="ENTREGUE">Em Uso</mat-option>
