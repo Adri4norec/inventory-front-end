@@ -38,6 +38,8 @@
           <mat-option value="PREPARACAO">Em Preparação</mat-option>
           <mat-option value="AGUARDANDO_ASSINATURA">Aguardando Assinatura</mat-option>
           <mat-option value="ENTREGUE">Em Uso</mat-option>
+          <mat-option value="DEVOLUCAO_SOLICITADA">Devolução Solicitada</mat-option>
+          <mat-option value="DEVOLVIDO">Devolvido</mat-option>
         </mat-select>
       </mat-form-field>
 
@@ -112,12 +114,20 @@
             
             <button mat-icon-button color="primary" 
                     *ngIf="element.status === 'DISPONIVEL'"
-                    (click)="performLoan(element.id)">
-              <mat-icon>forward</mat-icon>
+                    (click)="performLoan(element.id)"
+                    matTooltip="Preparar Empréstimo">
+              <mat-icon>add_circle_outline</mat-icon>
+            </button>
+
+            <button mat-icon-button color="primary" 
+                    *ngIf="element.status !== 'DISPONIVEL' && podeAvancar(element.status)"
+                    (click)="avancarEtapa(element)"
+                    matTooltip="Avançar para: {{ formatStatus(obterProximoStatus(element.status) || '') }}">
+              <mat-icon>play_arrow</mat-icon>
             </button>
             
             <button mat-icon-button 
-                    *ngIf="element.status !== 'DISPONIVEL'"
+                    *ngIf="element.status !== 'DISPONIVEL' && !podeAvancar(element.status)"
                     [disabled]="!podeDevolver(element.status)"
                     (click)="registerReturn(element.id)"
                     [matTooltip]="podeDevolver(element.status) ? 'Registrar Devolução' : 'Fluxo em andamento'">
