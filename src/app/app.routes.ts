@@ -62,6 +62,11 @@ export const routes: Routes = [
     component: PreparationLoanComponent, 
     canActivate: [authGuard] 
   },
+  {
+    path: 'loans/:loanId/preparation-loan',
+    component: PreparationLoanComponent,
+    canActivate: [authGuard]
+  },
 
   { 
     path: 'equipaments/:id/movimentacao', 

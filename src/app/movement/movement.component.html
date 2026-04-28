@@ -39,7 +39,7 @@
           </div>
           <div class="detail-item">
             <label>Data de Cadastro</label>
-            <span>{{ equipamento?.dateHour | date:'dd/MM/yyyy' }}</span>
+            <span>{{ formatarData(equipamento?.dateHour) }}</span>
           </div>
         </div>
       </mat-card-content>

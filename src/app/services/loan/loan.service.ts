@@ -16,10 +16,6 @@ export class LoanService {
     @Inject(PLATFORM_ID) private platformId: Object
   ) { }
 
-  /**
-   * Método privado para centralizar a criação dos headers com Token.
-   * Evita repetição de código em todos os métodos do service.
-   */
   private getOptions() {
     let headers = new HttpHeaders();
 
@@ -35,6 +31,10 @@ export class LoanService {
 
   getLoansList(): Observable<LoanListResponse[]> {
     return this.http.get<LoanListResponse[]>(this.apiUrl, this.getOptions());
+  }
+
+  getLoanById(id: string): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/${id}`, this.getOptions());
   }
 
   advancedSearch(filtros: any, page: number, size: number): Observable<any> {
@@ -79,7 +79,8 @@ export class LoanService {
   }
 
   buscarColaboradores(nome: string): Observable<UserSearchResponse[]> {
+    const options = this.getOptions();
     const params = new HttpParams().set('nome', nome);
-    return this.http.get<UserSearchResponse[]>(`${this.apiUrl}/loans/search-users`, { params });
-}
+    return this.http.get<UserSearchResponse[]>(`${this.apiUrl}/search-users`, { ...options, params });
+  }
 }

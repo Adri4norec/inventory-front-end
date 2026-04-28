@@ -1,5 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { MatTableModule } from '@angular/material/table';
 import { MatCardModule } from '@angular/material/card';
@@ -11,6 +12,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
 import { MatOptionModule } from '@angular/material/core';
+import { MatMenuModule } from '@angular/material/menu';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
@@ -25,7 +27,7 @@ import { LoanListResponse } from '../models/loans/loans.model';
     CommonModule, FormsModule, MatTableModule, MatCardModule,
     MatButtonModule, MatIconModule, MatToolbarModule, MatTooltipModule,
     MatInputModule, MatFormFieldModule, MatSelectModule, MatOptionModule,
-    MatPaginatorModule, MatProgressBarModule, MatSnackBarModule
+    MatMenuModule, MatPaginatorModule, MatProgressBarModule, MatSnackBarModule
   ],
   templateUrl: './loan-list.component.html',
   styleUrls: ['./loan-list.component.scss']
@@ -43,6 +45,7 @@ export class LoanListComponent implements OnInit {
 
   constructor(
     private loanService: LoanService,
+    private router: Router,
     private snackBar: MatSnackBar
   ) {}
 
@@ -93,6 +96,10 @@ export class LoanListComponent implements OnInit {
     console.log('Iniciando empréstimo para ID:', id);
   }
 
+  openPreparationScreen(item: LoanListResponse): void {
+    this.router.navigate(['/loans', item.id, 'preparation-loan']);
+  }
+
   carregarDados(page = this.pageIndex, size = this.pageSize): void {
     this.isLoading = true;
     this.loanService.advancedSearch(this.filtros, page, size).subscribe({
@@ -119,6 +126,7 @@ export class LoanListComponent implements OnInit {
   formatStatus(status: string): string {
     const statusMap: Record<string, string> = {
       'EM_PREPARO': 'Em Preparo',
+      'PREPARACAO': 'Em Preparação',
       'PRONTO': 'Pronto para Uso',
       'AGUARDANDO_DOCUMENTACAO': 'Aguardando Documentos',
       'AGUARDANDO_ASSINATURA': 'Aguardando Assinatura',
@@ -131,7 +139,7 @@ export class LoanListComponent implements OnInit {
 
   getStatusClass(status: string): string {
     if (status === 'EMPRESTIMO_FINALIZADO') return 'badge-success';
-    if (status === 'EM_PREPARO') return 'badge-warning';
+    if (status === 'EM_PREPARO' || status === 'PREPARACAO') return 'badge-warning';
     return 'badge-info';
   }
 

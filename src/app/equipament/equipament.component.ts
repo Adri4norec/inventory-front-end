@@ -223,4 +223,20 @@ export class EquipamentComponent implements OnInit {
   iniciarEmprestimo(equipamento: EquipmentResponse): void {
     this.router.navigate(['/equipaments', equipamento.id, 'preparation-loan']);
   }
+
+  formatarData(data: string | null | undefined): string {
+    if (!data) return '-';
+    try {
+      const dataObj = new Date(data);
+      if (isNaN(dataObj.getTime())) {
+        return data;
+      }
+      const dia = String(dataObj.getDate()).padStart(2, '0');
+      const mes = String(dataObj.getMonth() + 1).padStart(2, '0');
+      const ano = dataObj.getFullYear();
+      return `${dia}/${mes}/${ano}`;
+    } catch {
+      return data;
+    }
+  }
 }

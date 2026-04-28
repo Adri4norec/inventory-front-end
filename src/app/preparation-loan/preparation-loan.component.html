@@ -40,7 +40,7 @@
                     </div>
                     <div class="detail-item">
                         <label>Data de Cadastro</label>
-                        <span>{{ equipamento?.dateHour | date:'dd/MM/yyyy' }}</span>
+                        <span>{{ formatarData(equipamento?.dateHour) }}</span>
                     </div>
                 </div>
             </mat-card-content>
@@ -64,8 +64,8 @@
                         <mat-label>Status</mat-label>
                         <mat-icon matPrefix>swap_horiz</mat-icon>
                         <mat-select formControlName="loanType">
-                            <mat-option *ngFor="let tipo of loanTypes" [value]="tipo">
-                                {{ tipo }}
+                            <mat-option *ngFor="let tipo of loanTypes" [value]="tipo.value">
+                                {{ tipo.label }}
                             </mat-option>
                         </mat-select>
                     </mat-form-field>
@@ -75,7 +75,7 @@
                         <mat-icon matPrefix>person</mat-icon>
 
                         <input type="text" matInput formControlName="responsavel" [matAutocomplete]="auto"
-                            placeholder="Digite pelo menos 3 letras...">
+                            autocomplete="off" placeholder="Digite pelo menos 3 letras...">
 
                         <mat-autocomplete #auto="matAutocomplete" [displayWith]="displayFn">
                             <mat-option *ngIf="filteredUsers.length === 0" disabled>
@@ -96,6 +96,13 @@
                         <mat-label>Projeto</mat-label>
                         <mat-icon matPrefix>work</mat-icon>
                         <input matInput formControlName="projeto" />
+                    </mat-form-field>
+
+                    <mat-form-field appearance="outline" class="field-half">
+                        <mat-label>Data do Empréstimo</mat-label>
+                        <input matInput [matDatepicker]="picker" formControlName="loanDate" placeholder="DD/MM/AAAA" (click)="picker.open()">
+                        <mat-datepicker-toggle matSuffix [for]="picker"></mat-datepicker-toggle>
+                        <mat-datepicker #picker></mat-datepicker>
                     </mat-form-field>
 
                     <mat-form-field appearance="outline" class="field-full">
@@ -144,51 +151,6 @@
                 </button>
             </mat-card-actions>
         </mat-card>
-
-        <div class="history-header">
-            <h3 class="history-title"><mat-icon>history</mat-icon> Histórico de Empréstimos</h3>
-        </div>
-
-        <mat-card class="table-card" appearance="outlined">
-            <mat-card-content>
-                <table mat-table [dataSource]="historico" class="full-width-table">
-                    <ng-container matColumnDef="dataHora">
-                        <th mat-header-cell *matHeaderCellDef> Data/Hora </th>
-                        <td mat-cell *matCellDef="let m"> {{ m.dataHora | date:'dd/MM/yyyy HH:mm' }} </td>
-                    </ng-container>
-                    <ng-container matColumnDef="loanType">
-                        <th mat-header-cell *matHeaderCellDef> Tipo </th>
-                        <td mat-cell *matCellDef="let m">
-                            {{ m.loanType }}
-                        </td>
-                    </ng-container>
-                    <ng-container matColumnDef="responsavel">
-                        <th mat-header-cell *matHeaderCellDef> Responsável </th>
-                        <td mat-cell *matCellDef="let m"> {{ m.responsavel }} </td>
-                    </ng-container>
-                    <ng-container matColumnDef="projeto">
-                        <th mat-header-cell *matHeaderCellDef> Projeto </th>
-                        <td mat-cell *matCellDef="let m"> {{ m.projeto }} </td>
-                    </ng-container>
-                    <ng-container matColumnDef="observacao">
-                        <th mat-header-cell *matHeaderCellDef> Observação </th>
-                        <td mat-cell *matCellDef="let m"> {{ m.observacao || '-' }} </td>
-                    </ng-container>
-                    <ng-container matColumnDef="actions">
-                        <th mat-header-cell *matHeaderCellDef> Ações </th>
-                        <td mat-cell *matCellDef="let e">
-                            <button mat-icon-button [matMenuTriggerFor]="menu"><mat-icon>more_vert</mat-icon></button>
-                            <mat-menu #menu="matMenu">
-                                <button mat-menu-item (click)="verFotos(e)">
-                                    <mat-icon color="accent">image</mat-icon> Fotos
-                                </button>
-                            </mat-menu>
-                        </td>
-                    </ng-container>
-                    <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-                    <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
-                </table>
-            </mat-card-content>
-        </mat-card>
     </div>
+
 </div>

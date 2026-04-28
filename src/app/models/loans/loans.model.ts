@@ -9,7 +9,26 @@ export interface LoanListResponse {
   description: string;
   status: string;
   loanDate?: string;
+  returnDate?: string;
+  equipmentId?: string;
+}
+
+export interface LoanDetailResponse {
+  id: string;
+  equipmentId?: string;
+  status?: string;
+  loanDate?: string;
   expectedReturnDate?: string;
+  returnDate?: string;
+  helpdeskTicket?: string;
+  project?: string;
+  colaboradorId?: string;
+  responsavel?: string | { id?: string; fullName?: string };
+  fullName?: string;
+  observation?: string;
+  proprietario?: string;
+  usageType?: string;
+  dateHour?: string;
 }
 
 // A INTERFACE DELE (Preparação/Busca)
@@ -23,9 +42,9 @@ export interface EquipmentLoanResponse {
 }
 
 export enum LoanType {
-  EM_PREPARACAO = 'EM_PREPARACAO',
-  AUARDANDO_ASSINATURA = 'AUARDANDO_ASSINATURA',
-  EM_USO = 'EM_USO'
+  EM_PREPARACAO = 'Em Preparação',
+  AUARDANDO_ASSINATURA = 'Aguardando Assinatura',
+  EM_USO = 'Em Uso'
 }
 
 export interface UserSearchResponse {
