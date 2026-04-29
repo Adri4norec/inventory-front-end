@@ -125,13 +125,13 @@ export class LoanListComponent implements OnInit {
 
   formatStatus(status: string): string {
     const statusMap: Record<string, string> = {
-      'EM_PREPARO': 'Em Preparo',
-      'PREPARACAO': 'Em Preparação',
+      'EM_PREPARO': 'Preparo',
+      'PREPARACAO': 'Preparação',
       'PRONTO': 'Pronto para Uso',
       'AGUARDANDO_DOCUMENTACAO': 'Aguardando Documentos',
       'AGUARDANDO_ASSINATURA': 'Aguardando Assinatura',
       'AGUARDANDO_RETIRADA': 'Aguardando Retirada',
-      'EMPRESTIMO_FINALIZADO': 'Empréstimo Finalizado',
+      'EMPRESTIMO_FINALIZADO': 'Finalizado',
       'DEVOLVIDO': 'Devolvido'
     };
     return statusMap[status] || status;

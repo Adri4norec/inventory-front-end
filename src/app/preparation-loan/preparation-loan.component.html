@@ -112,27 +112,57 @@
                     </mat-form-field>
 
                     <div class="field-full upload-section">
-                        <h3 class="section-subtitle">
-                            <mat-icon>photo_camera</mat-icon>
-                            Fotos do Empréstimo
-                        </h3>
-                        <div class="upload-row">
-                            <button type="button" mat-stroked-button color="primary" (click)="fileInput.click()">
-                                <mat-icon>attach_file</mat-icon>
-                                Selecionar Imagens
-                            </button>
-                            <input #fileInput type="file" (change)="onFileSelected($event)" multiple accept="image/*"
-                                style="display: none;" />
-                            <span *ngIf="selectedFiles.length > 0" class="selected-count">
-                                {{ selectedFiles.length }} arquivo(s) selecionado(s)
-                            </span>
-                        </div>
-                        <div *ngIf="previsualizacoes.length > 0" class="preview-list">
-                            <div *ngFor="let img of previsualizacoes; let i = index" class="preview-item">
-                                <img [src]="img" alt="Prévia" />
-                                <button mat-mini-fab color="warn" type="button" (click)="removerArquivo(i)">
-                                    <mat-icon>close</mat-icon>
-                                </button>
+                        <div class="attachments-grid">
+                            <div class="attachment-col">
+                                <h3 class="section-subtitle">
+                                    <mat-icon>photo_camera</mat-icon>
+                                    Fotos
+                                </h3>
+                                <div class="upload-row">
+                                    <button type="button" mat-stroked-button color="primary" (click)="fileInput.click()">
+                                        <mat-icon>attach_file</mat-icon>
+                                        Selecionar Imagens
+                                    </button>
+                                    <input #fileInput type="file" (change)="onFileSelected($event)" multiple accept="image/*"
+                                        style="display: none;" />
+                                    <span *ngIf="selectedFiles.length > 0" class="selected-count">
+                                        {{ selectedFiles.length }} arquivo(s) selecionado(s)
+                                    </span>
+                                </div>
+                                <div *ngIf="previsualizacoes.length > 0" class="preview-list">
+                                    <div *ngFor="let img of previsualizacoes; let i = index" class="preview-item">
+                                        <img [src]="img" alt="Prévia" />
+                                        <button mat-mini-fab color="warn" type="button" (click)="removerArquivo(i)">
+                                            <mat-icon>close</mat-icon>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="attachment-col">
+                                <h3 class="section-subtitle">
+                                    <mat-icon>description</mat-icon>
+                                    Arquivo (PDF)
+                                </h3>
+                                <div class="upload-row">
+                                    <button type="button" mat-stroked-button color="primary" (click)="pdfInput.click()">
+                                        <mat-icon>attach_file</mat-icon>
+                                        Selecionar PDF
+                                    </button>
+                                    <input #pdfInput type="file" (change)="onPdfSelected($event)" accept="application/pdf,.pdf"
+                                        style="display: none;" />
+                                    <span *ngIf="pdfFile" class="selected-count">
+                                        1 arquivo selecionado
+                                    </span>
+                                </div>
+
+                                <div *ngIf="pdfFile" class="file-preview">
+                                    <mat-icon color="primary">picture_as_pdf</mat-icon>
+                                    <span class="file-name">{{ pdfFile.name }}</span>
+                                    <button mat-mini-fab color="warn" type="button" (click)="removerPdf()">
+                                        <mat-icon>close</mat-icon>
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>

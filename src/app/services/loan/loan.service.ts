@@ -65,8 +65,8 @@ export class LoanService {
     return this.http.get<EquipmentLoanResponse>(`${this.apiUrl}/loan/check/${topo}`, this.getOptions());
   }
 
-  prepareLoan(request: any): Observable<void> {
-    return this.http.post<void>(`${this.apiUrl}/loan/prepare`, request, this.getOptions());
+  prepareLoan(request: any): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/loan/prepare`, request, this.getOptions());
   }
 
   updateLoanStatus(id: string, newStatus: string): Observable<void> {
@@ -82,5 +82,11 @@ export class LoanService {
     const options = this.getOptions();
     const params = new HttpParams().set('nome', nome);
     return this.http.get<UserSearchResponse[]>(`${this.apiUrl}/search-users`, { ...options, params });
+  }
+
+  uploadDocuments(loanId: string, files: File[]): Observable<string[]> {
+    const formData = new FormData();
+    files.forEach(file => formData.append('files', file));
+    return this.http.post<string[]>(`${this.apiUrl}/${loanId}/documents`, formData, this.getOptions());
   }
 }

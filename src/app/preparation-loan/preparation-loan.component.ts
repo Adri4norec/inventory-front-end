@@ -61,18 +61,19 @@ export class PreparationLoanComponent implements OnInit {
   loanTypes: { value: string, label: string }[] = [];
   selectedFiles: File[] = [];
   previsualizacoes: string[] = [];
+  pdfFile: File | null = null;
   filteredUsers: UserSearchResponse[] = [];
   currentLoanId?: string;
   isStatusUpdateMode = false;
 
   statusOptions = [
-    { value: 'PREPARACAO', label: 'Em Preparação' },
+    { value: 'PREPARACAO', label: 'Preparação' },
     { value: 'PRONTO', label: 'Pronto' },
     { value: 'AGUARDANDO_DOCUMENTACAO', label: 'Aguardando Documentação' },
     { value: 'AGUARDANDO_ASSINATURA', label: 'Aguardando Assinatura' },
     { value: 'AGUARDANDO_RETIRADA', label: 'Aguardando Retirada' },
     { value: 'EM_USO', label: 'Em Uso' },
-    { value: 'EMPRESTIMO_FINALIZADO', label: 'Empréstimo Finalizado' },
+    { value: 'EMPRESTIMO_FINALIZADO', label: 'Finalizado' },
     { value: 'DEVOLVIDO', label: 'Devolvido' },
     { value: 'CANCELADO', label: 'Cancelado' }
   ];
@@ -163,7 +164,6 @@ export class PreparationLoanComponent implements OnInit {
           this.equipamentId = loan.equipmentId;
           this.carregarEquipamento(loan, statusOnly);
         } else {
-          // Fallback: set equipamento com dados básicos do loan se equipmentId não estiver disponível
           this.equipamento = {
             id: loan.id,
             topo: loan.codigo,
@@ -227,6 +227,27 @@ export class PreparationLoanComponent implements OnInit {
     this.previsualizacoes.splice(index, 1);
   }
 
+  private validatePdf(file: File | null | undefined): boolean {
+    if (!file) return false;
+    const nameOk = file.name?.toLowerCase().endsWith('.pdf');
+    const typeOk = file.type?.toLowerCase() === 'application/pdf';
+    return !!(nameOk || typeOk);
+  }
+
+  onPdfSelected(event: any): void {
+    const file: File | undefined = event.target.files?.[0];
+    if (file && this.validatePdf(file)) {
+      this.pdfFile = file;
+    } else if (file) {
+      this.snackBar.open('Apenas PDF é permitido.', 'OK', { duration: 3500 });
+    }
+    event.target.value = '';
+  }
+
+  removerPdf(): void {
+    this.pdfFile = null;
+  }
+
   onSubmit(): void {
     if (this.loanForm.invalid) return;
 
@@ -256,12 +277,40 @@ export class PreparationLoanComponent implements OnInit {
     };
 
     this.loanService.prepareLoan(request).subscribe({
-      next: () => {
-        this.snackBar.open('Empréstimo preparado com sucesso!', 'Sucesso', { duration: 3000 });
-        this.router.navigate(['/equipaments']);
+      next: (response: any) => {
+        const loanId: string | undefined = response?.id || this.currentLoanId;
+
+        const hasDocs = !!this.pdfFile;
+
+        if (!loanId) {
+          if (hasDocs) {
+            this.snackBar.open('Empréstimo salvo, mas não foi possível identificar o ID para enviar documentos.', 'Atenção', { duration: 4500 });
+          } else {
+            this.snackBar.open('Empréstimo preparado com sucesso!', 'Sucesso', { duration: 3000 });
+          }
+          this.router.navigate(['/equipaments']);
+          return;
+        }
+
+        if (!hasDocs) {
+          this.snackBar.open('Empréstimo preparado com sucesso!', 'Sucesso', { duration: 3000 });
+          this.router.navigate(['/equipaments']);
+          return;
+        }
+
+        this.loanService.uploadDocuments(loanId, [this.pdfFile!]).subscribe({
+          next: () => {
+            this.snackBar.open('Empréstimo preparado e documentos enviados!', 'Sucesso', { duration: 3000 });
+            this.router.navigate(['/equipaments']);
+          },
+          error: (err) => {
+            this.snackBar.open(err.error?.message || 'Empréstimo salvo, mas falha ao enviar documentos.', 'Erro', { duration: 4000 });
+            this.router.navigate(['/equipaments']);
+          }
+        });
       },
-      error: () => {
-        this.snackBar.open('Erro ao salvar empréstimo.', 'Erro', { duration: 3000 });
+      error: (err) => {
+        this.snackBar.open(err.error?.message || 'Erro ao salvar empréstimo.', 'Erro', { duration: 3000 });
       }
     });
   }

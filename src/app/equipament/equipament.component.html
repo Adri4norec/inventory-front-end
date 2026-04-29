@@ -159,13 +159,13 @@
                 <span>Ver Fotos</span>
               </button>
 
-              <button mat-menu-item *ngIf="element.usageType === 'COLABORADOR'"
+              <button mat-menu-item *ngIf="!isColaborador && element.usageType === 'COLABORADOR'"
                 (click)="iniciarEmprestimo(element)">
                 <mat-icon color="primary">forward</mat-icon>
                 <span>Empréstimo</span>
               </button>
 
-              <button mat-menu-item *ngIf="element.statusName !== 'INDISPONIVEL'"
+              <button mat-menu-item *ngIf="!isColaborador && element.statusName !== 'INDISPONIVEL'"
                 (click)="irParaMovimentacao(element.id)">
                 <mat-icon color="primary">swap_horiz</mat-icon>
                 <span>Movimentações</span>

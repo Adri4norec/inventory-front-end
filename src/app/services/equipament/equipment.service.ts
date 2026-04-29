@@ -39,22 +39,18 @@ export class EquipamentService {
   findById(id: string): Observable<EquipmentResponse> {
     return this.http.get<EquipmentResponse>(`${this.API}/${id}`);
   }
-  // ... seus outros métodos (findById, update, search, etc) ficam acima
 
   advancedSearch(filtros: any, page: number, size: number): Observable<any> {
-    // 1. Parâmetros de paginação padrão
     let params = new HttpParams()
       .set('page', page.toString())
       .set('size', size.toString());
 
-    // 2. Adiciona os filtros de texto apenas se o usuário digitou algo
     if (filtros.nome) params = params.set('nome', filtros.nome);
     if (filtros.categoria) params = params.set('categoria', filtros.categoria);
     if (filtros.tombo) params = params.set('tombo', filtros.tombo);
     if (filtros.caracteristicas) params = params.set('caracteristicas', filtros.caracteristicas);
     if (filtros.status) params = params.set('status', filtros.status);
 
-    // 3. Tratamento das Datas (Converte o objeto Date do Angular para a String 'YYYY-MM-DD' do SQL/Java)
     if (filtros.dataInicio) {
       const dataInicioFormatada = new Date(filtros.dataInicio).toISOString().split('T')[0];
       params = params.set('dataInicio', dataInicioFormatada);
@@ -65,7 +61,6 @@ export class EquipamentService {
       params = params.set('dataFim', dataFimFormatada);
     }
 
-    // 4. Dispara a requisição para um novo endpoint dedicado à busca avançada
     return this.http.get<any>(`${this.API}/advanced-search`, { params });
   }
   

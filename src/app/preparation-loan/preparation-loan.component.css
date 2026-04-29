@@ -403,3 +403,41 @@
   margin-bottom: 15px;
   font-size: 1.1rem;
 }
+
+.attachments-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.attachment-col {
+  min-width: 0;
+}
+
+.file-preview {
+  margin-top: 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  background: #fff;
+}
+
+.file-name {
+  flex: 1;
+  word-break: break-word;
+}
+
+.file-preview button {
+  min-width: 32px;
+  width: 32px;
+  height: 32px;
+}
+
+@media (max-width: 640px) {
+  .attachments-grid {
+    grid-template-columns: 1fr;
+  }
+}

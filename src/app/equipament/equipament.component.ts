@@ -159,8 +159,6 @@ export class EquipamentComponent implements OnInit {
       EM_MANUTENCAO: 'Manutenção',
     };
 
-    console.log('Status recebido:', status);
-
     return labels[status] ?? status ?? 'Sem Status';
   }
 

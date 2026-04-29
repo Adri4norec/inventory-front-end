@@ -43,11 +43,11 @@ export class SidebarComponent implements OnInit {
     },
     {
       label: 'Empréstimos',
-      allowedRoles: ['ADMIN', 'COLABORADOR'],
-      expanded: false, // Começa fechado
+      allowedRoles: ['ADMIN'],
+      expanded: false, 
       children: [
-        { label: 'Lista de Empréstimos', route: '/loans', allowedRoles: ['ADMIN', 'COLABORADOR'] },
-        { label: 'Empréstimo', route: '//equipaments/loan-preparation', allowedRoles: ['ADMIN', 'COLABORADOR'] }
+        { label: 'Lista de Empréstimos', route: '/loans', allowedRoles: ['ADMIN'] },
+        //{ label: 'Empréstimo', route: '//equipaments/loan-preparation', allowedRoles: ['ADMIN', 'COLABORADOR'] }
       ]
     }
   ];

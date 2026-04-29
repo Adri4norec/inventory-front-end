@@ -31,7 +31,6 @@ export interface LoanDetailResponse {
   dateHour?: string;
 }
 
-// A INTERFACE DELE (Preparação/Busca)
 export interface EquipmentLoanResponse {
   id: string;
   name: string;

@@ -71,11 +71,11 @@ export class MovementComponent implements OnInit {
       this.equipamentId = equipmentId;
       this.carregarDados();
     }
-    
+
     this.movementForm.get('movementType')?.valueChanges.subscribe(value => {
       const justificationControl = this.movementForm.get('justification');
       const obsControl = this.movementForm.get('observacao');
-      
+
       if (value === MovementType.DESCARTE) {
         justificationControl?.setValidators([Validators.required]);
         obsControl?.setValidators([Validators.required]);
@@ -161,11 +161,6 @@ export class MovementComponent implements OnInit {
   onSubmit(): void {
     if (this.movementForm.invalid) return;
 
-    if (this.selectedFiles.length === 0) {
-      this.snackBar.open('Anexe pelo menos uma imagem.', 'Aviso', { duration: 4000 });
-      return;
-    }
-
     const dados: MovementRequest = {
       equipamentId: this.equipamentId,
       ...this.movementForm.getRawValue()
@@ -173,15 +168,22 @@ export class MovementComponent implements OnInit {
 
     this.movementService.save(dados).subscribe({
       next: (response) => {
-        this.movementService.uploadImages(response.id, this.selectedFiles).subscribe({
-          next: () => {
-            this.snackBar.open('Sucesso!', 'Sucesso', { duration: 3000 });
-            this.resetForm();
-            this.carregarDados();
-          }
-        });
+        // Se houver arquivos, faz o upload. Se não, apenas finaliza.
+        if (this.selectedFiles.length > 0) {
+          this.movementService.uploadImages(response.id, this.selectedFiles).subscribe({
+            next: () => this.finalizarSalvamento()
+          });
+        } else {
+          this.finalizarSalvamento();
+        }
       }
     });
+  }
+
+  private finalizarSalvamento(): void {
+    this.snackBar.open('Movimentação registrada com sucesso!', 'Sucesso', { duration: 3000 });
+    this.resetForm();
+    this.carregarDados();
   }
 
   private resetForm(): void {
