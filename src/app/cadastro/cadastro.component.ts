@@ -20,6 +20,7 @@ import { ProprietaryService } from "../services/equipament/proprietary.service";
 import { EquipamentService } from "../services/equipament/equipment.service";
 import { ProprietaryResponse } from "../models/proprietaries/proprietary";
 import { EquipmentResponse, EquipmentRequest } from "../models/equipaments/equipament.model";
+import { LayoutService } from "../services/layout/layout.service";
 
 @Component({
   selector: 'app-cadastro',
@@ -58,13 +59,13 @@ export class CadastroComponent implements OnInit {
     private route: ActivatedRoute,
     private proprietaryService: ProprietaryService,
     private snackBar: MatSnackBar,
-    private equipmentService: EquipamentService
+    private equipmentService: EquipamentService,
+    public layout: LayoutService
   ) {
     this.equipamentoForm = this.fb.group({
       name: ['', [Validators.required]],
       description: ['', [Validators.required]],
       
-      // ALTERAÇÃO AQUI: Removido o Validators.required para permitir geração automática no Back-end
       topo: [null, [Validators.pattern("^[0-9]*$")]], 
       
       categoria: ['', [Validators.required]],

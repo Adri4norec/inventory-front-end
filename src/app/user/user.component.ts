@@ -17,6 +17,7 @@ import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { UserResponse } from '../models/users/UserResponse';
 import { UserService } from '../services/user/user.service';
 import { ConfirmDialogComponent } from '../equipament/confirm_dialog/confirm-dialog.component';
+import { LayoutService } from '../services/layout/layout.service';
 
 @Component({
   selector: 'app-user',
@@ -58,7 +59,8 @@ export class UserComponent implements OnInit {
   constructor(
     private userService: UserService,
     private dialog: MatDialog,
-    private router: Router
+    private router: Router,
+    public layout: LayoutService
   ) { }
 
   ngOnInit(): void {

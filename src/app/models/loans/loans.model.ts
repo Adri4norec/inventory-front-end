@@ -1,6 +1,3 @@
-import { SafeResourceUrl } from '@angular/platform-browser';
-
-// A SUA INTERFACE (Listagem)
 export interface LoanListResponse {
   id: string;
   codigo: string;
@@ -8,9 +5,13 @@ export interface LoanListResponse {
   name: string;
   description: string;
   status: string;
+  hasLoanHistory?: boolean;
   loanDate?: string;
+  expectedReturnDate?: string;
   returnDate?: string;
   equipmentId?: string;
+  enviadoSedex?: boolean;
+  dataSedex?: string;
 }
 
 export interface LoanDetailResponse {
@@ -29,6 +30,8 @@ export interface LoanDetailResponse {
   proprietario?: string;
   usageType?: string;
   dateHour?: string;
+  enviadoSedex?: boolean;
+  dataSedex?: string;
 }
 
 export interface EquipmentLoanResponse {

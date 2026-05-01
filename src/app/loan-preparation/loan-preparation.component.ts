@@ -24,6 +24,7 @@ import { UserService } from '../services/user/user.service';
 import { EquipmentLoanResponse } from '../models/loans/loans.model';
 import { UserResponse } from '../models/users/UserResponse';
 import { LoanRequest } from '../models/equipaments/equipament.model';
+import { LayoutService } from '../services/layout/layout.service';
 
 @Component({
   selector: 'app-loan-preparation',
@@ -60,7 +61,8 @@ export class LoanPreparationComponent implements OnInit {
     private equipmentService: EquipamentService,
     private loanService: LoanService,
     private userService: UserService,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    public layout: LayoutService
   ) {
     this.loanForm = this.fb.group({
       tomboSearch: ['', [Validators.required]],

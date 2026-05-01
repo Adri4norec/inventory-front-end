@@ -15,6 +15,7 @@ import { MatTooltipModule } from "@angular/material/tooltip";
 
 import { UserService } from "../services/user/user.service";
 import { UserResponse } from "../models/users/UserResponse";
+import { LayoutService } from "../services/layout/layout.service";
 
 @Component({
   selector: 'app-cadastro-user',
@@ -37,7 +38,8 @@ export class CadastroUserComponent implements OnInit {
     private fb: FormBuilder,
     private router: Router,
     private route: ActivatedRoute,
-    private userService: UserService
+    private userService: UserService,
+    public layout: LayoutService
   ) {
     this.userForm = this.fb.group({
       fullName: ['', [Validators.required]],

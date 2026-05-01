@@ -19,6 +19,7 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 
 import { LoanService } from '../services/loan/loan.service';
 import { LoanListResponse } from '../models/loans/loans.model';
+import { LayoutService } from '../services/layout/layout.service';
 
 @Component({
   selector: 'app-loan-list',
@@ -30,7 +31,7 @@ import { LoanListResponse } from '../models/loans/loans.model';
     MatMenuModule, MatPaginatorModule, MatProgressBarModule, MatSnackBarModule
   ],
   templateUrl: './loan-list.component.html',
-  styleUrls: ['./loan-list.component.scss']
+  styleUrls: ['./loan-list.component.css']
 })
 export class LoanListComponent implements OnInit {
   
@@ -46,14 +47,14 @@ export class LoanListComponent implements OnInit {
   constructor(
     private loanService: LoanService,
     private router: Router,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    public layout: LayoutService
   ) {}
 
   ngOnInit(): void {
     this.carregarDados();
   }
 
-  // Lógica da esteira de status
   obterProximoStatus(statusAtual: string): string | null {
     const esteira: { [key: string]: string } = {
       'EM_PREPARO': 'PRONTO',
@@ -79,16 +80,15 @@ export class LoanListComponent implements OnInit {
     });
   }
 
-  registerReturn(id: string): void {
-    if (!confirm('Deseja confirmar a devolução deste equipamento?')) return;
+  openSupportReturn(item: LoanListResponse): void {
+    this.router.navigate(['/loans', item.id, 'preparation-loan'], {
+      queryParams: { mode: 'return-support' }
+    });
+  }
 
-    this.isLoading = true;
-    this.loanService.registerReturn(id).subscribe({
-      next: () => {
-        this.snackBar.open('Equipamento devolvido com sucesso.', 'OK', { duration: 3000 });
-        this.carregarDados();
-      },
-      error: (err) => this.lidarComErro('Erro ao registrar devolução', err)
+  openAdminFinalizeReturn(item: LoanListResponse): void {
+    this.router.navigate(['/loans', item.id, 'preparation-loan'], {
+      queryParams: { mode: 'return-admin' }
     });
   }
 
@@ -109,9 +109,10 @@ export class LoanListComponent implements OnInit {
   }
 
   private processarResposta(response: any): void {
-    this.dataSource = (response.content || []).filter(
-      (item: LoanListResponse) => item.status !== 'DISPONIVEL'
-    );
+    this.dataSource = (response.content || []).filter((item: LoanListResponse) => {
+      if (item.status !== 'DISPONIVEL') return true;
+      return item.hasLoanHistory === true;
+    });
     this.totalElements = response.totalElements;
     this.pageIndex = response.number;
     this.isLoading = false;
@@ -125,6 +126,7 @@ export class LoanListComponent implements OnInit {
 
   formatStatus(status: string): string {
     const statusMap: Record<string, string> = {
+      'DISPONIVEL': 'Disponível',
       'EM_PREPARO': 'Preparo',
       'PREPARACAO': 'Preparação',
       'PRONTO': 'Pronto para Uso',
@@ -132,14 +134,17 @@ export class LoanListComponent implements OnInit {
       'AGUARDANDO_ASSINATURA': 'Aguardando Assinatura',
       'AGUARDANDO_RETIRADA': 'Aguardando Retirada',
       'EMPRESTIMO_FINALIZADO': 'Finalizado',
+      'EM_DEVOLUCAO': 'Em Devolução',
       'DEVOLVIDO': 'Devolvido'
     };
     return statusMap[status] || status;
   }
 
   getStatusClass(status: string): string {
+    if (status === 'DISPONIVEL') return 'badge-success';
     if (status === 'EMPRESTIMO_FINALIZADO') return 'badge-success';
     if (status === 'EM_PREPARO' || status === 'PREPARACAO') return 'badge-warning';
+    if (status === 'EM_DEVOLUCAO') return 'badge-warning';
     return 'badge-info';
   }
 
@@ -149,6 +154,10 @@ export class LoanListComponent implements OnInit {
 
   podeDevolver(status: string): boolean {
     return status === 'EMPRESTIMO_FINALIZADO';
+  }
+
+  podeFinalizarDevolucao(status: string): boolean {
+    return status === 'EM_DEVOLUCAO';
   }
 
   aplicarFiltros(): void { this.pageIndex = 0; this.carregarDados(); }

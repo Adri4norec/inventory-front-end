@@ -78,6 +78,25 @@ export class LoanService {
     return this.http.post<void>(`${this.apiUrl}/${id}/return`, {}, this.getOptions());
   }
 
+  registerSupportReturn(loanId: string, photos: File[]): Observable<void> {
+    const formData = new FormData();
+    photos.forEach((file) => formData.append('files', file));
+    return this.http.post<void>(`${this.apiUrl}/devolver-suporte/${loanId}`, formData, this.getOptions());
+  }
+
+  finalizeReturnAndReleaseEquipment(loanId: string, signedWriteOffTermPdf: File): Observable<void> {
+    const formData = new FormData();
+    formData.append('termoBaixa', signedWriteOffTermPdf);
+    return this.http.post<void>(`${this.apiUrl}/finalizar-devolucao/${loanId}`, formData, this.getOptions());
+  }
+
+  finalizeReturnAndReleaseEquipmentWithDocs(loanId: string, photos: File[], signedWriteOffTermPdf: File): Observable<void> {
+    const formData = new FormData();
+    photos.forEach((file) => formData.append('files', file));
+    formData.append('termoBaixa', signedWriteOffTermPdf);
+    return this.http.post<void>(`${this.apiUrl}/finalizar-devolucao/${loanId}`, formData, this.getOptions());
+  }
+
   buscarColaboradores(nome: string): Observable<UserSearchResponse[]> {
     const options = this.getOptions();
     const params = new HttpParams().set('nome', nome);

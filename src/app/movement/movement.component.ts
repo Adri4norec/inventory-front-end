@@ -22,6 +22,7 @@ import { EquipamentService } from '../services/equipament/equipment.service';
 import { MovementService } from '../services/movement/movement.service';
 import { PhotoGaleryDialogComponent } from '../photo-galery-dialog/photo-galery-dialog.component';
 import { MovementRequest, MovementResponse, MovementType } from '../models/movement/movement.model';
+import { LayoutService } from '../services/layout/layout.service';
 
 @Component({
   selector: 'app-movement',
@@ -55,7 +56,8 @@ export class MovementComponent implements OnInit {
     private router: Router,
     private dialog: MatDialog,
     private fb: FormBuilder,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    public layout: LayoutService
   ) {
     this.initForm();
   }

@@ -32,6 +32,7 @@ import { ConfirmDialogComponent } from './confirm_dialog/confirm-dialog.componen
 import { EquipmentResponse } from '../models/equipaments/equipament.model';
 import { EquipamentService } from '../services/equipament/equipment.service';
 import { AuthService } from '../services/auth/auth.service';
+import { LayoutService } from '../services/layout/layout.service';
 
 @Component({
   selector: 'app-equipament',
@@ -98,7 +99,8 @@ export class EquipamentComponent implements OnInit {
     private equipmentService: EquipamentService,
     private authService: AuthService,
     private dialog: MatDialog,
-    private router: Router
+    private router: Router,
+    public layout: LayoutService
   ) { }
 
   ngOnInit(): void {

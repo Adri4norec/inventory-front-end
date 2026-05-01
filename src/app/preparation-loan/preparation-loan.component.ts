@@ -12,7 +12,6 @@ import { MatDividerModule } from '@angular/material/divider';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { MatDialogModule } from '@angular/material/dialog';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -21,10 +20,12 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
+import { MatCheckboxModule } from '@angular/material/checkbox';
 
 import { EquipamentService } from '../services/equipament/equipment.service';
 import { LoanService } from '../services/loan/loan.service';
-import { LoanListResponse, LoanType, UserSearchResponse } from '../models/loans/loans.model';
+import { LoanListResponse, UserSearchResponse } from '../models/loans/loans.model';
+import { LayoutService } from '../services/layout/layout.service';
 
 @Component({
   selector: 'app-preparation-loan',
@@ -41,7 +42,6 @@ import { LoanListResponse, LoanType, UserSearchResponse } from '../models/loans/
     MatMenuModule,
     MatToolbarModule,
     MatTooltipModule,
-    MatDialogModule,
     MatChipsModule,
     MatFormFieldModule,
     MatInputModule,
@@ -49,7 +49,8 @@ import { LoanListResponse, LoanType, UserSearchResponse } from '../models/loans/
     MatSnackBarModule,
     MatAutocompleteModule,
     MatDatepickerModule,
-    MatNativeDateModule
+    MatNativeDateModule,
+    MatCheckboxModule
   ],
   templateUrl: './preparation-loan.component.html',
   styleUrls: ['./preparation-loan.component.css']
@@ -62,9 +63,13 @@ export class PreparationLoanComponent implements OnInit {
   selectedFiles: File[] = [];
   previsualizacoes: string[] = [];
   pdfFile: File | null = null;
+  writeOffPdfFile: File | null = null;
   filteredUsers: UserSearchResponse[] = [];
   currentLoanId?: string;
   isStatusUpdateMode = false;
+  screenMode: 'default' | 'return-support' | 'return-admin' = 'default';
+  isSaving = false;
+  isReturnFromUsoFlow = false;
 
   statusOptions = [
     { value: 'PREPARACAO', label: 'Preparação' },
@@ -74,6 +79,7 @@ export class PreparationLoanComponent implements OnInit {
     { value: 'AGUARDANDO_RETIRADA', label: 'Aguardando Retirada' },
     { value: 'EM_USO', label: 'Em Uso' },
     { value: 'EMPRESTIMO_FINALIZADO', label: 'Finalizado' },
+    { value: 'EM_DEVOLUCAO', label: 'Em Devolução' },
     { value: 'DEVOLVIDO', label: 'Devolvido' },
     { value: 'CANCELADO', label: 'Cancelado' }
   ];
@@ -84,7 +90,8 @@ export class PreparationLoanComponent implements OnInit {
     private loanService: LoanService,
     private router: Router,
     private fb: FormBuilder,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    public layout: LayoutService
   ) {
     this.initForm();
   }
@@ -94,6 +101,7 @@ export class PreparationLoanComponent implements OnInit {
     const equipmentId = this.route.snapshot.paramMap.get('id');
     const mode = this.route.snapshot.queryParamMap.get('mode');
 
+    this.screenMode = (mode === 'return-support' || mode === 'return-admin') ? mode : 'default';
     this.isStatusUpdateMode = loanId ? true : mode === 'status-only';
 
     if (loanId) {
@@ -119,6 +127,17 @@ export class PreparationLoanComponent implements OnInit {
     ).subscribe(users => {
       this.filteredUsers = users;
     });
+
+    this.loanForm.get('enviadoSedex')?.valueChanges.subscribe(enviado => {
+      const dataSedexControl = this.loanForm.get('dataSedex');
+      if (enviado) {
+        dataSedexControl?.setValidators([Validators.required]);
+      } else {
+        dataSedexControl?.clearValidators();
+        dataSedexControl?.setValue(null);
+      }
+      dataSedexControl?.updateValueAndValidity();
+    });
   }
 
   private initForm(): void {
@@ -128,12 +147,78 @@ export class PreparationLoanComponent implements OnInit {
       projeto: ['', Validators.required],
       loanDate: [new Date(), Validators.required],
       returnDate: [null],
-      observacao: ['']
+      observacao: [''],
+      enviadoSedex: [false],
+      dataSedex: [null]
     });
   }
 
   displayFn(user: UserSearchResponse): string {
     return user && user.fullName ? user.fullName : '';
+  }
+
+  get pageTitle(): string {
+    if (this.isReturnFromUsoFlow || this.screenMode === 'return-support' || this.screenMode === 'return-admin') {
+      return 'Devolução de Equipamento';
+    }
+    return 'Preparação de Empréstimo';
+  }
+
+  get isReturnSupportMode(): boolean {
+    return this.screenMode === 'return-support';
+  }
+
+  get isReturnAdminMode(): boolean {
+    return this.screenMode === 'return-admin';
+  }
+
+  private applyScreenModeRules(currentStatus?: string): void {
+    if (!this.currentLoanId) return;
+
+    if (this.isReturnSupportMode) {
+      if (currentStatus !== 'EM_USO') {
+        this.snackBar.open('Fluxo de devolução (suporte) disponível apenas quando o status está EM_USO.', 'OK', { duration: 4500 });
+        this.router.navigate(['/loans']);
+        return;
+      }
+
+      this.loanForm.patchValue({ loanType: 'EM_DEVOLUCAO' });
+      Object.keys(this.loanForm.controls).forEach((key) => this.loanForm.get(key)?.disable());
+
+      this.selectedFiles = [];
+      this.previsualizacoes = [];
+      this.pdfFile = null;
+      this.writeOffPdfFile = null;
+      return;
+    }
+
+    if (this.isReturnAdminMode) {
+      if (currentStatus !== 'EM_DEVOLUCAO') {
+        this.snackBar.open('Finalização disponível apenas quando o status está EM_DEVOLUCAO.', 'OK', { duration: 4500 });
+        this.router.navigate(['/loans']);
+        return;
+      }
+
+      Object.keys(this.loanForm.controls).forEach((key) => this.loanForm.get(key)?.disable());
+
+      this.selectedFiles = [];
+      this.previsualizacoes = [];
+      this.pdfFile = null;
+      this.writeOffPdfFile = null;
+    }
+  }
+
+  private setupReturnFromUsoFlow(): void {
+    if (!this.currentLoanId) return;
+    this.isReturnFromUsoFlow = true;
+
+    this.loanForm.patchValue({ loanType: 'EM_DEVOLUCAO' });
+    Object.keys(this.loanForm.controls).forEach((key) => this.loanForm.get(key)?.disable());
+
+    this.selectedFiles = [];
+    this.previsualizacoes = [];
+    this.pdfFile = null;
+    this.writeOffPdfFile = null;
   }
 
   carregarEquipamento(loan?: LoanListResponse, statusOnly?: boolean): void {
@@ -147,9 +232,19 @@ export class PreparationLoanComponent implements OnInit {
             projeto: loan.codigo,
             loanDate: loan.loanDate,
             returnDate: loan.returnDate,
-            observacao: loan.description
+            observacao: loan.description,
+            enviadoSedex: loan.enviadoSedex,
+            dataSedex: loan.dataSedex
           });
-          if (statusOnly) {
+          this.applyScreenModeRules(loan.status);
+          if (this.isStatusUpdateMode && !this.isReturnSupportMode && !this.isReturnAdminMode && loan.status === 'EM_USO') {
+            this.setupReturnFromUsoFlow();
+          }
+          if (this.isStatusUpdateMode && this.screenMode === 'default' && loan.status === 'EM_DEVOLUCAO') {
+            this.screenMode = 'return-admin';
+            this.applyScreenModeRules(loan.status);
+          }
+          if (statusOnly && !this.isReturnFromUsoFlow && !this.isReturnSupportMode && !this.isReturnAdminMode) {
             this.bloquearCamposExcetoStatus();
           }
         }
@@ -181,9 +276,19 @@ export class PreparationLoanComponent implements OnInit {
             projeto: loan.codigo,
             loanDate: loan.loanDate,
             returnDate: loan.returnDate,
-            observacao: loan.description
+            observacao: loan.description,
+            enviadoSedex: loan.enviadoSedex,
+            dataSedex: loan.dataSedex
           });
-          if (statusOnly) {
+          this.applyScreenModeRules(loan.status);
+          if (this.isStatusUpdateMode && !this.isReturnSupportMode && !this.isReturnAdminMode && loan.status === 'EM_USO') {
+            this.setupReturnFromUsoFlow();
+          }
+          if (this.isStatusUpdateMode && this.screenMode === 'default' && loan.status === 'EM_DEVOLUCAO') {
+            this.screenMode = 'return-admin';
+            this.applyScreenModeRules(loan.status);
+          }
+          if (statusOnly && !this.isReturnFromUsoFlow && !this.isReturnSupportMode && !this.isReturnAdminMode) {
             this.bloquearCamposExcetoStatus();
           }
         }
@@ -193,7 +298,15 @@ export class PreparationLoanComponent implements OnInit {
   }
 
   bloquearCamposExcetoStatus(): void {
-    const controlsToDisable = ['responsavel', 'projeto', 'loanDate', 'returnDate', 'observacao'];
+    const controlsToDisable = [
+      'responsavel',
+      'projeto',
+      'loanDate',
+      'returnDate',
+      'observacao',
+      'enviadoSedex',
+      'dataSedex'
+    ];
     controlsToDisable.forEach(controlName => {
       this.loanForm.get(controlName)?.disable();
     });
@@ -248,7 +361,94 @@ export class PreparationLoanComponent implements OnInit {
     this.pdfFile = null;
   }
 
+  onWriteOffPdfSelected(event: any): void {
+    const file: File | undefined = event.target.files?.[0];
+    if (file && this.validatePdf(file)) {
+      this.writeOffPdfFile = file;
+    } else if (file) {
+      this.snackBar.open('Apenas PDF é permitido.', 'OK', { duration: 3500 });
+    }
+    event.target.value = '';
+  }
+
+  removerWriteOffPdf(): void {
+    this.writeOffPdfFile = null;
+  }
+
   onSubmit(): void {
+    if (this.isSaving) return;
+
+    if (this.isReturnFromUsoFlow) {
+      if (!this.currentLoanId) return;
+      if (this.selectedFiles.length < 1) {
+        this.snackBar.open('Selecione ao menos 1 foto para iniciar a devolução.', 'OK', { duration: 3500 });
+        return;
+      }
+
+      this.isSaving = true;
+      const loanId = this.currentLoanId;
+
+      this.loanService.registerSupportReturn(loanId, this.selectedFiles).pipe(
+        switchMap(() => this.pdfFile ? this.loanService.uploadDocuments(loanId, [this.pdfFile]) : of([]))
+      ).subscribe({
+        next: () => {
+          this.snackBar.open('Devolução iniciada! Status atualizado para EM_DEVOLUCAO.', 'Sucesso', { duration: 3000 });
+          this.router.navigate(['/loans']);
+        },
+        error: (err) => {
+          this.isSaving = false;
+          this.snackBar.open(err.error?.message || 'Erro ao iniciar devolução.', 'Erro', { duration: 4000 });
+        }
+      });
+      return;
+    }
+
+    if (this.isReturnSupportMode) {
+      if (!this.currentLoanId) return;
+      if (this.selectedFiles.length < 1) {
+        this.snackBar.open('Selecione ao menos 1 foto para registrar a devolução.', 'OK', { duration: 3500 });
+        return;
+      }
+
+      this.isSaving = true;
+      this.loanService.registerSupportReturn(this.currentLoanId, this.selectedFiles).subscribe({
+        next: () => {
+          this.snackBar.open('Devolução registrada com sucesso!', 'Sucesso', { duration: 3000 });
+          this.router.navigate(['/loans']);
+        },
+        error: (err) => {
+          this.isSaving = false;
+          this.snackBar.open(err.error?.message || 'Erro ao registrar devolução.', 'Erro', { duration: 4000 });
+        }
+      });
+      return;
+    }
+
+    if (this.isReturnAdminMode) {
+      if (!this.currentLoanId) return;
+      if (this.selectedFiles.length < 1) {
+        this.snackBar.open('Selecione ao menos 1 foto para finalizar e liberar.', 'OK', { duration: 3500 });
+        return;
+      }
+      if (!this.writeOffPdfFile) {
+        this.snackBar.open('Faça upload do Termo de Baixa Assinado (PDF) para finalizar e liberar.', 'OK', { duration: 3500 });
+        return;
+      }
+
+      this.isSaving = true;
+      this.loanService.finalizeReturnAndReleaseEquipmentWithDocs(this.currentLoanId, this.selectedFiles, this.writeOffPdfFile).subscribe({
+        next: () => {
+          this.snackBar.open('Devolução finalizada e equipamento liberado!', 'Sucesso', { duration: 3000 });
+          this.router.navigate(['/loans']);
+        },
+        error: (err) => {
+          this.isSaving = false;
+          this.snackBar.open(err.error?.message || 'Erro ao finalizar devolução.', 'Erro', { duration: 4000 });
+        }
+      });
+      return;
+    }
+
     if (this.loanForm.invalid) return;
 
     if (this.isStatusUpdateMode && this.currentLoanId) {
@@ -273,13 +473,16 @@ export class PreparationLoanComponent implements OnInit {
       helpdeskTicket: formValue.projeto,
       loanDate: formValue.loanDate ? new Date(formValue.loanDate).toISOString() : new Date().toISOString(),
       returnDate: formValue.returnDate ? new Date(formValue.returnDate).toISOString() : null,
-      observation: formValue.observacao
+      observation: formValue.observacao,
+      enviadoSedex: formValue.enviadoSedex,
+      dataSedex: formValue.dataSedex ? new Date(formValue.dataSedex).toISOString() : null
     };
 
+    this.isSaving = true;
     this.loanService.prepareLoan(request).subscribe({
       next: (response: any) => {
+        this.isSaving = false;
         const loanId: string | undefined = response?.id || this.currentLoanId;
-
         const hasDocs = !!this.pdfFile;
 
         if (!loanId) {
@@ -310,6 +513,7 @@ export class PreparationLoanComponent implements OnInit {
         });
       },
       error: (err) => {
+        this.isSaving = false;
         this.snackBar.open(err.error?.message || 'Erro ao salvar empréstimo.', 'Erro', { duration: 3000 });
       }
     });

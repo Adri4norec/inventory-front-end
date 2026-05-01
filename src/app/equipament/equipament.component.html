@@ -1,6 +1,9 @@
 <div class="page-wrapper">
 
   <mat-toolbar color="primary" class="page-toolbar">
+    <button mat-icon-button (click)="layout.toggleMenu()" aria-label="Abrir/fechar menu">
+      <mat-icon>menu</mat-icon>
+    </button>
     <span class="toolbar-title">Lista de Equipamentos</span>
   </mat-toolbar>
 
@@ -159,7 +162,7 @@
                 <span>Ver Fotos</span>
               </button>
 
-              <button mat-menu-item *ngIf="!isColaborador && element.usageType === 'COLABORADOR'"
+              <button mat-menu-item *ngIf="!isColaborador && element.usageType === 'COLABORADOR' && element.statusName === 'DISPONIVEL'"
                 (click)="iniciarEmprestimo(element)">
                 <mat-icon color="primary">forward</mat-icon>
                 <span>Empréstimo</span>

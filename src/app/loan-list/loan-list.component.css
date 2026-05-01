@@ -85,6 +85,15 @@ th.mat-header-cell {
   text-align: center;
 }
 
+.status-action-icon {
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+  vertical-align: middle;
+  margin-right: 6px;
+  color: #1565c0;
+}
+
 .badge-success {
   background-color: #e8f5e9; /* Fundo verde claro */
   color: #2e7d32;            /* Texto verde escuro */
