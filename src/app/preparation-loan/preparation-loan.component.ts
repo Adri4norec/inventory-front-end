@@ -26,6 +26,7 @@ import { EquipamentService } from '../services/equipament/equipment.service';
 import { LoanService } from '../services/loan/loan.service';
 import { LoanListResponse, UserSearchResponse } from '../models/loans/loans.model';
 import { LayoutService } from '../services/layout/layout.service';
+import { STATUS_TYPE_LABEL, STATUS_TYPE_OPTIONS, StatusType } from '../models/status/status-type';
 
 @Component({
   selector: 'app-preparation-loan',
@@ -70,19 +71,9 @@ export class PreparationLoanComponent implements OnInit {
   screenMode: 'default' | 'return-support' | 'return-admin' = 'default';
   isSaving = false;
   isReturnFromUsoFlow = false;
+  isPreparationDefaultStep = false;
 
-  statusOptions = [
-    { value: 'PREPARACAO', label: 'Preparação' },
-    { value: 'PRONTO', label: 'Pronto' },
-    { value: 'AGUARDANDO_DOCUMENTACAO', label: 'Aguardando Documentação' },
-    { value: 'AGUARDANDO_ASSINATURA', label: 'Aguardando Assinatura' },
-    { value: 'AGUARDANDO_RETIRADA', label: 'Aguardando Retirada' },
-    { value: 'EM_USO', label: 'Em Uso' },
-    { value: 'EMPRESTIMO_FINALIZADO', label: 'Finalizado' },
-    { value: 'EM_DEVOLUCAO', label: 'Em Devolução' },
-    { value: 'DEVOLVIDO', label: 'Devolvido' },
-    { value: 'CANCELADO', label: 'Cancelado' }
-  ];
+  statusOptions = STATUS_TYPE_OPTIONS;
 
   constructor(
     private route: ActivatedRoute,
@@ -153,6 +144,43 @@ export class PreparationLoanComponent implements OnInit {
     });
   }
 
+  private isPreparationStatus(raw: unknown): boolean {
+    if (!raw) return false;
+    const v = String(raw).toUpperCase().trim();
+    return v === StatusType.EM_PREPARACAO || v === 'PREPARACAO' || v === 'EM_PREPARO';
+  }
+
+  private applyPreparationDefaultStepRules(currentLoanStatus?: unknown): void {
+    if (!this.equipamento) return;
+    if (this.isReturnSupportMode || this.isReturnAdminMode || this.isReturnFromUsoFlow) return;
+
+    const equipmentStatus = this.equipamento?.statusName as unknown;
+    const inPreparation = this.isPreparationStatus(currentLoanStatus) || this.isPreparationStatus(equipmentStatus);
+    if (!inPreparation) {
+      this.isPreparationDefaultStep = false;
+      return;
+    }
+
+    this.isPreparationDefaultStep = true;
+
+    const defaultStatus = StatusType.AGUARDANDO_ASSINATURA;
+    this.loanForm.patchValue({ loanType: defaultStatus });
+
+    const controlsToDisable = [
+      'loanType',
+      'responsavel',
+      'projeto',
+      'loanDate',
+      'returnDate',
+      'observacao',
+      'enviadoSedex',
+      'dataSedex'
+    ];
+    controlsToDisable.forEach((controlName) => this.loanForm.get(controlName)?.disable());
+
+    this.loanTypes = [{ value: defaultStatus, label: STATUS_TYPE_LABEL[defaultStatus] }];
+  }
+
   displayFn(user: UserSearchResponse): string {
     return user && user.fullName ? user.fullName : '';
   }
@@ -176,13 +204,13 @@ export class PreparationLoanComponent implements OnInit {
     if (!this.currentLoanId) return;
 
     if (this.isReturnSupportMode) {
-      if (currentStatus !== 'EM_USO') {
+      if (currentStatus !== StatusType.EM_USO) {
         this.snackBar.open('Fluxo de devolução (suporte) disponível apenas quando o status está EM_USO.', 'OK', { duration: 4500 });
         this.router.navigate(['/loans']);
         return;
       }
 
-      this.loanForm.patchValue({ loanType: 'EM_DEVOLUCAO' });
+      this.loanForm.patchValue({ loanType: StatusType.EM_DEVOLUCAO });
       Object.keys(this.loanForm.controls).forEach((key) => this.loanForm.get(key)?.disable());
 
       this.selectedFiles = [];
@@ -193,7 +221,7 @@ export class PreparationLoanComponent implements OnInit {
     }
 
     if (this.isReturnAdminMode) {
-      if (currentStatus !== 'EM_DEVOLUCAO') {
+      if (currentStatus !== StatusType.EM_DEVOLUCAO) {
         this.snackBar.open('Finalização disponível apenas quando o status está EM_DEVOLUCAO.', 'OK', { duration: 4500 });
         this.router.navigate(['/loans']);
         return;
@@ -212,7 +240,7 @@ export class PreparationLoanComponent implements OnInit {
     if (!this.currentLoanId) return;
     this.isReturnFromUsoFlow = true;
 
-    this.loanForm.patchValue({ loanType: 'EM_DEVOLUCAO' });
+    this.loanForm.patchValue({ loanType: StatusType.EM_DEVOLUCAO });
     Object.keys(this.loanForm.controls).forEach((key) => this.loanForm.get(key)?.disable());
 
     this.selectedFiles = [];
@@ -237,10 +265,10 @@ export class PreparationLoanComponent implements OnInit {
             dataSedex: loan.dataSedex
           });
           this.applyScreenModeRules(loan.status);
-          if (this.isStatusUpdateMode && !this.isReturnSupportMode && !this.isReturnAdminMode && loan.status === 'EM_USO') {
+          if (this.isStatusUpdateMode && !this.isReturnSupportMode && !this.isReturnAdminMode && loan.status === StatusType.EM_USO) {
             this.setupReturnFromUsoFlow();
           }
-          if (this.isStatusUpdateMode && this.screenMode === 'default' && loan.status === 'EM_DEVOLUCAO') {
+          if (this.isStatusUpdateMode && this.screenMode === 'default' && loan.status === StatusType.EM_DEVOLUCAO) {
             this.screenMode = 'return-admin';
             this.applyScreenModeRules(loan.status);
           }
@@ -248,6 +276,8 @@ export class PreparationLoanComponent implements OnInit {
             this.bloquearCamposExcetoStatus();
           }
         }
+
+        this.applyPreparationDefaultStepRules(loan?.status);
       }
     });
   }
@@ -281,16 +311,18 @@ export class PreparationLoanComponent implements OnInit {
             dataSedex: loan.dataSedex
           });
           this.applyScreenModeRules(loan.status);
-          if (this.isStatusUpdateMode && !this.isReturnSupportMode && !this.isReturnAdminMode && loan.status === 'EM_USO') {
+          if (this.isStatusUpdateMode && !this.isReturnSupportMode && !this.isReturnAdminMode && loan.status === StatusType.EM_USO) {
             this.setupReturnFromUsoFlow();
           }
-          if (this.isStatusUpdateMode && this.screenMode === 'default' && loan.status === 'EM_DEVOLUCAO') {
+          if (this.isStatusUpdateMode && this.screenMode === 'default' && loan.status === StatusType.EM_DEVOLUCAO) {
             this.screenMode = 'return-admin';
             this.applyScreenModeRules(loan.status);
           }
           if (statusOnly && !this.isReturnFromUsoFlow && !this.isReturnSupportMode && !this.isReturnAdminMode) {
             this.bloquearCamposExcetoStatus();
           }
+
+          this.applyPreparationDefaultStepRules(loan.status);
         }
       },
       error: (err) => console.error(err)
@@ -317,7 +349,10 @@ export class PreparationLoanComponent implements OnInit {
     if (this.isStatusUpdateMode) {
       this.loanTypes = [...this.statusOptions];
     } else {
-      this.loanTypes = [this.statusOptions[0]];
+      // Na criação do empréstimo (vindo da listagem de equipamentos), o status inicial deve ser EM_PREPARACAO.
+      const initial = this.statusOptions.find((o) => o.value === StatusType.EM_PREPARACAO) ?? this.statusOptions[0];
+      this.loanTypes = [initial];
+      this.loanForm.patchValue({ loanType: initial.value });
     }
   }
 

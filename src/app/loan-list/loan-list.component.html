@@ -38,13 +38,7 @@
         <mat-label>Status</mat-label>
         <mat-select [(ngModel)]="filtros.status" (selectionChange)="aplicarFiltros()">
           <mat-option value="">Todos</mat-option>
-          <mat-option value="PREPARACAO">Em Preparação</mat-option>
-          <mat-option value="AGUARDANDO_ASSINATURA">Aguardando Assinatura</mat-option>
-          <mat-option value="ENTREGUE">Em Uso</mat-option>
-          <mat-option value="DEVOLUCAO_SOLICITADA">Devolução Solicitada</mat-option>
-          <mat-option value="EM_DEVOLUCAO">Em Devolução</mat-option>
-          <mat-option value="DISPONIVEL">Disponível</mat-option>
-          <mat-option value="DEVOLVIDO">Devolvido</mat-option>
+          <mat-option *ngFor="let opt of statusFilterOptions" [value]="opt.value">{{ opt.label }}</mat-option>
         </mat-select>
       </mat-form-field>
 
@@ -130,7 +124,7 @@
               <button mat-menu-item *ngIf="element.status !== 'DEVOLVIDO' && element.status !== 'CANCELADO'"
                 (click)="openPreparationScreen(element)">
                 <mat-icon color="primary">edit</mat-icon>
-                <span>Editar Status de Empréstimo</span>
+                <span>{{ element.status === 'DISPONIVEL' ? 'Novo Empréstimo' : 'Editar Status de Empréstimo' }}</span>
               </button>
 
               <button mat-menu-item *ngIf="podeDevolver(element.status)" (click)="openSupportReturn(element)">

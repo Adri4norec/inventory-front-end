@@ -1,7 +1,8 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule, Router } from '@angular/router';
+import { NavigationEnd, RouterModule, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
+import { Subscription, filter } from 'rxjs';
 
 // Angular Material Imports
 import { MatInputModule } from '@angular/material/input';
@@ -33,6 +34,7 @@ import { EquipmentResponse } from '../models/equipaments/equipament.model';
 import { EquipamentService } from '../services/equipament/equipment.service';
 import { AuthService } from '../services/auth/auth.service';
 import { LayoutService } from '../services/layout/layout.service';
+import { STATUS_TYPE_LABEL, STATUS_TYPE_OPTIONS, StatusType } from '../models/status/status-type';
 
 @Component({
   selector: 'app-equipament',
@@ -83,6 +85,8 @@ export class EquipamentComponent implements OnInit {
     status: ''
   };
 
+  statusFilterOptions = STATUS_TYPE_OPTIONS;
+
   displayedColumns: string[] = [
     'categoria',
     'name',
@@ -103,9 +107,23 @@ export class EquipamentComponent implements OnInit {
     public layout: LayoutService
   ) { }
 
+  private readonly subs = new Subscription();
+
   ngOnInit(): void {
     this.isColaborador = this.authService.isColaborador();
     this.carregarDados();
+
+    // Garante que, ao voltar para a listagem, reflita qualquer mudança de status feita em outras telas (ex.: empréstimos).
+    this.subs.add(
+      this.router.events.pipe(
+        filter((e): e is NavigationEnd => e instanceof NavigationEnd),
+        filter((e) => (e.urlAfterRedirects || e.url).startsWith('/equipaments'))
+      ).subscribe(() => this.carregarDados(this.pageIndex, this.pageSize))
+    );
+  }
+
+  ngOnDestroy(): void {
+    this.subs.unsubscribe();
   }
 
   aplicarFiltros(): void {
@@ -154,14 +172,8 @@ export class EquipamentComponent implements OnInit {
   }
 
   getStatusLabel(status: string): string {
-    const labels: Record<string, string> = {
-      EM_USO: 'Em Uso',
-      DISPONIVEL: 'Disponível',
-      INDISPONIVEL: 'Indisponível',
-      EM_MANUTENCAO: 'Manutenção',
-    };
-
-    return labels[status] ?? status ?? 'Sem Status';
+    const key = status as StatusType;
+    return STATUS_TYPE_LABEL[key] ?? status ?? 'Sem Status';
   }
 
   getAcessoriosOrdenados(equipamento: EquipmentResponse): string {

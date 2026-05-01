@@ -20,6 +20,7 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { LoanService } from '../services/loan/loan.service';
 import { LoanListResponse } from '../models/loans/loans.model';
 import { LayoutService } from '../services/layout/layout.service';
+import { STATUS_TYPE_OPTIONS } from '../models/status/status-type';
 
 @Component({
   selector: 'app-loan-list',
@@ -43,6 +44,7 @@ export class LoanListComponent implements OnInit {
   pageIndex = 0;
 
   filtros = { codigo: '', categoria: '', nome: '', caracteristicas: '', status: '' };
+  statusFilterOptions = STATUS_TYPE_OPTIONS;
 
   constructor(
     private loanService: LoanService,
@@ -97,6 +99,12 @@ export class LoanListComponent implements OnInit {
   }
 
   openPreparationScreen(item: LoanListResponse): void {
+    if (item.status === 'DISPONIVEL') {
+      const equipmentId = item.equipmentId || item.id;
+      this.router.navigate(['/equipaments', equipmentId, 'preparation-loan']);
+      return;
+    }
+
     this.router.navigate(['/loans', item.id, 'preparation-loan']);
   }
 

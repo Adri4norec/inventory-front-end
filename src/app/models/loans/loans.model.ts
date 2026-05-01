@@ -1,3 +1,5 @@
+import { StatusType } from '../status/status-type';
+
 export interface LoanListResponse {
   id: string;
   codigo: string;
@@ -38,15 +40,9 @@ export interface EquipmentLoanResponse {
   id: string;
   name: string;
   description: string;
-  statusName: string;
+  statusName: StatusType;
   categoryName: string;
   topo: number;
-}
-
-export enum LoanType {
-  EM_PREPARACAO = 'Em Preparação',
-  AUARDANDO_ASSINATURA = 'Aguardando Assinatura',
-  EM_USO = 'Em Uso'
 }
 
 export interface UserSearchResponse {

@@ -1,3 +1,5 @@
+import { StatusType } from '../status/status-type';
+
 export interface EquipmentResponse {
   id: string;
   name: string;
@@ -9,7 +11,7 @@ export interface EquipmentResponse {
   usageType: 'COLABORADOR' | 'INFRAESTRUTURA';
   active: boolean;
   proprietaryName: string;
-  statusName: string;
+  statusName: StatusType;
   proprietaryId?: string;
   perParts?: PerPartResponse[];
   imageUrls: string[];
@@ -41,7 +43,7 @@ export interface EquipmentLoanResponse {
   id: string;
   name: string;
   description: string;
-  statusName: string;
+  statusName: StatusType;
   categoryName: string;
   topo: string;
 }

@@ -79,7 +79,7 @@
                     <mat-form-field appearance="outline" class="field-half">
                         <mat-label>Status</mat-label>
                         <mat-icon matPrefix>swap_horiz</mat-icon>
-                        <mat-select formControlName="loanType">
+                        <mat-select formControlName="loanType" [disabled]="isPreparationDefaultStep">
                             <mat-option *ngFor="let tipo of loanTypes" [value]="tipo.value">
                                 {{ tipo.label }}
                             </mat-option>
