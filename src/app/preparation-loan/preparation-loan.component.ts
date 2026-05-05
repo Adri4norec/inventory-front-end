@@ -24,9 +24,10 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
 
 import { EquipamentService } from '../services/equipament/equipment.service';
 import { LoanService } from '../services/loan/loan.service';
-import { LoanListResponse, UserSearchResponse } from '../models/loans/loans.model';
+import { UserService } from '../services/user/user.service';
+import { LoanDetailResponse, LoanListResponse, UserSearchResponse } from '../models/loans/loans.model';
 import { LayoutService } from '../services/layout/layout.service';
-import { STATUS_TYPE_LABEL, STATUS_TYPE_OPTIONS, StatusType } from '../models/status/status-type';
+import { formatStatusLabel, STATUS_TYPE_LABEL, STATUS_TYPE_OPTIONS, StatusType, normalizeStatusType, statusColorClass } from '../models/status/status-type';
 
 @Component({
   selector: 'app-preparation-loan',
@@ -72,6 +73,10 @@ export class PreparationLoanComponent implements OnInit {
   isSaving = false;
   isReturnFromUsoFlow = false;
   isPreparationDefaultStep = false;
+  isTermoEnabled = true;
+  isFotosEnabled = true;
+  isAssinaturaBaixaFlow = false;
+  private lastResponsavelLookupId: string | null = null;
 
   statusOptions = STATUS_TYPE_OPTIONS;
 
@@ -79,6 +84,7 @@ export class PreparationLoanComponent implements OnInit {
     private route: ActivatedRoute,
     private equipamentService: EquipamentService,
     private loanService: LoanService,
+    private userService: UserService,
     private router: Router,
     private fb: FormBuilder,
     private snackBar: MatSnackBar,
@@ -129,6 +135,10 @@ export class PreparationLoanComponent implements OnInit {
       }
       dataSedexControl?.updateValueAndValidity();
     });
+
+    this.loanForm.get('loanType')?.valueChanges.subscribe((value) => {
+      this.applyAssinaturaToBaixaRules(value);
+    });
   }
 
   private initForm(): void {
@@ -144,6 +154,144 @@ export class PreparationLoanComponent implements OnInit {
     });
   }
 
+  private coerceApiDate(value?: string | Date | null): Date | null {
+    if (!value) return null;
+    if (value instanceof Date) return isNaN(value.getTime()) ? null : value;
+    const d = new Date(value);
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  private resolveReturnDate(loan: LoanListResponse): Date | null {
+    return this.coerceApiDate((loan as any).returnDate ?? null);
+  }
+
+  private coerceResponsavel(raw: unknown): UserSearchResponse | null {
+    if (!raw) return null;
+    if (typeof raw === 'string') {
+      const fullName = raw.trim();
+      return fullName ? ({ id: '', fullName } as UserSearchResponse) : null;
+    }
+    if (typeof raw === 'object') {
+      const anyRaw = raw as any;
+      const fullName = String(
+        anyRaw.fullName ??
+        anyRaw.full_name ??
+        anyRaw.nome ??
+        anyRaw.name ??
+        anyRaw.colaboradorName ??
+        anyRaw.collaboratorName ??
+        ''
+      ).trim();
+      const id = String(
+        anyRaw.id ??
+        anyRaw.colaboradorId ??
+        anyRaw.userId ??
+        anyRaw.collaboratorId ??
+        ''
+      ).trim();
+      if (!fullName) return null;
+      return { id, fullName };
+    }
+    return null;
+  }
+
+  private extractColaboradorId(loan: any): string {
+    if (!loan) return '';
+    const direct = String(
+      loan.colaboradorId ??
+      loan.colaboradorID ??
+      loan.responsavelId ??
+      loan.responsibleId ??
+      loan.userId ??
+      loan.usuarioId ??
+      loan.collaboratorId ??
+      loan.employeeId ??
+      ''
+    ).trim();
+    if (direct) return direct;
+    const nested =
+      loan.colaborador ??
+      loan.responsavel ??
+      loan.responsible ??
+      loan.usuario ??
+      loan.user ??
+      loan.collaborator ??
+      loan.employee;
+    const nestedId = String(
+      nested?.id ??
+      nested?.colaboradorId ??
+      nested?.userId ??
+      nested?.usuarioId ??
+      nested?.employeeId ??
+      ''
+    ).trim();
+    return nestedId;
+  }
+
+  private patchLoanFormFromLoan(loan: Partial<LoanDetailResponse & LoanListResponse>): void {
+    if (!loan) return;
+    const responsavel =
+      this.coerceResponsavel((loan as any).responsavel) ??
+      this.coerceResponsavel((loan as any).fullName) ??
+      this.coerceResponsavel((loan as any).colaboradorName) ??
+      this.coerceResponsavel((loan as any).collaboratorName) ??
+      this.coerceResponsavel((loan as any).colaborador) ??
+      null;
+
+    const responsavelControlValue: any =
+      this.isStatusUpdateMode
+        ? (responsavel?.fullName ?? (typeof (loan as any).responsavel === 'string' ? (loan as any).responsavel : '') ?? '')
+        : responsavel;
+
+    this.loanForm.patchValue({
+      loanType: (loan as any).status ?? this.loanForm.get('loanType')?.value,
+      responsavel: responsavelControlValue,
+      projeto: (loan as any).helpdeskTicket ??
+        (loan as any).helpdesk_ticket ??
+        (loan as any).helpDeskTicket ??
+        (loan as any).projeto ??
+        (loan as any).project ??
+        '',
+      loanDate: this.coerceApiDate((loan as any).loanDate) ?? new Date(),
+      returnDate: this.coerceApiDate((loan as any).returnDate) ?? null,
+      observacao: (loan as any).observation ?? (loan as any).description ?? '',
+      enviadoSedex: (loan as any).enviadoSedex ?? false,
+      dataSedex: this.coerceApiDate((loan as any).dataSedex) ?? null
+    });
+
+    const colaboradorId = this.extractColaboradorId(loan as any);
+    const alreadyHasName = !!(responsavel && responsavel.fullName);
+    if (!alreadyHasName && colaboradorId) {
+      this.loadResponsavelById(colaboradorId);
+    }
+  }
+
+  private loadResponsavelById(colaboradorId: string): void {
+    if (!colaboradorId) return;
+    if (this.lastResponsavelLookupId === colaboradorId) return;
+    this.lastResponsavelLookupId = colaboradorId;
+
+    this.userService.findById(colaboradorId).subscribe({
+      next: (u: any) => {
+        const fullName = String(u?.fullName ?? '').trim();
+        if (!fullName) return;
+        const value: any = this.isStatusUpdateMode ? fullName : { id: colaboradorId, fullName };
+        this.loanForm.patchValue({ responsavel: value }, { emitEvent: false });
+      },
+      error: () => {
+        // Silencioso: não bloqueia tela se não achar.
+      }
+    });
+  }
+
+  getStatusClass(status: unknown): string {
+    return statusColorClass(status);
+  }
+
+  formatStatusLabel(raw: unknown): string {
+    return formatStatusLabel(raw);
+  }
+
   private isPreparationStatus(raw: unknown): boolean {
     if (!raw) return false;
     const v = String(raw).toUpperCase().trim();
@@ -155,34 +303,59 @@ export class PreparationLoanComponent implements OnInit {
     if (this.isReturnSupportMode || this.isReturnAdminMode || this.isReturnFromUsoFlow) return;
 
     const equipmentStatus = this.equipamento?.statusName as unknown;
-    const inPreparation = this.isPreparationStatus(currentLoanStatus) || this.isPreparationStatus(equipmentStatus);
+    const formStatus = this.loanForm?.get('loanType')?.value as unknown;
+    const inPreparation =
+      this.isPreparationStatus(currentLoanStatus) ||
+      this.isPreparationStatus(formStatus) ||
+      this.isPreparationStatus(equipmentStatus);
     if (!inPreparation) {
       this.isPreparationDefaultStep = false;
+      this.isTermoEnabled = true;
+      if (!this.isStatusUpdateMode) {
+        this.loanForm.get('loanType')?.enable();
+      }
       return;
     }
 
     this.isPreparationDefaultStep = true;
 
-    const defaultStatus = StatusType.AGUARDANDO_ASSINATURA;
-    this.loanForm.patchValue({ loanType: defaultStatus });
+    if (this.isStatusUpdateMode) {
+      const defaultStatus = StatusType.AGUARDANDO_ASSINATURA;
+      this.loanForm.patchValue({ loanType: defaultStatus }, { emitEvent: false });
+      this.loanTypes = [{ value: defaultStatus, label: STATUS_TYPE_LABEL[defaultStatus] }];
+    }
 
-    const controlsToDisable = [
-      'loanType',
-      'responsavel',
-      'projeto',
-      'loanDate',
-      'returnDate',
-      'observacao',
-      'enviadoSedex',
-      'dataSedex'
-    ];
-    controlsToDisable.forEach((controlName) => this.loanForm.get(controlName)?.disable());
+    this.loanForm.get('loanType')?.disable();
+    this.isTermoEnabled = false;
 
-    this.loanTypes = [{ value: defaultStatus, label: STATUS_TYPE_LABEL[defaultStatus] }];
+    if (!this.isStatusUpdateMode) {
+      const controlsToEnable = [
+        'responsavel',
+        'projeto',
+        'loanDate',
+        'returnDate',
+        'observacao',
+        'enviadoSedex',
+        'dataSedex'
+      ];
+      controlsToEnable.forEach((controlName) => this.loanForm.get(controlName)?.enable());
+    }
   }
 
-  displayFn(user: UserSearchResponse): string {
-    return user && user.fullName ? user.fullName : '';
+  displayFn(user: UserSearchResponse | string | null): string {
+    if (!user) return '';
+    if (typeof user === 'string') return user;
+    return user.fullName || '';
+  }
+
+  get shouldShowLoanDetailsFields(): boolean {
+    // Default (preparação normal): mostra os campos normalmente
+    if (!this.isReturnSupportMode && !this.isReturnFromUsoFlow) return true;
+
+    // Exceção solicitada: na tela de Devolução, quando status é EM_DEVOLUCAO,
+    // exibe os campos (somente leitura) para consulta.
+    const st = normalizeStatusType(this.loanForm?.get('loanType')?.value);
+    return st === StatusType.EM_DEVOLUCAO;
   }
 
   get pageTitle(): string {
@@ -227,6 +400,13 @@ export class PreparationLoanComponent implements OnInit {
         return;
       }
 
+      const aguardandoBaixa = StatusType.AGUARDANDO_BAIXA;
+      this.loanForm.patchValue({ loanType: aguardandoBaixa });
+      this.loanTypes = [{ value: aguardandoBaixa, label: STATUS_TYPE_LABEL[aguardandoBaixa] }];
+
+      this.isFotosEnabled = false;
+      this.isTermoEnabled = false;
+
       Object.keys(this.loanForm.controls).forEach((key) => this.loanForm.get(key)?.disable());
 
       this.selectedFiles = [];
@@ -234,6 +414,27 @@ export class PreparationLoanComponent implements OnInit {
       this.pdfFile = null;
       this.writeOffPdfFile = null;
     }
+  }
+
+  private applyAssinaturaToBaixaRules(currentStatus?: unknown): void {
+    if (!this.currentLoanId) return;
+    if (!this.isStatusUpdateMode) return;
+    if (this.isReturnSupportMode || this.isReturnAdminMode || this.isReturnFromUsoFlow) return;
+
+    const effective = normalizeStatusType(this.loanForm.get('loanType')?.value ?? currentStatus);
+    if (effective !== StatusType.AGUARDANDO_ASSINATURA) {
+      this.isAssinaturaBaixaFlow = false;
+      this.isTermoEnabled = true;
+      this.isFotosEnabled = true;
+      return;
+    }
+
+    this.isAssinaturaBaixaFlow = true;
+    this.isTermoEnabled = true;
+    this.isFotosEnabled = false;
+
+    this.selectedFiles = [];
+    this.previsualizacoes = [];
   }
 
   private setupReturnFromUsoFlow(): void {
@@ -247,6 +448,8 @@ export class PreparationLoanComponent implements OnInit {
     this.previsualizacoes = [];
     this.pdfFile = null;
     this.writeOffPdfFile = null;
+    // Regra da tela: quando o status está "Em Devolução", o termo (PDF) não pode ser editado/anexado.
+    this.isTermoEnabled = false;
   }
 
   carregarEquipamento(loan?: LoanListResponse, statusOnly?: boolean): void {
@@ -255,15 +458,7 @@ export class PreparationLoanComponent implements OnInit {
         this.equipamento = res;
         this.configurarOpcoesEmprestimo();
         if (loan) {
-          this.loanForm.patchValue({
-            loanType: loan.status,
-            projeto: loan.codigo,
-            loanDate: loan.loanDate,
-            returnDate: loan.returnDate,
-            observacao: loan.description,
-            enviadoSedex: loan.enviadoSedex,
-            dataSedex: loan.dataSedex
-          });
+          this.patchLoanFormFromLoan(loan as any);
           this.applyScreenModeRules(loan.status);
           if (this.isStatusUpdateMode && !this.isReturnSupportMode && !this.isReturnAdminMode && loan.status === StatusType.EM_USO) {
             this.setupReturnFromUsoFlow();
@@ -278,16 +473,17 @@ export class PreparationLoanComponent implements OnInit {
         }
 
         this.applyPreparationDefaultStepRules(loan?.status);
+        this.applyAssinaturaToBaixaRules(loan?.status);
       }
     });
   }
 
   carregarEmprestimo(loanId: string, statusOnly: boolean): void {
     this.loanService.getLoanById(loanId).subscribe({
-      next: (loan: LoanListResponse) => {
+      next: (loan: LoanDetailResponse & LoanListResponse) => {
         if (loan.equipmentId) {
           this.equipamentId = loan.equipmentId;
-          this.carregarEquipamento(loan, statusOnly);
+          this.carregarEquipamento(loan as any, statusOnly);
         } else {
           this.equipamento = {
             id: loan.id,
@@ -301,15 +497,7 @@ export class PreparationLoanComponent implements OnInit {
             dateHour: (loan as any).dateHour
           };
           this.configurarOpcoesEmprestimo();
-          this.loanForm.patchValue({
-            loanType: loan.status,
-            projeto: loan.codigo,
-            loanDate: loan.loanDate,
-            returnDate: loan.returnDate,
-            observacao: loan.description,
-            enviadoSedex: loan.enviadoSedex,
-            dataSedex: loan.dataSedex
-          });
+          this.patchLoanFormFromLoan(loan as any);
           this.applyScreenModeRules(loan.status);
           if (this.isStatusUpdateMode && !this.isReturnSupportMode && !this.isReturnAdminMode && loan.status === StatusType.EM_USO) {
             this.setupReturnFromUsoFlow();
@@ -323,6 +511,7 @@ export class PreparationLoanComponent implements OnInit {
           }
 
           this.applyPreparationDefaultStepRules(loan.status);
+          this.applyAssinaturaToBaixaRules(loan.status);
         }
       },
       error: (err) => console.error(err)
@@ -354,9 +543,15 @@ export class PreparationLoanComponent implements OnInit {
       this.loanTypes = [initial];
       this.loanForm.patchValue({ loanType: initial.value });
     }
+
+    this.applyPreparationDefaultStepRules();
   }
 
   onFileSelected(event: any): void {
+    if (!this.isFotosEnabled) {
+      event.target.value = '';
+      return;
+    }
     const files: FileList = event.target.files;
     if (files && files.length > 0) {
       const novosArquivos = Array.from(files);
@@ -371,6 +566,7 @@ export class PreparationLoanComponent implements OnInit {
   }
 
   removerArquivo(index: number): void {
+    if (!this.isFotosEnabled) return;
     this.selectedFiles.splice(index, 1);
     this.previsualizacoes.splice(index, 1);
   }
@@ -383,6 +579,10 @@ export class PreparationLoanComponent implements OnInit {
   }
 
   onPdfSelected(event: any): void {
+    if (!this.isTermoEnabled) {
+      event.target.value = '';
+      return;
+    }
     const file: File | undefined = event.target.files?.[0];
     if (file && this.validatePdf(file)) {
       this.pdfFile = file;
@@ -393,6 +593,7 @@ export class PreparationLoanComponent implements OnInit {
   }
 
   removerPdf(): void {
+    if (!this.isTermoEnabled) return;
     this.pdfFile = null;
   }
 
@@ -461,18 +662,15 @@ export class PreparationLoanComponent implements OnInit {
 
     if (this.isReturnAdminMode) {
       if (!this.currentLoanId) return;
-      if (this.selectedFiles.length < 1) {
-        this.snackBar.open('Selecione ao menos 1 foto para finalizar e liberar.', 'OK', { duration: 3500 });
-        return;
-      }
       if (!this.writeOffPdfFile) {
         this.snackBar.open('Faça upload do Termo de Baixa Assinado (PDF) para finalizar e liberar.', 'OK', { duration: 3500 });
         return;
       }
 
       this.isSaving = true;
-      this.loanService.finalizeReturnAndReleaseEquipmentWithDocs(this.currentLoanId, this.selectedFiles, this.writeOffPdfFile).subscribe({
+      this.loanService.finalizeReturnAndReleaseEquipment(this.currentLoanId, this.writeOffPdfFile).subscribe({
         next: () => {
+          this.isSaving = false;
           this.snackBar.open('Devolução finalizada e equipamento liberado!', 'Sucesso', { duration: 3000 });
           this.router.navigate(['/loans']);
         },
@@ -487,8 +685,38 @@ export class PreparationLoanComponent implements OnInit {
     if (this.loanForm.invalid) return;
 
     if (this.isStatusUpdateMode && this.currentLoanId) {
-      const statusParaEnviar = this.loanForm.get('loanType')?.value;
+      if (this.isAssinaturaBaixaFlow) {
+        if (!this.pdfFile) {
+          this.snackBar.open('Anexe o Termo de Responsabilidade (PDF) para concluir.', 'OK', { duration: 3500 });
+          return;
+        }
 
+        this.isSaving = true;
+        const loanId = this.currentLoanId;
+
+        this.loanService.uploadDocuments(loanId, [this.pdfFile]).subscribe({
+          next: () => {
+            this.loanService.updateLoanStatus(loanId, StatusType.EM_USO).subscribe({
+              next: () => {
+                this.isSaving = false;
+                this.snackBar.open('Termo anexado. Status atualizado para EM_USO.', 'Sucesso', { duration: 3000 });
+                this.router.navigate(['/loans']);
+              },
+              error: (err) => {
+                this.isSaving = false;
+                this.snackBar.open(err.error?.message || 'Erro ao atualizar status.', 'Erro', { duration: 3500 });
+              }
+            });
+          },
+          error: (err) => {
+            this.isSaving = false;
+            this.snackBar.open(err.error?.message || 'Erro ao anexar o termo (PDF).', 'Erro', { duration: 3500 });
+          }
+        });
+        return;
+      }
+
+      const statusParaEnviar = this.loanForm.get('loanType')?.value;
       this.loanService.updateLoanStatus(this.currentLoanId, statusParaEnviar).subscribe({
         next: () => {
           this.snackBar.open('Status atualizado com sucesso!', 'Sucesso', { duration: 3000 });
@@ -572,5 +800,12 @@ export class PreparationLoanComponent implements OnInit {
     } catch {
       return data;
     }
+  }
+
+  get equipmentCodeLabel(): string {
+    const topo = this.equipamento?.topo;
+    const codigo = this.equipamento?.codigo;
+    const id = this.equipamento?.id;
+    return (topo ?? codigo ?? id ?? '-') as string;
   }
 }

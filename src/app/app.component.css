@@ -1,1 +1,4 @@
-/* O botão de menu fica dentro do mat-toolbar das telas */
+:host {
+  display: block;
+  height: 100%;
+}

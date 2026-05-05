@@ -10,7 +10,7 @@
     <div class="photo-grid" *ngIf="data.urls && data.urls.length > 0; else noPhotos">
       <div class="photo-item" *ngFor="let url of data.urls">
         <div class="image-wrapper">
-          <img [src]="'http://localhost:8080/uploads/' + url"
+          <img [src]="resolveImageUrl(url)"
                [alt]="url"
                (click)="openImageFull(url)">
         </div>

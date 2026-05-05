@@ -14,6 +14,12 @@ export class EquipamentService {
 
   constructor(private http: HttpClient) { }
 
+  private withDefaultSort(params: HttpParams): HttpParams {
+    return params
+      .append('sort', 'dateHour,desc')
+      .append('sort', 'id,desc');
+  }
+
   list(
     page: number,
     size: number,
@@ -29,6 +35,7 @@ export class EquipamentService {
       params = params.set('proprietaryId', proprietaryId);
     }
 
+    params = this.withDefaultSort(params);
     return this.http.get<any>(this.API, { params });
   }
 
@@ -61,6 +68,7 @@ export class EquipamentService {
       params = params.set('dataFim', dataFimFormatada);
     }
 
+    params = this.withDefaultSort(params);
     return this.http.get<any>(`${this.API}/advanced-search`, { params });
   }
   
@@ -90,6 +98,6 @@ export class EquipamentService {
       .set('page', page.toString())
       .set('size', size.toString());
 
-    return this.http.get<any>(`${this.API}/search`, { params });
+    return this.http.get<any>(`${this.API}/search`, { params: this.withDefaultSort(params) });
   }
 }

@@ -18,9 +18,8 @@
                 </mat-card-title>
                 <mat-card-subtitle>
                     Status Atual:
-                    <span class="status-label"
-                        [style.color]="equipamento?.statusName === 'DISPONIVEL' ? 'green' : 'orange'">
-                        {{ equipamento?.statusName }}
+                    <span class="status-label" [ngClass]="getStatusClass(equipamento?.statusName)">
+                        {{ formatStatusLabel(equipamento?.statusName) }}
                     </span>
                 </mat-card-subtitle>
             </mat-card-header>
@@ -30,8 +29,8 @@
             <mat-card-content class="equipment-details">
                 <div class="details-row">
                     <div class="detail-item">
-                        <label>Patrimônio</label>
-                        <span><strong>{{ equipamento?.topo }}</strong></span>
+                        <label>Código/ID</label>
+                        <span><strong>{{ equipmentCodeLabel }}</strong></span>
                     </div>
                     <div class="detail-item">
                         <label>Proprietário</label>
@@ -52,18 +51,22 @@
         <mat-card class="form-card" *ngIf="equipamento" appearance="outlined">
             <mat-card-header>
                 <mat-card-title>
-                    <mat-icon>{{ (isReturnSupportMode || isReturnAdminMode || isReturnFromUsoFlow) ? 'assignment_return' : 'edit' }}</mat-icon>
-                    {{ (isReturnSupportMode || isReturnAdminMode || isReturnFromUsoFlow) ? 'Devolução de Equipamento' : 'Preparar Empréstimo' }}
+                    <mat-icon>{{ (isReturnSupportMode || isReturnAdminMode || isReturnFromUsoFlow) ? 'assignment_return'
+                        : 'edit' }}</mat-icon>
+                    {{ (isReturnSupportMode || isReturnAdminMode || isReturnFromUsoFlow) ? 'Devolução de Equipamento' :
+                    'Preparar Empréstimo' }}
                 </mat-card-title>
                 <mat-card-subtitle>
                     <ng-container *ngIf="isReturnSupportMode">
                         Registre a devolução anexando fotos (mínimo 1)
                     </ng-container>
                     <ng-container *ngIf="isReturnAdminMode">
-                        Anexe novas fotos (mínimo 1) e o Termo de Baixa Assinado (PDF) para finalizar e liberar o equipamento
+                        Revise os dados do empréstimo (somente leitura). Anexe o Termo de Baixa Assinado (PDF) para
+                        finalizar e liberar o equipamento.
                     </ng-container>
                     <ng-container *ngIf="isReturnFromUsoFlow">
-                        Inicie a devolução anexando fotos (mínimo 1). Opcionalmente, anexe o termo de responsabilidade (PDF).
+                        Inicie a devolução anexando fotos (mínimo 1). Opcionalmente, anexe o termo de responsabilidade
+                        (PDF).
                     </ng-container>
                     <ng-container *ngIf="!isReturnSupportMode && !isReturnAdminMode">
                         Prepare o empréstimo do equipamento selecionado
@@ -76,17 +79,8 @@
             <mat-card-content>
                 <form [formGroup]="loanForm" class="form-grid">
 
-                    <mat-form-field appearance="outline" class="field-half">
-                        <mat-label>Status</mat-label>
-                        <mat-icon matPrefix>swap_horiz</mat-icon>
-                        <mat-select formControlName="loanType" [disabled]="isPreparationDefaultStep">
-                            <mat-option *ngFor="let tipo of loanTypes" [value]="tipo.value">
-                                {{ tipo.label }}
-                            </mat-option>
-                        </mat-select>
-                    </mat-form-field>
-
-                    <mat-form-field appearance="outline" class="field-half" *ngIf="!isReturnSupportMode && !isReturnAdminMode && !isReturnFromUsoFlow">
+                    <mat-form-field appearance="outline" class="field-half"
+                        *ngIf="shouldShowLoanDetailsFields">
                         <mat-label>Responsável</mat-label>
                         <mat-icon matPrefix>person</mat-icon>
 
@@ -100,34 +94,49 @@
                         </mat-autocomplete>
                     </mat-form-field>
 
-                    <mat-form-field appearance="outline" class="field-half" *ngIf="!isReturnSupportMode && !isReturnAdminMode && !isReturnFromUsoFlow">
+                    <mat-form-field appearance="outline" class="field-half"
+                        *ngIf="!isReturnSupportMode && !isReturnFromUsoFlow">
                         <mat-label>Projeto</mat-label>
                         <mat-icon matPrefix>work</mat-icon>
                         <input matInput formControlName="projeto" />
                     </mat-form-field>
 
-                    <mat-form-field appearance="outline" class="field-half" *ngIf="!isReturnSupportMode && !isReturnAdminMode && !isReturnFromUsoFlow">
+                    <mat-form-field appearance="outline" class="field-half"
+                        *ngIf="shouldShowLoanDetailsFields">
                         <mat-label>Data do Empréstimo</mat-label>
                         <input matInput [matDatepicker]="picker" formControlName="loanDate" (click)="picker.open()">
                         <mat-datepicker-toggle matSuffix [for]="picker"></mat-datepicker-toggle>
                         <mat-datepicker #picker></mat-datepicker>
                     </mat-form-field>
 
-                    <mat-form-field appearance="outline" class="field-full" *ngIf="!isReturnSupportMode && !isReturnAdminMode && !isReturnFromUsoFlow">
+                    <mat-form-field appearance="outline" class="field-half"
+                        *ngIf="!isReturnSupportMode && !isReturnFromUsoFlow">
+                        <mat-label>Data de Devolução (Opcional)</mat-label>
+                        <input matInput [matDatepicker]="returnPicker" formControlName="returnDate"
+                            (click)="returnPicker.open()">
+                        <mat-datepicker-toggle matSuffix [for]="returnPicker"></mat-datepicker-toggle>
+                        <mat-datepicker #returnPicker></mat-datepicker>
+                    </mat-form-field>
+
+                    <mat-form-field appearance="outline" class="field-full"
+                        *ngIf="shouldShowLoanDetailsFields">
                         <mat-label>Observações</mat-label>
                         <mat-icon matPrefix>notes</mat-icon>
                         <textarea matInput formControlName="observacao" rows="4"></textarea>
                     </mat-form-field>
 
-                    <div class="field-full" style="margin-bottom: 20px;" *ngIf="!isReturnSupportMode && !isReturnAdminMode && !isReturnFromUsoFlow">
+                    <div class="field-full" style="margin-bottom: 20px;"
+                        *ngIf="shouldShowLoanDetailsFields">
                         <mat-checkbox formControlName="enviadoSedex" color="primary">
                             Enviado por Sedex
                         </mat-checkbox>
                     </div>
 
-                    <mat-form-field appearance="outline" class="field-half" *ngIf="!isReturnSupportMode && !isReturnAdminMode && !isReturnFromUsoFlow && loanForm.get('enviadoSedex')?.value">
+                    <mat-form-field appearance="outline" class="field-half"
+                        *ngIf="shouldShowLoanDetailsFields && loanForm.get('enviadoSedex')?.value">
                         <mat-label>Data do Envio (Sedex)</mat-label>
-                        <input matInput [matDatepicker]="sedexPicker" formControlName="dataSedex" (click)="sedexPicker.open()">
+                        <input matInput [matDatepicker]="sedexPicker" formControlName="dataSedex"
+                            (click)="sedexPicker.open()">
                         <mat-datepicker-toggle matSuffix [for]="sedexPicker"></mat-datepicker-toggle>
                         <mat-datepicker #sedexPicker></mat-datepicker>
                         <mat-error *ngIf="loanForm.get('dataSedex')?.hasError('required')">
@@ -143,12 +152,13 @@
                                     Fotos
                                 </h3>
                                 <div class="upload-row">
-                                    <button type="button" mat-stroked-button color="primary" (click)="fileInput.click()">
+                                    <button type="button" mat-stroked-button color="primary" (click)="fileInput.click()"
+                                        [disabled]="!isFotosEnabled">
                                         <mat-icon>attach_file</mat-icon>
                                         Selecionar Imagens
                                     </button>
-                                    <input #fileInput type="file" (change)="onFileSelected($event)" multiple accept="image/*"
-                                        style="display: none;" />
+                                    <input #fileInput type="file" (change)="onFileSelected($event)" multiple
+                                        accept="image/*" [disabled]="!isFotosEnabled" style="display: none;" />
                                     <span *ngIf="selectedFiles.length > 0" class="selected-count">
                                         {{ selectedFiles.length }} arquivo(s) selecionado(s)
                                     </span>
@@ -156,24 +166,28 @@
                                 <div *ngIf="previsualizacoes.length > 0" class="preview-list">
                                     <div *ngFor="let img of previsualizacoes; let i = index" class="preview-item">
                                         <img [src]="img" alt="Prévia" />
-                                        <button mat-mini-fab color="warn" type="button" (click)="removerArquivo(i)">
+                                        <button mat-mini-fab color="warn" type="button" (click)="removerArquivo(i)"
+                                            [disabled]="!isFotosEnabled">
                                             <mat-icon>close</mat-icon>
                                         </button>
                                     </div>
                                 </div>
                             </div>
 
-                            <div class="attachment-col" *ngIf="(!isReturnSupportMode && !isReturnAdminMode) || isReturnFromUsoFlow">
+                            <div class="attachment-col"
+                                *ngIf="(!isReturnSupportMode && !isReturnAdminMode) || isReturnFromUsoFlow">
                                 <h3 class="section-subtitle">
                                     <mat-icon>description</mat-icon>
                                     Termo de Responsabilidade (PDF)
                                 </h3>
                                 <div class="upload-row">
-                                    <button type="button" mat-stroked-button color="primary" (click)="pdfInput.click()">
+                                    <button type="button" mat-stroked-button color="primary" (click)="pdfInput.click()"
+                                        [disabled]="!isTermoEnabled">
                                         <mat-icon>attach_file</mat-icon>
                                         Selecionar PDF
                                     </button>
-                                    <input #pdfInput type="file" (change)="onPdfSelected($event)" accept="application/pdf,.pdf"
+                                    <input #pdfInput type="file" (change)="onPdfSelected($event)"
+                                        accept="application/pdf,.pdf" [disabled]="!isTermoEnabled"
                                         style="display: none;" />
                                     <span *ngIf="pdfFile" class="selected-count">
                                         1 arquivo selecionado
@@ -183,7 +197,8 @@
                                 <div *ngIf="pdfFile" class="file-preview">
                                     <mat-icon color="primary">picture_as_pdf</mat-icon>
                                     <span class="file-name">{{ pdfFile.name }}</span>
-                                    <button mat-mini-fab color="warn" type="button" (click)="removerPdf()">
+                                    <button mat-mini-fab color="warn" type="button" (click)="removerPdf()"
+                                        [disabled]="!isTermoEnabled">
                                         <mat-icon>close</mat-icon>
                                     </button>
                                 </div>
@@ -195,12 +210,13 @@
                                     Termo de Baixa Assinado (PDF)
                                 </h3>
                                 <div class="upload-row">
-                                    <button type="button" mat-stroked-button color="primary" (click)="writeOffPdfInput.click()">
+                                    <button type="button" mat-stroked-button color="primary"
+                                        (click)="writeOffPdfInput.click()">
                                         <mat-icon>attach_file</mat-icon>
                                         Selecionar PDF
                                     </button>
-                                    <input #writeOffPdfInput type="file" (change)="onWriteOffPdfSelected($event)" accept="application/pdf,.pdf"
-                                        style="display: none;" />
+                                    <input #writeOffPdfInput type="file" (change)="onWriteOffPdfSelected($event)"
+                                        accept="application/pdf,.pdf" style="display: none;" />
                                     <span *ngIf="writeOffPdfFile" class="selected-count">
                                         1 arquivo selecionado
                                     </span>
@@ -226,13 +242,19 @@
                     <mat-icon>close</mat-icon> Cancelar
                 </button>
                 <button mat-raised-button color="primary" type="submit"
-                    [disabled]="(isReturnSupportMode && selectedFiles.length < 1) || (isReturnAdminMode && (selectedFiles.length < 1 || !writeOffPdfFile)) || (isReturnFromUsoFlow && selectedFiles.length < 1) || (!isReturnSupportMode && !isReturnAdminMode && !isReturnFromUsoFlow && loanForm.invalid) || isSaving"
+                    [disabled]="(isAssinaturaBaixaFlow && !pdfFile) 
+                    || (isReturnSupportMode && selectedFiles.length < 1) 
+                    || (isReturnAdminMode && !writeOffPdfFile) 
+                    || (isReturnFromUsoFlow && selectedFiles.length < 1) 
+                    || (!isReturnSupportMode && !isReturnAdminMode && !isReturnFromUsoFlow && loanForm.invalid) 
+                    || isSaving"
                     (click)="onSubmit()" class="btn-salvar">
                     <mat-icon>check_circle</mat-icon>
                     <span *ngIf="isReturnSupportMode">Registrar Devolução</span>
                     <span *ngIf="isReturnAdminMode">Finalizar e Liberar Equipamento</span>
                     <span *ngIf="isReturnFromUsoFlow">Iniciar Devolução</span>
-                    <span *ngIf="!isReturnSupportMode && !isReturnAdminMode && !isReturnFromUsoFlow">Confirmar e Salvar</span>
+                    <span *ngIf="!isReturnSupportMode && !isReturnAdminMode && !isReturnFromUsoFlow">Confirmar e
+                        Salvar</span>
                 </button>
             </mat-card-actions>
         </mat-card>

@@ -12,7 +12,7 @@ export enum StatusType {
 export const STATUS_TYPE_LABEL: Record<StatusType, string> = {
   [StatusType.EM_USO]: 'Em Uso',
   [StatusType.AGUARDANDO_ASSINATURA]: 'Aguardando Assinatura',
-  [StatusType.EM_PREPARACAO]: 'Preparação',
+  [StatusType.EM_PREPARACAO]: 'Em Preparação',
   [StatusType.DISPONIVEL]: 'Disponível',
   [StatusType.EM_DEVOLUCAO]: 'Em Devolução',
   [StatusType.AGUARDANDO_BAIXA]: 'Aguardando Baixa',
@@ -24,4 +24,62 @@ export type StatusTypeOption = { value: StatusType; label: string };
 
 export const STATUS_TYPE_OPTIONS: StatusTypeOption[] = (Object.values(StatusType) as StatusType[])
   .map((value) => ({ value, label: STATUS_TYPE_LABEL[value] }));
+
+export type StatusColorKey = 'green' | 'orange' | 'blue' | 'gray' | 'purple';
+
+/**
+ * Paleta única de cores para status em todo o front.
+ * Regra 
+ * - DISPONIVEL: verde
+ * - EM_PREPARACAO / AGUARDANDO_ASSINATURA / AGUARDANDO_BAIXA: laranja
+ * - EM_USO: azul
+ * - INDISPONIVEL: cinza
+ * - EM_DEVOLUCAO / EM_MANUTENCAO: roxo
+ */
+export const STATUS_TYPE_COLOR: Record<StatusType, StatusColorKey> = {
+  [StatusType.DISPONIVEL]: 'green',
+  [StatusType.EM_PREPARACAO]: 'orange',
+  [StatusType.AGUARDANDO_ASSINATURA]: 'orange',
+  [StatusType.AGUARDANDO_BAIXA]: 'orange',
+  [StatusType.EM_USO]: 'blue',
+  [StatusType.INDISPONIVEL]: 'gray',
+  [StatusType.EM_DEVOLUCAO]: 'purple',
+  [StatusType.EM_MANUTENCAO]: 'purple'
+};
+
+export function normalizeStatusType(raw: unknown): StatusType | null {
+  if (!raw) return null;
+  const v = String(raw).trim().toUpperCase();
+
+  if (v === 'PREPARACAO' || v === 'EM_PREPARO') return StatusType.EM_PREPARACAO;
+
+  if ((Object.values(StatusType) as string[]).includes(v)) {
+    return v as StatusType;
+  }
+  return null;
+}
+
+export function statusColorClass(raw: unknown): string {
+  const st = normalizeStatusType(raw);
+  if (!st) return 'status-gray';
+  return `status-${STATUS_TYPE_COLOR[st]}`;
+}
+
+export function formatStatusLabel(raw: unknown): string {
+  const st = normalizeStatusType(raw);
+  if (st && STATUS_TYPE_LABEL[st]) return STATUS_TYPE_LABEL[st];
+
+  if (!raw) return '-';
+  const v = String(raw).trim();
+  if (!v) return '-';
+
+  // Fallback para casos inesperados: "EM_USO" -> "Em Uso"
+  return v
+    .replace(/_/g, ' ')
+    .toLowerCase()
+    .split(' ')
+    .filter(Boolean)
+    .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ');
+}
 

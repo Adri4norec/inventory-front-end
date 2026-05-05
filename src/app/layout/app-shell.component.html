@@ -1,0 +1,18 @@
+<div
+  class="app-shell"
+  [class.app-shell--no-sidebar]="!showSidebar"
+  [style.--app-sidebar-width.px]="layout.sidebarWidthPx">
+  <aside
+    *ngIf="showSidebar"
+    class="app-shell__sidebar"
+    [class.app-shell__sidebar--collapsed]="!layout.isMenuOpen"
+    [attr.aria-hidden]="!layout.isMenuOpen">
+    <div class="app-shell__sidebar-inner">
+      <app-sidebar></app-sidebar>
+    </div>
+  </aside>
+
+  <main class="app-shell__main">
+    <router-outlet></router-outlet>
+  </main>
+</div>

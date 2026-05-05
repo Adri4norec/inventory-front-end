@@ -18,8 +18,8 @@
         </mat-card-title>
         <mat-card-subtitle>
           Status Atual:
-          <span class="status-label" [style.color]="equipamento?.statusName === 'DISPONIVEL' ? 'green' : 'orange'">
-            {{ equipamento?.statusName }}
+          <span class="status-label" [ngClass]="getStatusClass(equipamento?.statusName)">
+            {{ formatStatusLabel(equipamento?.statusName) }}
           </span>
         </mat-card-subtitle>
       </mat-card-header>
@@ -29,7 +29,7 @@
       <mat-card-content class="equipment-details">
         <div class="details-row">
           <div class="detail-item">
-            <label>Patrimônio</label>
+            <label>Código/ID</label>
             <span><strong>{{ equipamento?.topo }}</strong></span>
           </div>
           <div class="detail-item">

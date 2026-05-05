@@ -14,6 +14,9 @@ export interface LoanListResponse {
   equipmentId?: string;
   enviadoSedex?: boolean;
   dataSedex?: string;
+  proprietaryName?: string;
+  usageType?: string;
+  dateHour?: string;
 }
 
 export interface LoanDetailResponse {

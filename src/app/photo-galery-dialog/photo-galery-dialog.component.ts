@@ -21,6 +21,8 @@ import { MatTooltipModule } from '@angular/material/tooltip';
   styleUrls: ['./photo-galery-dialog.component.css']
 })
 export class PhotoGaleryDialogComponent {
+  private readonly API_BASE = 'http://localhost:8080';
+
   constructor(
     public dialogRef: MatDialogRef<PhotoGaleryDialogComponent>,
     @Inject(MAT_DIALOG_DATA) public data: { urls: string[] }
@@ -30,7 +32,21 @@ export class PhotoGaleryDialogComponent {
     this.dialogRef.close();
   }
 
+  resolveImageUrl(raw: string): string {
+    if (!raw) return '';
+    const url = String(raw).trim();
+    if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) return url;
+
+    const normalized = url.startsWith('/') ? url.slice(1) : url;
+    const path = normalized.startsWith('uploads/') ? normalized : `uploads/${normalized}`;
+
+    // Cache-buster para garantir atualização imediata após REPLACE no backend
+    return `${this.API_BASE}/${path}?t=${Date.now()}`;
+  }
+
   openImageFull(url: string) {
-    window.open(`http://localhost:8080/uploads/${url}`, '_blank');
+    const resolved = this.resolveImageUrl(url);
+    if (!resolved) return;
+    window.open(resolved, '_blank');
   }
 }

@@ -16,11 +16,14 @@ import { MatMenuModule } from '@angular/material/menu';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { forkJoin, of } from 'rxjs';
+import { catchError, map } from 'rxjs/operators';
 
 import { LoanService } from '../services/loan/loan.service';
+import { EquipamentService } from '../services/equipament/equipment.service';
 import { LoanListResponse } from '../models/loans/loans.model';
 import { LayoutService } from '../services/layout/layout.service';
-import { STATUS_TYPE_OPTIONS } from '../models/status/status-type';
+import { formatStatusLabel, normalizeStatusType, STATUS_TYPE_OPTIONS, StatusType, statusColorClass } from '../models/status/status-type';
 
 @Component({
   selector: 'app-loan-list',
@@ -35,9 +38,9 @@ import { STATUS_TYPE_OPTIONS } from '../models/status/status-type';
   styleUrls: ['./loan-list.component.css']
 })
 export class LoanListComponent implements OnInit {
-  
-  displayedColumns: string[] = ['codigo', 'categoria', 'name', 'description', 'status', 'loanDate', 'expectedReturnDate', 'acoes'];
-  dataSource: LoanListResponse[] = []; 
+
+  displayedColumns: string[] = ['codigo', 'categoria', 'name', 'description', 'status', 'loanDate', 'returnDate', 'acoes'];
+  dataSource: LoanListResponse[] = [];
   isLoading = true;
   totalElements = 0;
   pageSize = 10;
@@ -45,41 +48,18 @@ export class LoanListComponent implements OnInit {
 
   filtros = { codigo: '', categoria: '', nome: '', caracteristicas: '', status: '' };
   statusFilterOptions = STATUS_TYPE_OPTIONS;
+  private requestedStatusFilter: StatusType | null = null;
 
   constructor(
     private loanService: LoanService,
+    private equipamentService: EquipamentService,
     private router: Router,
     private snackBar: MatSnackBar,
     public layout: LayoutService
-  ) {}
+  ) { }
 
   ngOnInit(): void {
     this.carregarDados();
-  }
-
-  obterProximoStatus(statusAtual: string): string | null {
-    const esteira: { [key: string]: string } = {
-      'EM_PREPARO': 'PRONTO',
-      'PRONTO': 'AGUARDANDO_DOCUMENTACAO',
-      'AGUARDANDO_DOCUMENTACAO': 'AGUARDANDO_ASSINATURA',
-      'AGUARDANDO_ASSINATURA': 'AGUARDANDO_RETIRADA',
-      'AGUARDANDO_RETIRADA': 'EMPRESTIMO_FINALIZADO'
-    };
-    return esteira[statusAtual] || null;
-  }
-
-  avancarEtapa(item: LoanListResponse): void {
-    const novoStatus = this.obterProximoStatus(item.status);
-    if (!novoStatus) return;
-
-    this.isLoading = true;
-    this.loanService.updateLoanStatus(item.id, novoStatus).subscribe({
-      next: () => {
-        this.snackBar.open(`Status atualizado: ${this.formatStatus(novoStatus)}`, 'OK', { duration: 3000 });
-        this.carregarDados();
-      },
-      error: (err) => this.lidarComErro('Erro ao atualizar status', err)
-    });
   }
 
   openSupportReturn(item: LoanListResponse): void {
@@ -94,36 +74,110 @@ export class LoanListComponent implements OnInit {
     });
   }
 
-  performLoan(id: string): void {
-    console.log('Iniciando empréstimo para ID:', id);
-  }
-
   openPreparationScreen(item: LoanListResponse): void {
     if (item.status === 'DISPONIVEL') {
       const equipmentId = item.equipmentId || item.id;
       this.router.navigate(['/equipaments', equipmentId, 'preparation-loan']);
       return;
     }
-
     this.router.navigate(['/loans', item.id, 'preparation-loan']);
   }
 
   carregarDados(page = this.pageIndex, size = this.pageSize): void {
     this.isLoading = true;
-    this.loanService.advancedSearch(this.filtros, page, size).subscribe({
+    this.requestedStatusFilter = normalizeStatusType(this.filtros.status);
+
+    const filtrosParaApi = { ...this.filtros };
+    if (this.requestedStatusFilter === StatusType.INDISPONIVEL) {
+      filtrosParaApi.status = '';
+    }
+
+    this.loanService.advancedSearch(filtrosParaApi, page, size).subscribe({
       next: (response: any) => this.processarResposta(response),
       error: (err: any) => this.lidarComErro('Erro ao carregar dados', err)
     });
   }
 
+  private coerceApiDate(value?: string | Date | null): Date | null {
+    if (!value) return null;
+    if (value instanceof Date) return isNaN(value.getTime()) ? null : value;
+    const d = new Date(value);
+    return isNaN(d.getTime()) ? null : d;
+  }
+
   private processarResposta(response: any): void {
-    this.dataSource = (response.content || []).filter((item: LoanListResponse) => {
-      if (item.status !== 'DISPONIVEL') return true;
-      return item.hasLoanHistory === true;
-    });
+    const baseList = this.sanitizeLoanData(response.content || []);
+    
     this.totalElements = response.totalElements;
     this.pageIndex = response.number;
+
+    const toCheck = this.getEquipmentsToCheck(baseList);
+
+    if (toCheck.length === 0) {
+      this.finalizeDataSource(baseList);
+      return;
+    }
+
+    this.syncWithEquipmentApi(toCheck, baseList);
+  }
+
+  private sanitizeLoanData(content: LoanListResponse[]): LoanListResponse[] {
+    return content
+      .filter(item => item.status !== 'DISPONIVEL' || item.hasLoanHistory)
+      .map(item => ({
+        ...item,
+        loanDate: this.coerceApiDate(item.loanDate) as any,
+        returnDate: this.coerceApiDate(item.returnDate) as any
+      }));
+  }
+
+  private getEquipmentsToCheck(list: LoanListResponse[]) {
+    return list
+      .filter(i => normalizeStatusType(i.status) === StatusType.DISPONIVEL)
+      .map(i => ({ loan: i, equipmentId: (i.equipmentId || i.id) as string }))
+      .filter(x => !!x.equipmentId);
+  }
+
+  private syncWithEquipmentApi(toCheck: any[], baseList: LoanListResponse[]): void {
+    forkJoin(
+      toCheck.map(({ equipmentId }) =>
+        this.equipamentService.findById(equipmentId).pipe(
+          map((eq: any) => ({ equipmentId, statusName: eq?.statusName })),
+          catchError(() => of({ equipmentId, statusName: null }))
+        )
+      )
+    ).subscribe({
+      next: (results) => {
+        const statusByEquipment = new Map<string, any>();
+        results.forEach(r => statusByEquipment.set(r.equipmentId, r.statusName));
+
+        const reconciled = baseList.map(item => {
+          const equipmentId = item.equipmentId || item.id;
+          const eqStatus = statusByEquipment.get(equipmentId);
+          if (normalizeStatusType(eqStatus) === StatusType.INDISPONIVEL) {
+            return { ...item, status: StatusType.INDISPONIVEL };
+          }
+          return item;
+        });
+
+        this.finalizeDataSource(reconciled);
+      },
+      error: () => this.finalizeDataSource(baseList)
+    });
+  }
+
+  private finalizeDataSource(list: LoanListResponse[]): void {
+    this.dataSource = this.applyRequestedStatusFilter(list);
     this.isLoading = false;
+  }
+
+  private applyRequestedStatusFilter(list: LoanListResponse[]): LoanListResponse[] {
+    if (!this.requestedStatusFilter) return list;
+    return list.filter(it => normalizeStatusType(it.status) === this.requestedStatusFilter);
+  }
+
+  isExtinto(status: unknown): boolean {
+    return normalizeStatusType(status) === StatusType.INDISPONIVEL;
   }
 
   private lidarComErro(mensagem: string, err: any): void {
@@ -133,31 +187,11 @@ export class LoanListComponent implements OnInit {
   }
 
   formatStatus(status: string): string {
-    const statusMap: Record<string, string> = {
-      'DISPONIVEL': 'Disponível',
-      'EM_PREPARO': 'Preparo',
-      'PREPARACAO': 'Preparação',
-      'PRONTO': 'Pronto para Uso',
-      'AGUARDANDO_DOCUMENTACAO': 'Aguardando Documentos',
-      'AGUARDANDO_ASSINATURA': 'Aguardando Assinatura',
-      'AGUARDANDO_RETIRADA': 'Aguardando Retirada',
-      'EMPRESTIMO_FINALIZADO': 'Finalizado',
-      'EM_DEVOLUCAO': 'Em Devolução',
-      'DEVOLVIDO': 'Devolvido'
-    };
-    return statusMap[status] || status;
+    return formatStatusLabel(status);
   }
 
   getStatusClass(status: string): string {
-    if (status === 'DISPONIVEL') return 'badge-success';
-    if (status === 'EMPRESTIMO_FINALIZADO') return 'badge-success';
-    if (status === 'EM_PREPARO' || status === 'PREPARACAO') return 'badge-warning';
-    if (status === 'EM_DEVOLUCAO') return 'badge-warning';
-    return 'badge-info';
-  }
-
-  podeAvancar(status: string): boolean {
-    return !!this.obterProximoStatus(status);
+    return statusColorClass(status);
   }
 
   podeDevolver(status: string): boolean {
@@ -168,11 +202,16 @@ export class LoanListComponent implements OnInit {
     return status === 'EM_DEVOLUCAO';
   }
 
-  aplicarFiltros(): void { this.pageIndex = 0; this.carregarDados(); }
-  limparFiltros(): void { 
-    this.filtros = { codigo: '', categoria: '', nome: '', caracteristicas: '', status: '' };
-    this.aplicarFiltros(); 
+  aplicarFiltros(): void { 
+    this.pageIndex = 0; 
+    this.carregarDados(); 
   }
+
+  limparFiltros(): void {
+    this.filtros = { codigo: '', categoria: '', nome: '', caracteristicas: '', status: '' };
+    this.aplicarFiltros();
+  }
+
   handlePageEvent(e: PageEvent): void {
     this.pageIndex = e.pageIndex;
     this.pageSize = e.pageSize;

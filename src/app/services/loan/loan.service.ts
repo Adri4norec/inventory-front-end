@@ -3,6 +3,7 @@ import { isPlatformBrowser } from '@angular/common';
 import { HttpClient, HttpParams, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { LoanListResponse, EquipmentLoanResponse, UserSearchResponse } from '../../models/loans/loans.model';
+import { StatusType } from '../../models/status/status-type';
 
 @Injectable({
   providedIn: 'root'
@@ -54,7 +55,14 @@ export class LoanService {
 
     Object.keys(mapeamento).forEach(key => {
       if (filtros[key]) {
-        params = params.set(mapeamento[key], filtros[key]);
+        let value = filtros[key];
+
+        // Compatibilidade: backend ainda filtra "PREPARACAO"/"EM_PREPARO" em vez de "EM_PREPARACAO".
+        if (key === 'status' && value === StatusType.EM_PREPARACAO) {
+          value = 'PREPARACAO';
+        }
+
+        params = params.set(mapeamento[key], value);
       }
     });
 

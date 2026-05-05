@@ -34,7 +34,7 @@ import { EquipmentResponse } from '../models/equipaments/equipament.model';
 import { EquipamentService } from '../services/equipament/equipment.service';
 import { AuthService } from '../services/auth/auth.service';
 import { LayoutService } from '../services/layout/layout.service';
-import { STATUS_TYPE_LABEL, STATUS_TYPE_OPTIONS, StatusType } from '../models/status/status-type';
+import { STATUS_TYPE_LABEL, STATUS_TYPE_OPTIONS, StatusType, normalizeStatusType, statusColorClass } from '../models/status/status-type';
 
 @Component({
   selector: 'app-equipament',
@@ -66,7 +66,7 @@ import { STATUS_TYPE_LABEL, STATUS_TYPE_OPTIONS, StatusType } from '../models/st
   templateUrl: './equipament.component.html',
   styleUrls: ['./equipament.component.css']
 })
-export class EquipamentComponent implements OnInit {
+export class EquipamentComponent implements OnInit, OnDestroy {
 
   equipamentos: EquipmentResponse[] = [];
   isLoading = true;
@@ -176,14 +176,19 @@ export class EquipamentComponent implements OnInit {
     return STATUS_TYPE_LABEL[key] ?? status ?? 'Sem Status';
   }
 
-  getAcessoriosOrdenados(equipamento: EquipmentResponse): string {
-    if (!equipamento.perParts || equipamento.perParts.length === 0) {
-      return '(N/A)';
-    }
-    return equipamento.perParts
-      .map(part => part.name)
-      .sort((a, b) => a.localeCompare(b))
-      .join(', ');
+  getStatusClass(status: string): string {
+    return statusColorClass(status);
+  }
+
+  podeMovimentar(status: unknown): boolean {
+    const st = normalizeStatusType(status);
+    if (!st) return false;
+    return [
+      StatusType.EM_USO,
+      StatusType.EM_MANUTENCAO,
+      StatusType.DISPONIVEL,
+      StatusType.EM_DEVOLUCAO
+    ].includes(st);
   }
 
   editarEquipamento(equipamento: EquipmentResponse): void {

@@ -2,7 +2,8 @@ import { HttpInterceptorFn } from '@angular/common/http';
 
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
   if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
-    const token = localStorage.getItem('token');
+    // Compatibilidade: algumas telas gravam como `access_token`, outras como `token`.
+    const token = localStorage.getItem('access_token') || localStorage.getItem('token');
     
     if (token) {
       const cloned = req.clone({

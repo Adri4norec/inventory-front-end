@@ -27,6 +27,13 @@
   font-weight: bold;
 }
 
+/* Paleta única de status (texto) */
+.status-green { color: #166534; }
+.status-orange { color: #ef6c00; }
+.status-blue { color: #1565c0; }
+.status-gray { color: #374151; }
+.status-purple { color: #5b21b6; }
+
 .card-content-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -83,9 +90,23 @@
   color: #555;
 }
 
+/* Preenche o <main> (flex) e evita largura “estreita” + scroll duplo — alinhado a cadastro/equipamento */
+:host {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+}
+
 /* ─── Layout ─────────────────────────────────────── */
 .page-wrapper {
-  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  max-height: 100%;
   background: #f0f4f8;
 }
 
@@ -93,6 +114,12 @@
   padding: 28px 32px;
   max-width: 1280px;
   margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* ─── Toolbar ────────────────────────────────────── */

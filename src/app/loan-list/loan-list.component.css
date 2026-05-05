@@ -4,9 +4,7 @@
 .page-wrapper {
   min-height: 100vh;
   background: #f0f4f8;
-  padding: 0; 
-  /* O segredo para o menu não sumir: 
-     Se o seu menu lateral é fixo, o wrapper precisa desse respiro */
+  padding: 0;
   display: flex;
   flex-direction: column;
 }
@@ -15,61 +13,58 @@
 .page-toolbar {
   position: sticky;
   top: 0;
-  /* Diminuímos o z-index para o botão do menu lateral aparecer sobre ela */
-  z-index: 998; 
+  z-index: 998;
   width: 100%;
-  border-radius: 0; 
+  border-radius: 0;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   margin-bottom: 24px;
-  
-  /* Se o menu estiver aberto, o texto não pode bater nele. 
-     Ajuste este padding para o título ficar centralizado/visível */
-  padding: 0 24px 0 80px !important; 
+  padding: 0 24px 0 80px !important;
 }
 
 /* ─── Cards (Filtros e Tabela) ───────────────────────────────── */
 .filter-card, .table-card {
-  /* Margens laterais para os cards não colarem no menu lateral */
-  margin: 0 24px 24px 24px; 
+  margin: 0 24px 24px 24px;
   border-radius: 8px !important;
   z-index: 997;
 }
 
-
-/* =========================================
-   ESTILOS DA TABELA
-   ========================================= */
-
 table {
   width: 100%;
+  table-layout: fixed; /* Mantém colunas estáveis + evita quebra de linha */
 }
 
-/* Cabeçalho da tabela */
-th.mat-header-cell {
+/* Por padrão, nenhuma coluna “invade” a próxima: se não couber, mostra ... */
+td.mat-mdc-cell {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+td.mat-mdc-cell > * {
+  min-width: 0;
+}
+
+/* Cabeçalho: permite quebra de linha (ex.: "Data" / "Devolução") sem "..." */
+.mat-mdc-header-cell {
   font-weight: bold;
   color: #333;
   font-size: 13px;
   text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: normal !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  max-width: none !important;
 }
 
-/* Efeito de Hover nas linhas da tabela (Perfumaria) */
-.element-row {
-  transition: background-color 0.2s ease;
-}
-
-.element-row:hover {
-  background-color: #f5f5f5; /* Cinza bem clarinho ao passar o mouse */
-  cursor: pointer;
-}
-
-/* Limita o tamanho do texto muito longo com '...' */
-.truncate-text {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 250px;
-  display: inline-block;
-  vertical-align: middle;
+/* O "..." costuma vir do label interno do MDC */
+.mat-mdc-header-cell .mdc-data-table__header-cell-label,
+.mat-mdc-header-cell .mat-sort-header-container,
+.mat-mdc-header-cell .mat-sort-header-content {
+  white-space: normal !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  max-width: none !important;
 }
 
 /* =========================================
@@ -94,32 +89,51 @@ th.mat-header-cell {
   color: #1565c0;
 }
 
-.badge-success {
-  background-color: #e8f5e9; /* Fundo verde claro */
-  color: #2e7d32;            /* Texto verde escuro */
-}
-
-.badge-warning {
-  background-color: #fff3e0; /* Fundo laranja claro */
-  color: #ef6c00;            /* Texto laranja escuro */
-}
+.status-green { background-color: #dcfce7; color: #166534; }
+.status-orange { background-color: #fff3e0; color: #ef6c00; }
+.status-blue { background-color: #e3f2fd; color: #1565c0; }
+.status-gray { background-color: #f3f4f6; color: #374151; }
+.status-purple { background-color: #ede9fe; color: #5b21b6; }
 
 /* ─── Ajustes dos Filtros ────────────────────────────────────── */
 ::ng-deep .compact-filter .mat-mdc-form-field-subscript-wrapper {
-  display: none; 
+  display: none;
 }
 
-/* ─── Largura Fixa das Colunas ─────── */
-.mat-column-codigo { width: 10%; min-width: 100px; }
+.mat-column-codigo { width: 14%; min-width: 140px; }
 .mat-column-categoria { width: 15%; min-width: 120px; }
-.mat-column-name { width: 20%; min-width: 150px; font-weight: 500; }
-.mat-column-description { width: 20%; min-width: 150px; }
+.mat-column-name { width: 12%; min-width: 110px; font-weight: 500; }
+.mat-column-description { width: 12%; min-width: 120px; }
 .mat-column-status { width: 12%; min-width: 120px; }
 .mat-column-loanDate { width: 10%; min-width: 100px; }
-.mat-column-expectedReturnDate { width: 10%; min-width: 100px; }
+.mat-column-returnDate { width: 10%; min-width: 100px; }
 .mat-column-acoes { width: 80px; text-align: center; padding-right: 8px !important; }
 
-/* ─── Características (Truncamento de Texto) ─────────────────── */
+/* Fora de Características, tudo deve ficar em uma única linha (sem quebrar palavras). */
+.mat-column-codigo,
+.mat-column-categoria,
+.mat-column-name,
+.mat-column-status,
+.mat-column-loanDate,
+.mat-column-returnDate {
+  white-space: nowrap;
+  word-break: keep-all;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Afastamento maior entre Características e Status (header + células) */
+th.mat-column-description,
+td.mat-column-description {
+  padding-right: 28px !important;
+}
+
+th.mat-column-status,
+td.mat-column-status {
+  padding-left: 28px !important;
+}
+
+/* Apenas Características mantém truncamento com tooltip ( ... ) */
 .truncate-text {
   display: block;
   max-width: 100%;
@@ -129,38 +143,8 @@ th.mat-header-cell {
   color: #6b7280;
 }
 
-/* ─── Loading Text ───────────────────────────────────────────── */
 .loading-text {
   margin-top: 16px;
   color: #666;
-  font-size: 14px;
-}
-
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 40px 20px;
-  color: #757575;
-  text-align: center;
-}
-
-.empty-state .empty-icon {
-  font-size: 48px;
-  width: 48px;
-  height: 48px;
-  margin-bottom: 16px;
-  color: #bdbdbd;
-}
-
-.empty-state h3 {
-  margin: 0 0 8px 0;
-  color: #424242;
-  font-size: 18px;
-}
-
-.empty-state p {
-  margin: 0;
   font-size: 14px;
 }

@@ -23,6 +23,7 @@ import { MovementService } from '../services/movement/movement.service';
 import { PhotoGaleryDialogComponent } from '../photo-galery-dialog/photo-galery-dialog.component';
 import { MovementRequest, MovementResponse, MovementType } from '../models/movement/movement.model';
 import { LayoutService } from '../services/layout/layout.service';
+import { formatStatusLabel, statusColorClass } from '../models/status/status-type';
 
 @Component({
   selector: 'app-movement',
@@ -60,6 +61,14 @@ export class MovementComponent implements OnInit {
     public layout: LayoutService
   ) {
     this.initForm();
+  }
+
+  getStatusClass(status: unknown): string {
+    return statusColorClass(status);
+  }
+
+  formatStatusLabel(raw: unknown): string {
+    return formatStatusLabel(raw);
   }
 
   ngOnInit(): void {

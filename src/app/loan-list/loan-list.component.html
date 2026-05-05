@@ -28,12 +28,6 @@
       </mat-form-field>
 
       <mat-form-field appearance="outline" subscriptSizing="dynamic" class="compact-filter"
-        style="flex: 1; min-width: 150px;">
-        <mat-label>Características</mat-label>
-        <input matInput [(ngModel)]="filtros.caracteristicas" (keyup.enter)="aplicarFiltros()">
-      </mat-form-field>
-
-      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="compact-filter"
         style="flex: 1; min-width: 140px;">
         <mat-label>Status</mat-label>
         <mat-select [(ngModel)]="filtros.status" (selectionChange)="aplicarFiltros()">
@@ -42,16 +36,22 @@
         </mat-select>
       </mat-form-field>
 
-      <div style="display: flex; gap: 10px; align-items: center; margin-left: auto;">
-        <button mat-flat-button color="primary" (click)="aplicarFiltros()">
-          <mat-icon>search</mat-icon> Buscar
-        </button>
+      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="compact-filter"
+        style="flex: 1; min-width: 150px;">
+        <mat-label>Características</mat-label>
+        <input matInput [(ngModel)]="filtros.caracteristicas" (keyup.enter)="aplicarFiltros()">
+      </mat-form-field>
 
-        <button mat-icon-button color="warn" (click)="limparFiltros()" matTooltip="Limpar Filtros">
-          <mat-icon>clear</mat-icon>
-        </button>
-      </div>
+    </div>
 
+    <div style="display: flex; justify-content: space-between; gap: 12px; margin-top: 12px;">
+      <button mat-stroked-button type="button" (click)="limparFiltros()">
+        <mat-icon>close</mat-icon> Cancelar
+      </button>
+
+      <button mat-flat-button color="primary" (click)="aplicarFiltros()">
+        <mat-icon>search</mat-icon> Buscar
+      </button>
     </div>
   </mat-card>
 
@@ -65,34 +65,38 @@
       <table mat-table [dataSource]="dataSource" class="mat-elevation-z0">
 
         <ng-container matColumnDef="codigo">
-          <th mat-header-cell *matHeaderCellDef> ID / Tombo </th>
-          <td mat-cell *matCellDef="let element"> {{ element.codigo || '-' }} </td>
+          <th mat-header-cell *matHeaderCellDef style="white-space: nowrap;"> ID / Tombo </th>
+          <td mat-cell *matCellDef="let element">
+            <span [matTooltip]="element.codigo || ''">{{ element.codigo || '-' }}</span>
+          </td>
         </ng-container>
 
         <ng-container matColumnDef="categoria">
-          <th mat-header-cell *matHeaderCellDef> Categoria </th>
-          <td mat-cell *matCellDef="let element"> {{element.categoria || '-'}} </td>
+          <th mat-header-cell *matHeaderCellDef style="white-space: nowrap;"> Categoria </th>
+          <td mat-cell *matCellDef="let element">
+            <span [matTooltip]="element.categoria || ''">{{ element.categoria || '-' }}</span>
+          </td>
         </ng-container>
 
         <ng-container matColumnDef="name">
-          <th mat-header-cell *matHeaderCellDef> Nome </th>
-          <td mat-cell *matCellDef="let element"> {{element.name}} </td>
+          <th mat-header-cell *matHeaderCellDef style="white-space: nowrap;"> Nome </th>
+          <td mat-cell *matCellDef="let element">
+            <span [matTooltip]="element.name || ''">{{ element.name }}</span>
+          </td>
         </ng-container>
 
         <ng-container matColumnDef="description">
-          <th mat-header-cell *matHeaderCellDef> Características </th>
-          <td mat-cell *matCellDef="let element"> {{element.description}} </td>
+          <th mat-header-cell *matHeaderCellDef style="white-space: nowrap;"> Características </th>
+          <td mat-cell *matCellDef="let element">
+            <span class="truncate-text" [matTooltip]="element.description || ''">
+              {{ element.description || '-' }}
+            </span>
+          </td>
         </ng-container>
 
         <ng-container matColumnDef="status">
-          <th mat-header-cell *matHeaderCellDef> Status </th>
+          <th mat-header-cell *matHeaderCellDef style="white-space: nowrap;"> Status </th>
           <td mat-cell *matCellDef="let element">
-            <mat-icon *ngIf="element.status === 'EM_DEVOLUCAO'"
-              class="status-action-icon"
-              matTooltip="Em devolução - termo de baixa pendente"
-              aria-label="Em devolução">
-              description
-            </mat-icon>
             <span class="badge" [ngClass]="getStatusClass(element.status)">
               {{ formatStatus(element.status) }}
             </span>
@@ -100,28 +104,40 @@
         </ng-container>
 
         <ng-container matColumnDef="loanDate">
-          <th mat-header-cell *matHeaderCellDef> Data Empréstimo </th>
-          <td mat-cell *matCellDef="let element">
-            {{ element.loanDate ? (element.loanDate | date:'dd/MM/yyyy HH:mm') : '-' }}
+          <th mat-header-cell *matHeaderCellDef style="white-space: nowrap; width: 160px; min-width: 160px;"> Data Empréstimo </th>
+          <td mat-cell *matCellDef="let element" style="white-space: nowrap; width: 160px; min-width: 160px;">
+            <span [matTooltip]="(element.loanDate | date:'dd/MM/yyyy') || '-'">
+              {{ element.loanDate ? (element.loanDate | date:'dd/MM/yyyy') : '-' }}
+            </span>
           </td>
         </ng-container>
 
-        <ng-container matColumnDef="expectedReturnDate">
-          <th mat-header-cell *matHeaderCellDef> Prev. Devolução </th>
-          <td mat-cell *matCellDef="let element">
-            {{ element.expectedReturnDate ? (element.expectedReturnDate | date:'dd/MM/yyyy') : '-' }}
+        <ng-container matColumnDef="returnDate">
+          <th mat-header-cell *matHeaderCellDef style="white-space: nowrap; width: 160px; min-width: 160px;"> Data Devolução </th>
+          <td mat-cell *matCellDef="let element" style="white-space: nowrap; width: 160px; min-width: 160px;">
+            <span [matTooltip]="(element.returnDate | date:'dd/MM/yyyy') || '-'">
+              {{ element.returnDate ? (element.returnDate | date:'dd/MM/yyyy') : '-' }}
+            </span>
           </td>
         </ng-container>
 
         <ng-container matColumnDef="acoes">
-          <th mat-header-cell *matHeaderCellDef style="text-align: right;"> Ações </th>
+          <th mat-header-cell *matHeaderCellDef style="text-align: right; white-space: nowrap; width: 60px;"> Ações </th>
           <td mat-cell *matCellDef="let element" style="text-align: right;">
-            <button mat-icon-button [matMenuTriggerFor]="menu" aria-label="Ações do empréstimo">
-              <mat-icon>more_vert</mat-icon>
-            </button>
+            <ng-container *ngIf="!isExtinto(element.status); else semAcoes">
+              <button mat-icon-button [matMenuTriggerFor]="menu" aria-label="Ações do empréstimo">
+                <mat-icon>more_vert</mat-icon>
+              </button>
+            </ng-container>
+            <ng-template #semAcoes>
+              <button mat-icon-button disabled aria-label="Ações indisponíveis">
+                <mat-icon>more_vert</mat-icon>
+              </button>
+            </ng-template>
 
             <mat-menu #menu="matMenu">
-              <button mat-menu-item *ngIf="element.status !== 'DEVOLVIDO' && element.status !== 'CANCELADO'"
+              <button mat-menu-item
+                *ngIf="element.status !== 'DEVOLVIDO' && element.status !== 'CANCELADO' && element.status !== 'EM_DEVOLUCAO'"
                 (click)="openPreparationScreen(element)">
                 <mat-icon color="primary">edit</mat-icon>
                 <span>{{ element.status === 'DISPONIVEL' ? 'Novo Empréstimo' : 'Editar Status de Empréstimo' }}</span>
@@ -132,7 +148,8 @@
                 <span>Registrar Devolução (Suporte)</span>
               </button>
 
-              <button mat-menu-item *ngIf="podeFinalizarDevolucao(element.status)" (click)="openAdminFinalizeReturn(element)">
+              <button mat-menu-item *ngIf="podeFinalizarDevolucao(element.status)"
+                (click)="openAdminFinalizeReturn(element)">
                 <mat-icon color="primary">how_to_reg</mat-icon>
                 <span>Finalizar e Liberar Equipamento</span>
               </button>
