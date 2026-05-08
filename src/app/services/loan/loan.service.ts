@@ -4,13 +4,14 @@ import { HttpClient, HttpParams, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { LoanListResponse, EquipmentLoanResponse, UserSearchResponse } from '../../models/loans/loans.model';
 import { StatusType } from '../../models/status/status-type';
+import { environment } from '../../../environments/environment';
 
 @Injectable({
   providedIn: 'root'
 })
 export class LoanService {
 
-  private readonly apiUrl = 'http://localhost:8080/api/v1/loans';
+  private readonly apiUrl = `${environment.apiUrl}/api/v1/loans`;
 
   constructor(
     private http: HttpClient,
@@ -21,7 +22,7 @@ export class LoanService {
     let headers = new HttpHeaders();
 
     if (isPlatformBrowser(this.platformId)) {
-      const token = localStorage.getItem('access_token');
+      const token = localStorage.getItem('access_token') || localStorage.getItem('token');
       if (token) {
         headers = headers.set('Authorization', `Bearer ${token}`);
       }

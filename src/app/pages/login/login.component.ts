@@ -9,9 +9,11 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 
-import { UserService } from '../../services/user/user.service';
 import { AuthService } from '../../services/auth/auth.service';
+import { AuthType, LoginRequest } from '../../models/auth/LoginRequest';
+import { mapLoginError } from './mapLoginError';
 
 @Component({
   selector: 'app-login',
@@ -24,7 +26,8 @@ import { AuthService } from '../../services/auth/auth.service';
     MatFormFieldModule,
     MatInputModule,
     MatButtonModule,
-    MatIconModule
+    MatIconModule,
+    MatSlideToggleModule
   ],
   templateUrl: './login.component.html',
   styleUrl: './login.component.css'
@@ -33,15 +36,18 @@ export class LoginComponent {
   loginForm: FormGroup;
   errorMessage: string = '';
   hidePassword = true; // Controle para mostrar/esconder senha
+  readonly AuthType = {
+    LOCAL: 'LOCAL' as AuthType,
+    LDAP: 'LDAP' as AuthType,
+  };
 
   constructor(
     private fb: FormBuilder,
-    private userService: UserService,
     private authService: AuthService,
     private router: Router
   ) {
-    // Inicializando o formulário reativo com validações
     this.loginForm = this.fb.group({
+      useLdap: [false],
       username: ['', [Validators.required]],
       password: ['', [Validators.required, Validators.minLength(4)]]
     });
@@ -51,31 +57,24 @@ export class LoginComponent {
     if (this.loginForm.invalid) return;
 
     this.errorMessage = '';
-    const authData = this.loginForm.value;
+    const { useLdap, username, password } = this.loginForm.getRawValue() as {
+      useLdap: boolean;
+      username: string;
+      password: string;
+    };
+    const authData: LoginRequest = {
+      username,
+      password,
+      authType: useLdap ? this.AuthType.LDAP : this.AuthType.LOCAL
+    };
 
-    this.userService.login(authData).subscribe({
-      next: (response) => {
-        localStorage.setItem('token', response.token);
-        localStorage.setItem('user', response.username);
-        localStorage.setItem('userRole', response.roleName);
-        this.authService.setUserRole(response.roleName as 'ADMIN' | 'COLABORADOR');
+    this.authService.login(authData).subscribe({
+      next: () => {
         this.router.navigate(['/equipaments']);
       },
       error: (err) => {
         console.error('Objeto de erro completo:', err);
-
-        const errorBody = err.error;
-        const message = typeof errorBody === 'string' ? errorBody : errorBody?.message || '';
-
-        if (message.includes('USER_NOT_FOUND')) {
-          this.errorMessage = 'Usuário não cadastrado.';
-        } else if (message.includes('INVALID_PASSWORD') || err.status === 401) {
-          this.errorMessage = 'Senha ou usuário incorreto.';
-        } else if (err.status === 0) {
-          this.errorMessage = 'O servidor parece estar desligado ou houve erro de CORS.';
-        } else {
-          this.errorMessage = 'Erro inesperado: ' + (message || 'Erro de conexão.');
-        }
+        this.errorMessage = mapLoginError(err);
       }
     });
   }

@@ -2,7 +2,8 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { debounceTime, distinctUntilChanged, switchMap, of, catchError } from 'rxjs';
+import { of, EMPTY, Observable } from 'rxjs';
+import { debounceTime, distinctUntilChanged, switchMap, concatMap, finalize, catchError, tap } from 'rxjs/operators';
 
 import { MatCardModule } from '@angular/material/card';
 import { MatTableModule } from '@angular/material/table';
@@ -28,6 +29,7 @@ import { UserService } from '../services/user/user.service';
 import { LoanDetailResponse, LoanListResponse, UserSearchResponse } from '../models/loans/loans.model';
 import { LayoutService } from '../services/layout/layout.service';
 import { formatStatusLabel, STATUS_TYPE_LABEL, STATUS_TYPE_OPTIONS, StatusType, normalizeStatusType, statusColorClass } from '../models/status/status-type';
+import { ToolbarUserActionsComponent } from '../shared/toolbar-user-actions/toolbar-user-actions.component';
 
 @Component({
   selector: 'app-preparation-loan',
@@ -52,7 +54,8 @@ import { formatStatusLabel, STATUS_TYPE_LABEL, STATUS_TYPE_OPTIONS, StatusType, 
     MatAutocompleteModule,
     MatDatepickerModule,
     MatNativeDateModule,
-    MatCheckboxModule
+    MatCheckboxModule,
+    ToolbarUserActionsComponent
   ],
   templateUrl: './preparation-loan.component.html',
   styleUrls: ['./preparation-loan.component.css']
@@ -349,11 +352,8 @@ export class PreparationLoanComponent implements OnInit {
   }
 
   get shouldShowLoanDetailsFields(): boolean {
-    // Default (preparação normal): mostra os campos normalmente
     if (!this.isReturnSupportMode && !this.isReturnFromUsoFlow) return true;
 
-    // Exceção solicitada: na tela de Devolução, quando status é EM_DEVOLUCAO,
-    // exibe os campos (somente leitura) para consulta.
     const st = normalizeStatusType(this.loanForm?.get('loanType')?.value);
     return st === StatusType.EM_DEVOLUCAO;
   }
@@ -448,7 +448,6 @@ export class PreparationLoanComponent implements OnInit {
     this.previsualizacoes = [];
     this.pdfFile = null;
     this.writeOffPdfFile = null;
-    // Regra da tela: quando o status está "Em Devolução", o termo (PDF) não pode ser editado/anexado.
     this.isTermoEnabled = false;
   }
 
@@ -538,7 +537,6 @@ export class PreparationLoanComponent implements OnInit {
     if (this.isStatusUpdateMode) {
       this.loanTypes = [...this.statusOptions];
     } else {
-      // Na criação do empréstimo (vindo da listagem de equipamentos), o status inicial deve ser EM_PREPARACAO.
       const initial = this.statusOptions.find((o) => o.value === StatusType.EM_PREPARACAO) ?? this.statusOptions[0];
       this.loanTypes = [initial];
       this.loanForm.patchValue({ loanType: initial.value });
@@ -613,138 +611,134 @@ export class PreparationLoanComponent implements OnInit {
 
   onSubmit(): void {
     if (this.isSaving) return;
+    if (!this.validateContext()) return;
+
+    this.isSaving = true;
+
+    const flow$: Observable<unknown> =
+      this.isReturnFromUsoFlow
+        ? this.handleSupportReturn(true)
+        : this.isReturnSupportMode
+          ? this.handleSupportReturn(false)
+          : this.isReturnAdminMode
+            ? this.handleAdminReturn()
+            : this.isStatusUpdateMode
+              ? this.handleStatusUpdate()
+              : this.handleNewLoan();
+
+    flow$
+      .pipe(finalize(() => (this.isSaving = false)))
+      .subscribe();
+  }
+
+  private validateContext(): boolean {
+    if (this.isReturnFromUsoFlow || this.isReturnSupportMode || this.isReturnAdminMode || this.isStatusUpdateMode) {
+      if (!this.currentLoanId) {
+        return false;
+      }
+    }
 
     if (this.isReturnFromUsoFlow) {
-      if (!this.currentLoanId) return;
       if (this.selectedFiles.length < 1) {
         this.snackBar.open('Selecione ao menos 1 foto para iniciar a devolução.', 'OK', { duration: 3500 });
-        return;
+        return false;
       }
-
-      this.isSaving = true;
-      const loanId = this.currentLoanId;
-
-      this.loanService.registerSupportReturn(loanId, this.selectedFiles).pipe(
-        switchMap(() => this.pdfFile ? this.loanService.uploadDocuments(loanId, [this.pdfFile]) : of([]))
-      ).subscribe({
-        next: () => {
-          this.snackBar.open('Devolução iniciada! Status atualizado para EM_DEVOLUCAO.', 'Sucesso', { duration: 3000 });
-          this.router.navigate(['/loans']);
-        },
-        error: (err) => {
-          this.isSaving = false;
-          this.snackBar.open(err.error?.message || 'Erro ao iniciar devolução.', 'Erro', { duration: 4000 });
-        }
-      });
-      return;
+      return true;
     }
 
     if (this.isReturnSupportMode) {
-      if (!this.currentLoanId) return;
       if (this.selectedFiles.length < 1) {
         this.snackBar.open('Selecione ao menos 1 foto para registrar a devolução.', 'OK', { duration: 3500 });
-        return;
+        return false;
       }
-
-      this.isSaving = true;
-      this.loanService.registerSupportReturn(this.currentLoanId, this.selectedFiles).subscribe({
-        next: () => {
-          this.snackBar.open('Devolução registrada com sucesso!', 'Sucesso', { duration: 3000 });
-          this.router.navigate(['/loans']);
-        },
-        error: (err) => {
-          this.isSaving = false;
-          this.snackBar.open(err.error?.message || 'Erro ao registrar devolução.', 'Erro', { duration: 4000 });
-        }
-      });
-      return;
+      return true;
     }
 
     if (this.isReturnAdminMode) {
-      if (!this.currentLoanId) return;
       if (!this.writeOffPdfFile) {
         this.snackBar.open('Faça upload do Termo de Baixa Assinado (PDF) para finalizar e liberar.', 'OK', { duration: 3500 });
-        return;
+        return false;
       }
-
-      this.isSaving = true;
-      this.loanService.finalizeReturnAndReleaseEquipment(this.currentLoanId, this.writeOffPdfFile).subscribe({
-        next: () => {
-          this.isSaving = false;
-          this.snackBar.open('Devolução finalizada e equipamento liberado!', 'Sucesso', { duration: 3000 });
-          this.router.navigate(['/loans']);
-        },
-        error: (err) => {
-          this.isSaving = false;
-          this.snackBar.open(err.error?.message || 'Erro ao finalizar devolução.', 'Erro', { duration: 4000 });
-        }
-      });
-      return;
+      return true;
     }
 
-    if (this.loanForm.invalid) return;
-
-    if (this.isStatusUpdateMode && this.currentLoanId) {
-      if (this.isAssinaturaBaixaFlow) {
-        if (!this.pdfFile) {
-          this.snackBar.open('Anexe o Termo de Responsabilidade (PDF) para concluir.', 'OK', { duration: 3500 });
-          return;
-        }
-
-        this.isSaving = true;
-        const loanId = this.currentLoanId;
-
-        this.loanService.uploadDocuments(loanId, [this.pdfFile]).subscribe({
-          next: () => {
-            this.loanService.updateLoanStatus(loanId, StatusType.EM_USO).subscribe({
-              next: () => {
-                this.isSaving = false;
-                this.snackBar.open('Termo anexado. Status atualizado para EM_USO.', 'Sucesso', { duration: 3000 });
-                this.router.navigate(['/loans']);
-              },
-              error: (err) => {
-                this.isSaving = false;
-                this.snackBar.open(err.error?.message || 'Erro ao atualizar status.', 'Erro', { duration: 3500 });
-              }
-            });
-          },
-          error: (err) => {
-            this.isSaving = false;
-            this.snackBar.open(err.error?.message || 'Erro ao anexar o termo (PDF).', 'Erro', { duration: 3500 });
-          }
-        });
-        return;
+    if (this.isStatusUpdateMode) {
+      if (this.loanForm.invalid) return false;
+      if (this.isAssinaturaBaixaFlow && !this.pdfFile) {
+        this.snackBar.open('Anexe o Termo de Responsabilidade (PDF) para concluir.', 'OK', { duration: 3500 });
+        return false;
       }
-
-      const statusParaEnviar = this.loanForm.get('loanType')?.value;
-      this.loanService.updateLoanStatus(this.currentLoanId, statusParaEnviar).subscribe({
-        next: () => {
-          this.snackBar.open('Status atualizado com sucesso!', 'Sucesso', { duration: 3000 });
-          this.router.navigate(['/loans']);
-        },
-        error: (err) => {
-          this.snackBar.open(err.error?.message || 'Erro ao atualizar status.', 'Erro', { duration: 3000 });
-        }
-      });
-      return;
+      return true;
     }
 
-    const formValue = this.loanForm.getRawValue();
-    const request = {
-      equipmentId: this.equipamentId,
-      colaboradorId: formValue.responsavel?.id,
-      helpdeskTicket: formValue.projeto,
-      loanDate: formValue.loanDate ? new Date(formValue.loanDate).toISOString() : new Date().toISOString(),
-      returnDate: formValue.returnDate ? new Date(formValue.returnDate).toISOString() : null,
-      observation: formValue.observacao,
-      enviadoSedex: formValue.enviadoSedex,
-      dataSedex: formValue.dataSedex ? new Date(formValue.dataSedex).toISOString() : null
-    };
+    // Novo empréstimo (fluxo padrão)
+    if (this.loanForm.invalid) return false;
+    return true;
+  }
 
-    this.isSaving = true;
-    this.loanService.prepareLoan(request).subscribe({
-      next: (response: any) => {
-        this.isSaving = false;
+  private handleSupportReturn(isUsoFlow: boolean) {
+    const loanId = this.currentLoanId as string;
+    const request$ = this.loanService.registerSupportReturn(loanId, this.selectedFiles).pipe(
+      concatMap(() => (isUsoFlow && this.pdfFile) ? this.loanService.uploadDocuments(loanId, [this.pdfFile]) : of([]))
+    );
+
+    return request$.pipe(
+      tap(() => {
+        const msg = isUsoFlow
+          ? 'Devolução iniciada! Status atualizado para EM_DEVOLUCAO.'
+          : 'Devolução registrada com sucesso!';
+        this.finalizeSuccess(msg, '/loans');
+      }),
+      catchError((err) => {
+        const defaultMsg = isUsoFlow ? 'Erro ao iniciar devolução.' : 'Erro ao registrar devolução.';
+        this.showError(err, defaultMsg);
+        return EMPTY;
+      })
+    );
+  }
+
+  private handleAdminReturn() {
+    const loanId = this.currentLoanId as string;
+    const pdf = this.writeOffPdfFile as File;
+    return this.loanService.finalizeReturnAndReleaseEquipment(loanId, pdf).pipe(
+      tap(() => this.finalizeSuccess('Devolução finalizada e equipamento liberado!', '/loans')),
+      catchError((err) => {
+        this.showError(err, 'Erro ao finalizar devolução.');
+        return EMPTY;
+      })
+    );
+  }
+
+  private handleStatusUpdate() {
+    const loanId = this.currentLoanId as string;
+
+    if (this.isAssinaturaBaixaFlow) {
+      const pdf = this.pdfFile as File;
+      return this.loanService.uploadDocuments(loanId, [pdf]).pipe(
+        concatMap(() => this.loanService.updateLoanStatus(loanId, StatusType.EM_USO)),
+        tap(() => this.finalizeSuccess('Termo anexado. Status atualizado para EM_USO.', '/loans')),
+        catchError((err) => {
+          this.showError(err, 'Erro ao atualizar status.');
+          return EMPTY;
+        })
+      );
+    }
+
+    const statusParaEnviar = this.loanForm.get('loanType')?.value;
+    return this.loanService.updateLoanStatus(loanId, statusParaEnviar).pipe(
+      tap(() => this.finalizeSuccess('Status atualizado com sucesso!', '/loans')),
+      catchError((err) => {
+        this.showError(err, 'Erro ao atualizar status.');
+        return EMPTY;
+      })
+    );
+  }
+
+  private handleNewLoan() {
+    const request = this.mapFormToRequest();
+
+    return this.loanService.prepareLoan(request).pipe(
+      concatMap((response: any) => {
         const loanId: string | undefined = response?.id || this.currentLoanId;
         const hasDocs = !!this.pdfFile;
 
@@ -755,31 +749,51 @@ export class PreparationLoanComponent implements OnInit {
             this.snackBar.open('Empréstimo preparado com sucesso!', 'Sucesso', { duration: 3000 });
           }
           this.router.navigate(['/equipaments']);
-          return;
+          return of(null);
         }
 
         if (!hasDocs) {
-          this.snackBar.open('Empréstimo preparado com sucesso!', 'Sucesso', { duration: 3000 });
-          this.router.navigate(['/equipaments']);
-          return;
+          this.finalizeSuccess('Empréstimo preparado com sucesso!', '/equipaments');
+          return of(null);
         }
 
-        this.loanService.uploadDocuments(loanId, [this.pdfFile!]).subscribe({
-          next: () => {
-            this.snackBar.open('Empréstimo preparado e documentos enviados!', 'Sucesso', { duration: 3000 });
+        return this.loanService.uploadDocuments(loanId, [this.pdfFile!]).pipe(
+          tap(() => this.finalizeSuccess('Empréstimo preparado e documentos enviados!', '/equipaments')),
+          catchError((err) => {
+            this.showError(err, 'Empréstimo salvo, mas falha ao enviar documentos.');
             this.router.navigate(['/equipaments']);
-          },
-          error: (err) => {
-            this.snackBar.open(err.error?.message || 'Empréstimo salvo, mas falha ao enviar documentos.', 'Erro', { duration: 4000 });
-            this.router.navigate(['/equipaments']);
-          }
-        });
-      },
-      error: (err) => {
-        this.isSaving = false;
-        this.snackBar.open(err.error?.message || 'Erro ao salvar empréstimo.', 'Erro', { duration: 3000 });
-      }
-    });
+            return of(null);
+          })
+        );
+      }),
+      catchError((err) => {
+        this.showError(err, 'Erro ao salvar empréstimo.');
+        return EMPTY;
+      })
+    );
+  }
+
+  private mapFormToRequest() {
+    const formValue = this.loanForm.getRawValue();
+    return {
+      equipmentId: this.equipamentId,
+      colaboradorId: formValue.responsavel?.id,
+      helpdeskTicket: formValue.projeto,
+      loanDate: formValue.loanDate ? new Date(formValue.loanDate).toISOString() : new Date().toISOString(),
+      returnDate: formValue.returnDate ? new Date(formValue.returnDate).toISOString() : null,
+      observation: formValue.observacao,
+      enviadoSedex: formValue.enviadoSedex,
+      dataSedex: formValue.dataSedex ? new Date(formValue.dataSedex).toISOString() : null
+    };
+  }
+
+  private finalizeSuccess(message: string, route: string): void {
+    this.snackBar.open(message, 'Sucesso', { duration: 3000 });
+    this.router.navigate([route]);
+  }
+
+  private showError(err: any, defaultMsg: string): void {
+    this.snackBar.open(err?.error?.message || defaultMsg, 'Erro', { duration: 4000 });
   }
 
   voltar(): void {

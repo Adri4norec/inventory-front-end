@@ -24,6 +24,7 @@ import { PhotoGaleryDialogComponent } from '../photo-galery-dialog/photo-galery-
 import { MovementRequest, MovementResponse, MovementType } from '../models/movement/movement.model';
 import { LayoutService } from '../services/layout/layout.service';
 import { formatStatusLabel, statusColorClass } from '../models/status/status-type';
+import { ToolbarUserActionsComponent } from '../shared/toolbar-user-actions/toolbar-user-actions.component';
 
 @Component({
   selector: 'app-movement',
@@ -32,7 +33,8 @@ import { formatStatusLabel, statusColorClass } from '../models/status/status-typ
     CommonModule, RouterModule, ReactiveFormsModule, MatCardModule, MatTableModule,
     MatButtonModule, MatIconModule, MatDividerModule, MatMenuModule, MatToolbarModule,
     MatTooltipModule, MatDialogModule, MatChipsModule, MatFormFieldModule, MatInputModule,
-    MatSelectModule, MatSnackBarModule
+    MatSelectModule, MatSnackBarModule,
+    ToolbarUserActionsComponent
   ],
   templateUrl: './movement.component.html',
   styleUrls: ['./movement.component.css']

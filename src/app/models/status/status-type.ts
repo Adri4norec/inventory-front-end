@@ -27,15 +27,6 @@ export const STATUS_TYPE_OPTIONS: StatusTypeOption[] = (Object.values(StatusType
 
 export type StatusColorKey = 'green' | 'orange' | 'blue' | 'gray' | 'purple';
 
-/**
- * Paleta única de cores para status em todo o front.
- * Regra 
- * - DISPONIVEL: verde
- * - EM_PREPARACAO / AGUARDANDO_ASSINATURA / AGUARDANDO_BAIXA: laranja
- * - EM_USO: azul
- * - INDISPONIVEL: cinza
- * - EM_DEVOLUCAO / EM_MANUTENCAO: roxo
- */
 export const STATUS_TYPE_COLOR: Record<StatusType, StatusColorKey> = {
   [StatusType.DISPONIVEL]: 'green',
   [StatusType.EM_PREPARACAO]: 'orange',
@@ -47,18 +38,6 @@ export const STATUS_TYPE_COLOR: Record<StatusType, StatusColorKey> = {
   [StatusType.EM_MANUTENCAO]: 'purple'
 };
 
-export function normalizeStatusType(raw: unknown): StatusType | null {
-  if (!raw) return null;
-  const v = String(raw).trim().toUpperCase();
-
-  if (v === 'PREPARACAO' || v === 'EM_PREPARO') return StatusType.EM_PREPARACAO;
-
-  if ((Object.values(StatusType) as string[]).includes(v)) {
-    return v as StatusType;
-  }
-  return null;
-}
-
 export function statusColorClass(raw: unknown): string {
   const st = normalizeStatusType(raw);
   if (!st) return 'status-gray';
@@ -66,20 +45,35 @@ export function statusColorClass(raw: unknown): string {
 }
 
 export function formatStatusLabel(raw: unknown): string {
-  const st = normalizeStatusType(raw);
-  if (st && STATUS_TYPE_LABEL[st]) return STATUS_TYPE_LABEL[st];
+  const type = normalizeStatusType(raw);
+  
+  if (type && STATUS_TYPE_LABEL[type]) {
+    return STATUS_TYPE_LABEL[type];
+  }
 
-  if (!raw) return '-';
-  const v = String(raw).trim();
-  if (!v) return '-';
+  return formatFallbackLabel(raw);
+}
 
-  // Fallback para casos inesperados: "EM_USO" -> "Em Uso"
-  return v
-    .replace(/_/g, ' ')
+function formatFallbackLabel(raw: unknown): string {
+  const value = String(raw || '').trim();
+  if (!value) return '-';
+
+  return value
     .toLowerCase()
-    .split(' ')
-    .filter(Boolean)
-    .map(w => w.charAt(0).toUpperCase() + w.slice(1))
-    .join(' ');
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, char => char.toUpperCase()); 
+}
+
+export function normalizeStatusType(raw: unknown): StatusType | null {
+  if (!raw) return null;
+  
+  const value = String(raw).trim().toUpperCase();
+  
+  const synonyms: Record<string, StatusType> = {
+    'PREPARACAO': StatusType.EM_PREPARACAO,
+    'EM_PREPARO': StatusType.EM_PREPARACAO
+  };
+
+  return synonyms[value] || (Object.values(StatusType).includes(value as StatusType) ? (value as StatusType) : null);
 }
 

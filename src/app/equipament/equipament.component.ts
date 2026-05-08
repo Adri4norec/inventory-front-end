@@ -35,6 +35,7 @@ import { EquipamentService } from '../services/equipament/equipment.service';
 import { AuthService } from '../services/auth/auth.service';
 import { LayoutService } from '../services/layout/layout.service';
 import { STATUS_TYPE_LABEL, STATUS_TYPE_OPTIONS, StatusType, normalizeStatusType, statusColorClass } from '../models/status/status-type';
+import { ToolbarUserActionsComponent } from '../shared/toolbar-user-actions/toolbar-user-actions.component';
 
 @Component({
   selector: 'app-equipament',
@@ -61,7 +62,8 @@ import { STATUS_TYPE_LABEL, STATUS_TYPE_OPTIONS, StatusType, normalizeStatusType
     MatOptionModule,
     MatInputModule,
     MatDatepickerModule,
-    MatNativeDateModule
+    MatNativeDateModule,
+    ToolbarUserActionsComponent
   ],
   templateUrl: './equipament.component.html',
   styleUrls: ['./equipament.component.css']
@@ -186,8 +188,7 @@ export class EquipamentComponent implements OnInit, OnDestroy {
     return [
       StatusType.EM_USO,
       StatusType.EM_MANUTENCAO,
-      StatusType.DISPONIVEL,
-      StatusType.EM_DEVOLUCAO
+      StatusType.DISPONIVEL
     ].includes(st);
   }
 

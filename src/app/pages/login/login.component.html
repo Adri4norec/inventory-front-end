@@ -5,7 +5,6 @@
         <mat-icon>inventory_2</mat-icon>
       </div>
       <h1>Controle de Inventário</h1>
-      <p>Gerencie seus ativos com eficiência e precisão.</p>
     </div>
 
     <mat-card class="auth-card" appearance="outlined">
@@ -13,6 +12,15 @@
         <h2 class="form-title">Entrar na conta</h2>
         
         <form [formGroup]="loginForm" (ngSubmit)="onLogin()">
+          <div class="auth-type-container" [class.ldap-on]="loginForm.get('useLdap')?.value">
+            <mat-slide-toggle class="auth-type-flag" formControlName="useLdap" color="primary">
+              Acesso de rede (LDAP)
+            </mat-slide-toggle>
+
+            <div class="auth-type-hint" *ngIf="loginForm.get('useLdap')?.value">
+              Use sua senha de rede (Windows).
+            </div>
+          </div>
           
           <mat-form-field appearance="outline" class="full-width">
             <mat-label>Usuário</mat-label>
@@ -34,7 +42,13 @@
             <span>{{ errorMessage }}</span>
           </div>
 
-          <button mat-flat-button color="primary" class="btn-submit" type="submit" [disabled]="loginForm.invalid">
+          <button
+            mat-flat-button
+            color="primary"
+            class="btn-submit"
+            type="submit"
+            [disabled]="loginForm.invalid"
+          >
             ACESSAR SISTEMA
           </button>
           

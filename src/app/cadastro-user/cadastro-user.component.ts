@@ -16,6 +16,7 @@ import { MatTooltipModule } from "@angular/material/tooltip";
 import { UserService } from "../services/user/user.service";
 import { UserResponse } from "../models/users/UserResponse";
 import { LayoutService } from "../services/layout/layout.service";
+import { ToolbarUserActionsComponent } from "../shared/toolbar-user-actions/toolbar-user-actions.component";
 
 @Component({
   selector: 'app-cadastro-user',
@@ -23,7 +24,8 @@ import { LayoutService } from "../services/layout/layout.service";
   imports: [
     ReactiveFormsModule, CommonModule, MatToolbarModule, MatCardModule,
     MatFormFieldModule, MatInputModule, MatSelectModule, MatButtonModule,
-    MatIconModule, MatDividerModule, MatTooltipModule
+    MatIconModule, MatDividerModule, MatTooltipModule,
+    ToolbarUserActionsComponent
   ],
   templateUrl: './cadastro-user.component.html',
   styleUrls: ['./cadastro-user.component.css']

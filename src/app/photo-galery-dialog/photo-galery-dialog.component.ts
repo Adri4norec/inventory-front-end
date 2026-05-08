@@ -5,6 +5,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { environment } from '../../environments/environment';
 
 @Component({
   selector: 'app-photo-galery-dialog',
@@ -21,7 +22,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
   styleUrls: ['./photo-galery-dialog.component.css']
 })
 export class PhotoGaleryDialogComponent {
-  private readonly API_BASE = 'http://localhost:8080';
+  private readonly API_BASE = environment.apiUrl;
 
   constructor(
     public dialogRef: MatDialogRef<PhotoGaleryDialogComponent>,

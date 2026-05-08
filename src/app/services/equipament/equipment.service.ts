@@ -7,10 +7,11 @@ import { EquipmentLoanResponse,
   LoanRequest, 
   PageResponse 
 } from '../../models/equipaments/equipament.model';
+import { environment } from '../../../environments/environment';
 
 @Injectable({ providedIn: 'root' })
 export class EquipamentService {
-  private readonly API = 'http://localhost:8080/api/v1/equipments';
+  private readonly API = `${environment.apiUrl}/api/v1/equipments`;
 
   constructor(private http: HttpClient) { }
 

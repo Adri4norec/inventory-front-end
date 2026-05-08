@@ -25,6 +25,7 @@ import { EquipmentLoanResponse } from '../models/loans/loans.model';
 import { UserResponse } from '../models/users/UserResponse';
 import { LoanRequest } from '../models/equipaments/equipament.model';
 import { LayoutService } from '../services/layout/layout.service';
+import { ToolbarUserActionsComponent } from '../shared/toolbar-user-actions/toolbar-user-actions.component';
 
 @Component({
   selector: 'app-loan-preparation',
@@ -43,7 +44,8 @@ import { LayoutService } from '../services/layout/layout.service';
     MatTooltipModule,
     MatSelectModule,
     MatDatepickerModule, 
-    MatNativeDateModule
+    MatNativeDateModule,
+    ToolbarUserActionsComponent
   ],
   templateUrl: './loan-preparation.component.html',
   styleUrls: ['./loan-preparation.component.scss']

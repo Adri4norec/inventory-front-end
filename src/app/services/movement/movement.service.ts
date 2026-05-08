@@ -2,10 +2,11 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { MovementRequest, MovementResponse } from './../../models/movement/movement.model';
+import { environment } from '../../../environments/environment';
 
 @Injectable({ providedIn: 'root' })
 export class MovementService {
-  private readonly API = 'http://localhost:8080/api/v1/movements';
+  private readonly API = `${environment.apiUrl}/api/v1/movements`;
 
   constructor(private http: HttpClient) { }
 

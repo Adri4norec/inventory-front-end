@@ -1,0 +1,9 @@
+<div class="toolbar-user-actions">
+  <span class="toolbar-user-actions__name" *ngIf="fullName">{{ fullName }}</span>
+
+  <button type="button" mat-button class="toolbar-user-actions__logout" (click)="logout()">
+    <mat-icon>logout</mat-icon>
+    <span>Sair</span>
+  </button>
+</div>
+

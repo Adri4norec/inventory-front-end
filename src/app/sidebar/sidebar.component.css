@@ -9,6 +9,8 @@
   color: #ffffff;
   padding: 15px;
   font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  display: flex;
+  flex-direction: column;
 }
 
 .logo-area {

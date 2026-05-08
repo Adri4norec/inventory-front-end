@@ -1,6 +1,9 @@
 import { Injectable, Inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
-import { Observable, BehaviorSubject } from 'rxjs';
+import { Observable, BehaviorSubject, tap } from 'rxjs';
+import { LoginRequest } from '../../models/auth/LoginRequest';
+import { UserResponse } from '../../models/users/UserResponse';
+import { UserService } from '../user/user.service';
 
 export type UserRole = 'ADMIN' | 'COLABORADOR';
 
@@ -11,8 +14,17 @@ export class AuthService {
   private userRoleSubject = new BehaviorSubject<UserRole | null>(this.getUserRole());
   public userRole$: Observable<UserRole | null> = this.userRoleSubject.asObservable();
 
-  constructor(@Inject(PLATFORM_ID) private platformId: Object) {
+  constructor(
+    @Inject(PLATFORM_ID) private platformId: Object,
+    private userService: UserService
+  ) {
     this.updateUserRole();
+  }
+
+  login(credentials: LoginRequest): Observable<UserResponse> {
+    return this.userService.login(credentials).pipe(
+      tap((response) => this.persistSession(response))
+    );
   }
 
   /**
@@ -22,8 +34,118 @@ export class AuthService {
     if (!isPlatformBrowser(this.platformId)) {
       return null;
     }
-    const role = localStorage.getItem('userRole');
-    return (role === 'ADMIN' || role === 'COLABORADOR') ? role : null;
+    const stored = localStorage.getItem('userRole');
+    if (stored === 'ADMIN' || stored === 'COLABORADOR') return stored;
+
+    // Preferir roles/claims vindas do JWT (backend novo).
+    return this.getRoleFromToken();
+  }
+
+  getToken(): string | null {
+    if (!isPlatformBrowser(this.platformId)) {
+      return null;
+    }
+    return localStorage.getItem('access_token') || localStorage.getItem('token');
+  }
+
+  getFullName(): string | null {
+    if (!isPlatformBrowser(this.platformId)) {
+      return null;
+    }
+    const name = localStorage.getItem('fullName');
+    return name && name.trim() ? name : null;
+  }
+
+  /**
+   * Força recalcular role a partir do JWT e persistir em `userRole`.
+   * Útil logo após o login.
+   */
+  syncUserRoleFromToken(): UserRole | null {
+    if (!isPlatformBrowser(this.platformId)) {
+      return null;
+    }
+    const role = this.getRoleFromToken();
+    if (role) {
+      localStorage.setItem('userRole', role);
+    } else {
+      localStorage.removeItem('userRole');
+    }
+    this.updateUserRole();
+    return role;
+  }
+
+  private persistSession(response: UserResponse): void {
+    if (!isPlatformBrowser(this.platformId)) {
+      return;
+    }
+
+    const token = response.access_token || response.token;
+    if (token) {
+      localStorage.setItem('access_token', token);
+      localStorage.setItem('token', token);
+    }
+
+    localStorage.setItem('user', response.username);
+    if (response.fullName) {
+      localStorage.setItem('fullName', response.fullName);
+    } else {
+      localStorage.removeItem('fullName');
+    }
+
+    this.syncUserRoleFromToken();
+  }
+
+  private getRoleFromToken(): UserRole | null {
+    const token = this.getToken();
+    if (!token) return null;
+
+    const payload = this.decodeJwtPayload(token);
+    if (!payload) return null;
+
+    const raw =
+      payload.role ??
+      payload.roleName ??
+      payload.roles ??
+      payload.authorities ??
+      payload.authority ??
+      payload.perfis ??
+      payload.perfil;
+
+    const candidates: string[] = [];
+    if (Array.isArray(raw)) {
+      raw.forEach(v => candidates.push(String(v)));
+    } else if (typeof raw === 'string') {
+      // pode vir como "ADMIN" ou "ROLE_ADMIN" ou "ADMIN,COLABORADOR"
+      raw.split(/[,\s]+/).filter(Boolean).forEach(v => candidates.push(v));
+    } else if (raw != null) {
+      candidates.push(String(raw));
+    }
+
+    const normalized = candidates.map(r => r.replace(/^ROLE_/, '').toUpperCase());
+    if (normalized.includes('ADMIN')) return 'ADMIN';
+    if (normalized.includes('COLABORADOR')) return 'COLABORADOR';
+    return null;
+  }
+
+  private decodeJwtPayload(token: string): any | null {
+    const parts = token.split('.');
+    if (parts.length < 2) return null;
+
+    const base64Url = parts[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), '=');
+
+    try {
+      const json = decodeURIComponent(
+        atob(padded)
+          .split('')
+          .map(c => `%${('00' + c.charCodeAt(0).toString(16)).slice(-2)}`)
+          .join('')
+      );
+      return JSON.parse(json);
+    } catch {
+      return null;
+    }
   }
 
   /**
@@ -85,6 +207,20 @@ export class AuthService {
       return;
     }
     localStorage.removeItem('userRole');
+    this.updateUserRole();
+  }
+
+  logout(): void {
+    if (!isPlatformBrowser(this.platformId)) {
+      return;
+    }
+
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    localStorage.removeItem('fullName');
+    localStorage.removeItem('userRole');
+
     this.updateUserRole();
   }
 }

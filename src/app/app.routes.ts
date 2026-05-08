@@ -17,71 +17,84 @@ export const routes: Routes = [
   { 
     path: 'users', 
     component: UserComponent, 
-    canActivate: [authGuard] 
+    canActivate: [authGuard],
+    data: { title: 'Usuários' }
   },
   { 
     path: 'users/novo', 
     component: CadastroUserComponent, 
-    canActivate: [authGuard] 
+    canActivate: [authGuard],
+    data: { title: 'Novo Usuário' }
   },        
   { 
     path: 'users/editar/:id', 
     component: CadastroUserComponent, 
-    canActivate: [authGuard] 
+    canActivate: [authGuard],
+    data: { title: 'Editar Usuário' }
   },  
   { 
     path: 'users/visualizar/:id', 
     component: CadastroUserComponent, 
-    canActivate: [authGuard] 
+    canActivate: [authGuard],
+    data: { title: 'Visualizar Usuário' }
   }, 
 
   { 
     path: 'equipaments', 
     component: EquipamentComponent, 
-    canActivate: [authGuard] 
+    canActivate: [authGuard],
+    data: { title: 'Equipamentos' }
   },
   { 
     path: 'cadastro', 
     component: CadastroComponent, 
-    canActivate: [authGuard] 
+    canActivate: [authGuard],
+    data: { title: 'Novo Equipamento' }
   }, 
   { 
     path: 'cadastro/:id', 
     component: CadastroComponent, 
-    canActivate: [authGuard] 
+    canActivate: [authGuard],
+    data: { title: 'Editar Equipamento' }
   },
 
   { 
     path: 'equipaments/loan-preparation', 
     component: LoanPreparationComponent, 
-    canActivate: [authGuard] 
+    canActivate: [authGuard],
+    data: { title: 'Preparar Empréstimo' }
   },
 
   { 
     path: 'equipaments/:id/preparation-loan', 
     component: PreparationLoanComponent, 
-    canActivate: [authGuard] 
+    canActivate: [authGuard],
+    data: { title: 'Empréstimo' }
   },
   {
     path: 'loans/:loanId/preparation-loan',
     component: PreparationLoanComponent,
-    canActivate: [authGuard]
+    canActivate: [authGuard],
+    data: { title: 'Empréstimo' }
   },
 
   { 
     path: 'equipaments/:id/movimentacao', 
     component: MovementComponent, 
-    canActivate: [authGuard] 
+    canActivate: [authGuard],
+    data: { title: 'Movimentação' }
   },
   { 
     path: 'movimentacao/visualizar/:movementId', 
     component: MovementComponent, 
-    canActivate: [authGuard] 
+    canActivate: [authGuard],
+    data: { title: 'Movimentação' }
   },
   {
     path: 'loans',
     component: LoanListComponent,
-    canActivate: [authGuard]
+    canActivate: [authGuard],
+    data: { title: 'Empréstimos' }
   },
   { path: '**', redirectTo: '' }
 ];

@@ -61,7 +61,7 @@ export class SidebarComponent implements OnInit {
     this.authService.userRole$.subscribe(role => {
       if (role) {
         this.userRole = role;
-        this.visibleMenus = this.filterMenus(this.allMenus, this.userRole);
+        this.visibleMenus = this.filterMenus(this.allMenus, role);
       }
     });
   }
@@ -80,4 +80,5 @@ export class SidebarComponent implements OnInit {
         return menu;
       });
   }
+
 }

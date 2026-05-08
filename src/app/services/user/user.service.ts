@@ -1,19 +1,25 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpBackend, HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { UserRequest } from '../../models/users/UserRequest';
+import { LoginRequest } from '../../models/auth/LoginRequest';
 import { UserResponse } from '../../models/users/UserResponse';
+import { environment } from '../../../environments/environment';
 
 @Injectable({
   providedIn: 'root'
 })
 export class UserService {
-  private readonly API = 'http://localhost:8080/api/v1/users';
+  private readonly API = `${environment.apiUrl}/api/v1/users`;
+  private readonly rawHttp: HttpClient;
 
-  constructor(private http: HttpClient) { }
+  constructor(private http: HttpClient, httpBackend: HttpBackend) {
+    // HttpClient sem interceptors: login não pode enviar Bearer antigo/inválido.
+    this.rawHttp = new HttpClient(httpBackend);
+  }
 
-  login(credentials: UserRequest): Observable<UserResponse> {
-    return this.http.post<UserResponse>(`${this.API}/login`, credentials);
+  login(credentials: LoginRequest): Observable<UserResponse> {
+    return this.rawHttp.post<UserResponse>(`${this.API}/login`, credentials);
   }
 
   create(userData: UserRequest): Observable<UserResponse> {

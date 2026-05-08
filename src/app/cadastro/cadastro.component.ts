@@ -1,8 +1,7 @@
-import { Component, OnInit } from "@angular/core";
+import { Component, OnInit, inject } from "@angular/core";
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule, FormArray } from "@angular/forms";
 import { CommonModule } from "@angular/common";
 import { Router, ActivatedRoute } from "@angular/router";
-
 import { MatToolbarModule } from "@angular/material/toolbar";
 import { MatCardModule } from "@angular/material/card";
 import { MatFormFieldModule } from "@angular/material/form-field";
@@ -15,12 +14,16 @@ import { MatTooltipModule } from "@angular/material/tooltip";
 import { MatChipsModule } from "@angular/material/chips";
 import { MatListModule } from "@angular/material/list";
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { forkJoin, of } from "rxjs";
+import { catchError, filter, map, switchMap, tap } from "rxjs/operators";
 
 import { ProprietaryService } from "../services/equipament/proprietary.service";
 import { EquipamentService } from "../services/equipament/equipment.service";
 import { ProprietaryResponse } from "../models/proprietaries/proprietary";
 import { EquipmentResponse, EquipmentRequest } from "../models/equipaments/equipament.model";
 import { LayoutService } from "../services/layout/layout.service";
+import { environment } from "../../environments/environment";
+import { ToolbarUserActionsComponent } from "../shared/toolbar-user-actions/toolbar-user-actions.component";
 
 @Component({
   selector: 'app-cadastro',
@@ -39,59 +42,69 @@ import { LayoutService } from "../services/layout/layout.service";
     MatTooltipModule,
     MatChipsModule,
     MatListModule,
-    MatSnackBarModule
+    MatSnackBarModule,
+    ToolbarUserActionsComponent
   ],
   templateUrl: './cadastro.component.html',
   styleUrls: ['./cadastro.component.scss']
 })
 export class CadastroComponent implements OnInit {
-  equipamentoForm: FormGroup;
+  private readonly fb = inject(FormBuilder);
+  private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
+  private readonly snackBar = inject(MatSnackBar);
+  private readonly equipmentService = inject(EquipamentService);
+  private readonly proprietaryService = inject(ProprietaryService);
+  public readonly layout = inject(LayoutService);
+
+  private readonly apiBase = environment.apiUrl;
+  
+  equipamentoForm!: FormGroup;
   proprietaries: ProprietaryResponse[] = [];
-  isEdicao = false;
-  equipamentoId: string | null = null;
-  isVisualizacao = false;
   selectedFiles: File[] = [];
   previsualizacoes: string[] = [];
+  
+  isEdicao = false;
+  isVisualizacao = false;
+  equipamentoId: string | null = null;
 
-  constructor(
-    private fb: FormBuilder,
-    private router: Router,
-    private route: ActivatedRoute,
-    private proprietaryService: ProprietaryService,
-    private snackBar: MatSnackBar,
-    private equipmentService: EquipamentService,
-    public layout: LayoutService
-  ) {
+  ngOnInit(): void {
+    this.initForm();
+    this.loadInitialData();
+  }
+
+  private initForm(): void {
     this.equipamentoForm = this.fb.group({
-      name: ['', [Validators.required]],
-      description: ['', [Validators.required]],
-      
-      topo: [null, [Validators.pattern("^[0-9]*$")]], 
-      
-      categoria: ['', [Validators.required]],
-      proprietaryId: [null, [Validators.required]],
-      usageType: ['', [Validators.required]],
+      name: ['', Validators.required],
+      description: ['', Validators.required],
+      topo: [null, Validators.pattern("^[0-9]*$")],
+      categoria: ['', Validators.required],
+      proprietaryId: [null, Validators.required],
+      usageType: ['', Validators.required],
       perParts: this.fb.array([]),
       imageUrls: [[]]
     });
   }
 
-  ngOnInit(): void {
-    this.proprietaryService.listAll().subscribe({
-      next: (data) => {
-        this.proprietaries = data;
-        this.equipamentoId = this.route.snapshot.paramMap.get('id');
-        this.route.queryParams.subscribe(params => {
-          this.isVisualizacao = params['mode'] === 'view';
-          if (this.equipamentoId) {
-            this.isEdicao = !this.isVisualizacao;
-            this.carregarDadosParaEdicao(this.equipamentoId);
-          } else {
-            this.adicionarPeca();
-          }
-        });
-      },
-      error: (err) => console.error('Erro ao carregar proprietários', err)
+  private loadInitialData(): void {
+    this.proprietaryService.listAll().pipe(
+      tap(data => this.proprietaries = data),
+      switchMap(() => this.route.paramMap),
+      map(params => params.get('id')),
+      tap(id => this.equipamentoId = id),
+      switchMap(id => id ? this.equipmentService.findById(id) : of(null)),
+      switchMap(equipamento => this.route.queryParams.pipe(
+        map(params => ({ equipamento, mode: params['mode'] }))
+      ))
+    ).subscribe(({ equipamento, mode }) => {
+      this.isVisualizacao = mode === 'view';
+      this.isEdicao = !!equipamento && !this.isVisualizacao;
+
+      if (equipamento) {
+        this.fillForm(equipamento);
+      } else {
+        this.adicionarPeca();
+      }
     });
   }
 
@@ -99,97 +112,62 @@ export class CadastroComponent implements OnInit {
     return this.equipamentoForm.get('perParts') as FormArray;
   }
 
-  onFileSelected(event: any): void {
-    const files: FileList = event.target.files;
-    if (files && files.length > 0) {
-      const novosArquivos = Array.from(files);
-      this.selectedFiles = [...this.selectedFiles, ...novosArquivos];
+  onFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (!input.files?.length) return;
 
-      novosArquivos.forEach((file: File) => {
-        const reader = new FileReader();
-        reader.onload = (e: any) => {
-          this.previsualizacoes.push(e.target.result);
-        };
-        reader.readAsDataURL(file);
-      });
-    }
-    event.target.value = '';
+    const files = Array.from(input.files);
+    this.selectedFiles.push(...files);
+
+    files.forEach(file => {
+      const reader = new FileReader();
+      reader.onload = (e) => this.previsualizacoes.push(e.target?.result as string);
+      reader.readAsDataURL(file);
+    });
+    input.value = '';
   }
 
   removerArquivo(index: number): void {
-    const imgRemovida = this.previsualizacoes[index];
+    const removido = this.previsualizacoes[index];
     this.previsualizacoes.splice(index, 1);
 
-    if (imgRemovida.startsWith('data:')) {
-      const indexArquivo = this.selectedFiles.findIndex(file => file.name === file.name);
-      this.selectedFiles.splice(indexArquivo, 1);
+    if (removido.startsWith('data:')) {
+      this.selectedFiles.splice(index, 1);
     } else {
-      const urlsAtuais = this.equipamentoForm.get('imageUrls')?.value as string[];
-      const novasUrls = urlsAtuais.filter(url => !imgRemovida.endsWith(url));
-      this.equipamentoForm.get('imageUrls')?.setValue(novasUrls);
+      const currentUrls = this.equipamentoForm.get('imageUrls')?.value as string[];
+      this.equipamentoForm.get('imageUrls')?.setValue(currentUrls.filter(url => !removido.endsWith(url)));
     }
   }
 
   adicionarPeca(name = '', serialNumber = ''): void {
-    const pecaGroup = this.fb.group({
-      name: [name, [Validators.maxLength(50)]],
+    this.perParts.push(this.fb.group({
+      name: [name, Validators.maxLength(50)],
       serialNumber: [serialNumber]
-    });
-    this.perParts.push(pecaGroup);
+    }));
   }
 
   removerPeca(index: number): void {
     this.perParts.removeAt(index);
-    if (this.perParts.length === 0 && !this.isVisualizacao) {
-      this.adicionarPeca();
-    }
+    if (this.perParts.length === 0 && !this.isVisualizacao) this.adicionarPeca();
   }
 
-  private carregarDadosParaEdicao(id: string): void {
-    this.equipmentService.findById(id).subscribe({
-      next: (equipamento: EquipmentResponse) => {
-        this.equipamentoForm.patchValue({
-          name: equipamento.name,
-          description: equipamento.description,
-          topo: equipamento.topo,
-          categoria: equipamento.categoria,
-          usageType: equipamento.usageType,
-          imageUrls: equipamento.imageUrls || []
-        });
-
-        if (equipamento.imageUrls) {
-          this.previsualizacoes = equipamento.imageUrls.map(url => {
-            if (url.startsWith('http') || url.startsWith('data:')) {
-              return url;
-            }
-            return `http://localhost:8080/uploads/${url}`;
-          });
-        }
-
-        this.perParts.clear();
-        if (equipamento.perParts && equipamento.perParts.length > 0) {
-          equipamento.perParts.forEach(part => {
-            this.adicionarPeca(part.name, part.serialNumber);
-          });
-        } else if (!this.isVisualizacao) {
-          this.adicionarPeca();
-        }
-
-        this.vincularProprietario(equipamento.proprietaryName);
-
-        if (this.isVisualizacao) {
-          this.equipamentoForm.disable();
-        }
-      },
-      error: (err: any) => console.error('Erro ao carregar equipamento', err)
-    });
-  }
-
-  private vincularProprietario(nomeProcurado: string): void {
-    const propEncontrado = this.proprietaries.find(p => p.name === nomeProcurado);
-    if (propEncontrado) {
-      this.equipamentoForm.get('proprietaryId')?.setValue(propEncontrado.id);
+  private fillForm(equipamento: EquipmentResponse): void {
+    this.equipamentoForm.patchValue(equipamento);
+    
+    if (equipamento.imageUrls) {
+      this.previsualizacoes = equipamento.imageUrls.map(url => 
+        (url.startsWith('http') || url.startsWith('data:')) ? url : `${this.apiBase}/uploads/${url}`
+      );
     }
+
+    this.perParts.clear();
+    equipamento.perParts?.forEach(p => this.adicionarPeca(p.name, p.serialNumber));
+    if (!this.perParts.length && !this.isVisualizacao) this.adicionarPeca();
+
+    const prop = this.proprietaries.find(p => p.name === equipamento.proprietaryName);
+    if (prop) this.equipamentoForm.get('proprietaryId')?.setValue(prop.id);
+
+    if (this.isVisualizacao) this.equipamentoForm.disable();
   }
 
   salvar(): void {
@@ -198,67 +176,49 @@ export class CadastroComponent implements OnInit {
       return;
     }
 
-    const imagensExistentes = this.equipamentoForm.get('imageUrls')?.value || [];
-    if (this.selectedFiles.length === 0 && imagensExistentes.length === 0) {
-      this.exibirMensagemErro('Você precisa anexar pelo menos uma imagem do equipamento.');
+    if (!this.selectedFiles.length && !this.equipamentoForm.get('imageUrls')?.value?.length) {
+      this.showMessage('Anexe pelo menos uma imagem.');
       return;
     }
 
-    const dadosEquipamento: EquipmentRequest = this.equipamentoForm.getRawValue();
+    const payload = this.equipamentoForm.getRawValue();
+    payload.perParts = payload.perParts.filter((p: any) => p.name?.trim());
 
-    if (dadosEquipamento.perParts) {
-      dadosEquipamento.perParts = dadosEquipamento.perParts.filter(
-        part => part.name && part.name.trim() !== ''
-      );
-    }
+    const action$ = (this.isEdicao && this.equipamentoId)
+      ? this.equipmentService.update(this.equipamentoId, payload)
+      : this.equipmentService.save(payload);
 
-    const request = (this.isEdicao && this.equipamentoId)
-      ? this.equipmentService.update(this.equipamentoId, dadosEquipamento)
-      : this.equipmentService.save(dadosEquipamento);
-
-    request.subscribe({
-      next: (equipamentoSalvo: EquipmentResponse) => {
-        if (this.selectedFiles.length > 0) {
-          this.equipmentService.uploadImages(equipamentoSalvo.id, this.selectedFiles).subscribe({
-            next: () => this.finalizar(),
-            error: (err) => {
-              console.error('Erro no upload:', err);
-              this.exibirMensagemErro('Equipamento salvo, mas houve um erro ao carregar as imagens.');
-              this.finalizar();
-            }
-          });
-        } else {
-          this.finalizar();
-        }
-      },
-      error: (err: any) => {
-        console.error('Erro no servidor:', err);
-        const mensagemDoBackEnd = err.error?.message || 'Erro ao processar operação.';
-        this.exibirMensagemErro(mensagemDoBackEnd);
-      }
+    action$.pipe(
+      switchMap(res => this.selectedFiles.length 
+        ? this.equipmentService.uploadImages(res.id, this.selectedFiles).pipe(
+            catchError(() => {
+              this.showMessage('Erro ao carregar imagens, mas dados salvos.');
+              return of(null);
+            })
+          )
+        : of(null)
+      )
+    ).subscribe({
+      next: () => this.router.navigate(['/equipaments']),
+      error: (err) => this.showMessage(err.error?.message || 'Erro no servidor')
     });
   }
 
-  private exibirMensagemErro(texto: string): void {
-    this.snackBar.open(texto, 'Fechar', {
-      duration: 10000, 
-      horizontalPosition: 'center',
-      verticalPosition: 'top',
-      panelClass: ['error-snackbar'] 
-    });
-  }
-
-  private finalizar(): void {
-    this.router.navigate(['/equipaments']);
-  }
-
-  bloquearLetras(event: KeyboardEvent): void {
-    const chavesPermitidas = ['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'];
-    if (chavesPermitidas.includes(event.key) || event.ctrlKey || event.metaKey) return;
-    if (!/^[0-9]$/.test(event.key)) event.preventDefault();
+  showMessage(text: string): void {
+    this.snackBar.open(text, 'Fechar', { duration: 5000, verticalPosition: 'top', panelClass: ['error-snackbar'] });
   }
 
   cancelar(): void {
     this.router.navigate(['/equipaments']);
+  }
+
+  bloquearLetras(event: KeyboardEvent): void {
+    const allowed = [
+      'Backspace', 'Delete', 'Tab', 'Escape', 'Enter',
+      'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown',
+      'Home', 'End'
+    ];
+    if (allowed.includes(event.key) || event.ctrlKey || event.metaKey) return;
+    if (!/^[0-9]$/.test(event.key)) event.preventDefault();
   }
 }

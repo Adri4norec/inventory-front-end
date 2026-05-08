@@ -24,6 +24,7 @@ import { EquipamentService } from '../services/equipament/equipment.service';
 import { LoanListResponse } from '../models/loans/loans.model';
 import { LayoutService } from '../services/layout/layout.service';
 import { formatStatusLabel, normalizeStatusType, STATUS_TYPE_OPTIONS, StatusType, statusColorClass } from '../models/status/status-type';
+import { ToolbarUserActionsComponent } from '../shared/toolbar-user-actions/toolbar-user-actions.component';
 
 @Component({
   selector: 'app-loan-list',
@@ -32,7 +33,8 @@ import { formatStatusLabel, normalizeStatusType, STATUS_TYPE_OPTIONS, StatusType
     CommonModule, FormsModule, MatTableModule, MatCardModule,
     MatButtonModule, MatIconModule, MatToolbarModule, MatTooltipModule,
     MatInputModule, MatFormFieldModule, MatSelectModule, MatOptionModule,
-    MatMenuModule, MatPaginatorModule, MatProgressBarModule, MatSnackBarModule
+    MatMenuModule, MatPaginatorModule, MatProgressBarModule, MatSnackBarModule,
+    ToolbarUserActionsComponent
   ],
   templateUrl: './loan-list.component.html',
   styleUrls: ['./loan-list.component.css']
