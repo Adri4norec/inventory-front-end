@@ -1,0 +1,92 @@
+/* Alinhado ao padrão de Lista de Equipamentos */
+:host {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+}
+
+.page-wrapper {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  max-height: 100%;
+  background: #f0f4f8;
+}
+
+.equipament-list-content {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.page-toolbar {
+  flex-shrink: 0;
+  z-index: 998;
+  width: 100%;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  padding: 0 24px !important;
+}
+
+.toolbar-title {
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+
+.table-card {
+  flex-shrink: 0;
+  margin: 0 0 16px 0;
+}
+
+.table-card mat-card-header {
+  padding: 16px 24px 8px;
+}
+
+.table-card mat-card-subtitle {
+  margin-top: 4px !important;
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.table-card-content {
+  padding-top: 0;
+}
+
+.table-scroll {
+  overflow-x: auto;
+}
+
+.full-width-table {
+  width: 100%;
+}
+
+.loading-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 40px;
+  width: 50%;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.loading-text {
+  margin-top: 16px;
+  color: #5f6368;
+  font-size: 14px;
+}
+
+.empty-cell {
+  text-align: center !important;
+  padding: 32px 0 !important;
+  color: #777;
+}
+
+.mat-mdc-header-row {
+  background: #f8fafc !important;
+}

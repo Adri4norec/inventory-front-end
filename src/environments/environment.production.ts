@@ -4,4 +4,3 @@ export const environment = {
   apiUrl: '',
   useLdapAuth: true,
 };
-

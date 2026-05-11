@@ -16,7 +16,7 @@ import { MatMenuModule } from '@angular/material/menu';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { forkJoin, of } from 'rxjs';
+import { forkJoin, Observable, of } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 
 import { LoanService } from '../services/loan/loan.service';
@@ -49,8 +49,17 @@ export class LoanListComponent implements OnInit {
   pageIndex = 0;
 
   filtros = { codigo: '', categoria: '', nome: '', caracteristicas: '', status: '' };
-  statusFilterOptions = STATUS_TYPE_OPTIONS;
+  /** Controle de empréstimo: só fluxo ativo — equipamento disponível não entra nesta lista. */
+  private readonly allowedStatuses: StatusType[] = [
+    StatusType.EM_PREPARACAO,
+    StatusType.EM_MANUTENCAO,
+    StatusType.EM_USO,
+    StatusType.EM_DEVOLUCAO
+  ];
+
+  statusFilterOptions = STATUS_TYPE_OPTIONS.filter((o) => this.allowedStatuses.includes(o.value));
   private requestedStatusFilter: StatusType | null = null;
+  private readonly maxBootstrapFetchSize = 200;
 
   constructor(
     private loanService: LoanService,
@@ -90,12 +99,18 @@ export class LoanListComponent implements OnInit {
     this.requestedStatusFilter = normalizeStatusType(this.filtros.status);
 
     const filtrosParaApi = { ...this.filtros };
-    if (this.requestedStatusFilter === StatusType.INDISPONIVEL) {
-      filtrosParaApi.status = '';
-    }
+    filtrosParaApi.status = '';
 
-    this.loanService.advancedSearch(filtrosParaApi, page, size).subscribe({
-      next: (response: any) => this.processarResposta(response),
+    this.fetchAndBuildPage(filtrosParaApi, page, size, 0);
+  }
+
+  private fetchAndBuildPage(filtrosParaApi: any, desiredPage: number, desiredSize: number, attempt: number): void {
+    const endIndex = (desiredPage + 1) * desiredSize;
+    const multiplier = attempt === 0 ? 5 : attempt === 1 ? 10 : 20;
+    const bootstrapSize = Math.min(this.maxBootstrapFetchSize, Math.max(desiredSize * multiplier, endIndex * 2));
+
+    this.loanService.advancedSearch(filtrosParaApi, 0, bootstrapSize).subscribe({
+      next: (response: any) => this.processarResposta(response, desiredPage, desiredSize, filtrosParaApi, attempt, bootstrapSize),
       error: (err: any) => this.lidarComErro('Erro ao carregar dados', err)
     });
   }
@@ -107,25 +122,112 @@ export class LoanListComponent implements OnInit {
     return isNaN(d.getTime()) ? null : d;
   }
 
-  private processarResposta(response: any): void {
+  private processarResposta(
+    response: any,
+    desiredPage: number,
+    desiredSize: number,
+    filtrosParaApi: any,
+    attempt: number,
+    bootstrapSize: number
+  ): void {
     const baseList = this.sanitizeLoanData(response.content || []);
-    
-    this.totalElements = response.totalElements;
-    this.pageIndex = response.number;
 
-    const toCheck = this.getEquipmentsToCheck(baseList);
+    this.pageIndex = desiredPage;
 
-    if (toCheck.length === 0) {
-      this.finalizeDataSource(baseList);
+    this.syncEquipmentStatusThenFinalize(baseList, desiredPage, desiredSize, filtrosParaApi, attempt, bootstrapSize, response);
+  }
+
+  /**
+   * Alinha o status da linha com o cadastro de equipamentos (movimentações, manutenção, etc.).
+   * Uma requisição por equipamento distinto (deduplica por equipmentId ou tombo), não N por linha.
+   */
+  private syncEquipmentStatusThenFinalize(
+    baseList: LoanListResponse[],
+    desiredPage: number,
+    desiredSize: number,
+    filtrosParaApi: any,
+    attempt: number,
+    bootstrapSize: number,
+    rawResponse: any
+  ): void {
+    const requests = this.buildDistinctEquipmentStatusRequests(baseList);
+    if (requests.length === 0) {
+      this.finalizeDataSource(baseList, desiredPage, desiredSize, filtrosParaApi, attempt, bootstrapSize, rawResponse);
       return;
     }
 
-    this.syncWithEquipmentApi(toCheck, baseList);
+    forkJoin(requests).subscribe({
+      next: (results) => {
+        const statusByLoanId = new Map<string, unknown>();
+        for (const r of results) {
+          for (const loanId of r.loanIds) {
+            statusByLoanId.set(loanId, r.statusName);
+          }
+        }
+
+        const reconciled = baseList.map((item) => {
+          const eqStatus = statusByLoanId.get(item.id);
+          const normalizedEqStatus = normalizeStatusType(eqStatus);
+          if (normalizedEqStatus) {
+            return { ...item, status: normalizedEqStatus };
+          }
+          return item;
+        });
+
+        this.finalizeDataSource(reconciled, desiredPage, desiredSize, filtrosParaApi, attempt, bootstrapSize, rawResponse);
+      },
+      error: () =>
+        this.finalizeDataSource(baseList, desiredPage, desiredSize, filtrosParaApi, attempt, bootstrapSize, rawResponse)
+    });
   }
 
+  private buildDistinctEquipmentStatusRequests(
+    baseList: LoanListResponse[]
+  ): Observable<{ loanIds: string[]; statusName: unknown }>[] {
+    const byKey = new Map<string, { equipmentId?: string; tombo?: string; loanIds: Set<string> }>();
+
+    for (const item of baseList) {
+      const loanId = item.id;
+      const equipmentId = (item.equipmentId ?? '').trim() || null;
+      const tombo = (item.codigo ?? '').trim() || null;
+
+      if (equipmentId) {
+        const key = `id:${equipmentId}`;
+        if (!byKey.has(key)) {
+          byKey.set(key, { equipmentId, loanIds: new Set() });
+        }
+        byKey.get(key)!.loanIds.add(loanId);
+      } else if (tombo) {
+        const key = `tombo:${tombo}`;
+        if (!byKey.has(key)) {
+          byKey.set(key, { tombo, loanIds: new Set() });
+        }
+        byKey.get(key)!.loanIds.add(loanId);
+      }
+    }
+
+    return [...byKey.values()].map((task) => {
+      const loanIds = [...task.loanIds];
+      if (task.equipmentId) {
+        return this.equipamentService.findById(task.equipmentId).pipe(
+          map((eq: { statusName?: unknown }) => ({ loanIds, statusName: eq?.statusName ?? null })),
+          catchError(() => of({ loanIds, statusName: null }))
+        );
+      }
+      return this.equipamentService.advancedSearch({ tombo: task.tombo }, 0, 1).pipe(
+        map((res: { content?: { statusName?: unknown }[] }) => ({
+          loanIds,
+          statusName: res?.content?.[0]?.statusName ?? null
+        })),
+        catchError(() => of({ loanIds, statusName: null }))
+      );
+    });
+  }
+
+  /** Remove linhas que são só cadastro disponível sem empréstimo (ruído do advanced-search). */
   private sanitizeLoanData(content: LoanListResponse[]): LoanListResponse[] {
     return content
-      .filter(item => item.status !== 'DISPONIVEL' || item.hasLoanHistory)
+      .filter((item) => item.status !== 'DISPONIVEL' || !!item.hasLoanHistory)
       .map(item => ({
         ...item,
         loanDate: this.coerceApiDate(item.loanDate) as any,
@@ -133,43 +235,35 @@ export class LoanListComponent implements OnInit {
       }));
   }
 
-  private getEquipmentsToCheck(list: LoanListResponse[]) {
-    return list
-      .filter(i => normalizeStatusType(i.status) === StatusType.DISPONIVEL)
-      .map(i => ({ loan: i, equipmentId: (i.equipmentId || i.id) as string }))
-      .filter(x => !!x.equipmentId);
-  }
-
-  private syncWithEquipmentApi(toCheck: any[], baseList: LoanListResponse[]): void {
-    forkJoin(
-      toCheck.map(({ equipmentId }) =>
-        this.equipamentService.findById(equipmentId).pipe(
-          map((eq: any) => ({ equipmentId, statusName: eq?.statusName })),
-          catchError(() => of({ equipmentId, statusName: null }))
-        )
-      )
-    ).subscribe({
-      next: (results) => {
-        const statusByEquipment = new Map<string, any>();
-        results.forEach(r => statusByEquipment.set(r.equipmentId, r.statusName));
-
-        const reconciled = baseList.map(item => {
-          const equipmentId = item.equipmentId || item.id;
-          const eqStatus = statusByEquipment.get(equipmentId);
-          if (normalizeStatusType(eqStatus) === StatusType.INDISPONIVEL) {
-            return { ...item, status: StatusType.INDISPONIVEL };
-          }
-          return item;
-        });
-
-        this.finalizeDataSource(reconciled);
-      },
-      error: () => this.finalizeDataSource(baseList)
+  private finalizeDataSource(
+    list: LoanListResponse[],
+    desiredPage: number,
+    desiredSize: number,
+    filtrosParaApi: any,
+    attempt: number,
+    bootstrapSize: number,
+    rawResponse: any
+  ): void {
+    const onlyAllowed = list.filter((it) => {
+      const st = normalizeStatusType(it.status);
+      return !!st && this.allowedStatuses.includes(st);
     });
-  }
 
-  private finalizeDataSource(list: LoanListResponse[]): void {
-    this.dataSource = this.applyRequestedStatusFilter(list);
+    const filtered = this.applyRequestedStatusFilter(onlyAllowed);
+    this.totalElements = filtered.length;
+
+    const start = desiredPage * desiredSize;
+    const end = start + desiredSize;
+    const pageSlice = filtered.slice(start, end);
+
+    const canRetry = attempt < 2;
+    const backendMayHaveMore = Array.isArray(rawResponse?.content) && rawResponse.content.length >= bootstrapSize;
+    if (pageSlice.length < desiredSize && canRetry && backendMayHaveMore) {
+      this.fetchAndBuildPage(filtrosParaApi, desiredPage, desiredSize, attempt + 1);
+      return;
+    }
+
+    this.dataSource = pageSlice;
     this.isLoading = false;
   }
 
@@ -179,7 +273,8 @@ export class LoanListComponent implements OnInit {
   }
 
   isExtinto(status: unknown): boolean {
-    return normalizeStatusType(status) === StatusType.INDISPONIVEL;
+    const st = normalizeStatusType(status);
+    return !st || !this.allowedStatuses.includes(st);
   }
 
   private lidarComErro(mensagem: string, err: any): void {
@@ -204,9 +299,9 @@ export class LoanListComponent implements OnInit {
     return status === 'EM_DEVOLUCAO';
   }
 
-  aplicarFiltros(): void { 
-    this.pageIndex = 0; 
-    this.carregarDados(); 
+  aplicarFiltros(): void {
+    this.pageIndex = 0;
+    this.carregarDados();
   }
 
   limparFiltros(): void {

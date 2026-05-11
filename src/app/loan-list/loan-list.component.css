@@ -1,12 +1,32 @@
 
 
-/* ─── Layout Principal ───────────────────────────────────────── */
-.page-wrapper {
-  min-height: 100vh;
-  background: #f0f4f8;
-  padding: 0;
+/* Preenche o <main> (flex) e permite que a área .content role */
+:host {
   display: flex;
   flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+}
+
+/* ─── Layout Principal ───────────────────────────────────────── */
+.page-wrapper {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  max-height: 100%;
+  background: #f0f4f8;
+  padding: 0;
+}
+
+/* Área rolável: filtros + tabela + paginação */
+.loan-list-content {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* ─── Barra Azul (Toolbar) ───────────────────────────────────── */
@@ -19,6 +39,7 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   margin-bottom: 24px;
   padding: 0 24px 0 80px !important;
+  flex-shrink: 0;
 }
 
 /* ─── Cards (Filtros e Tabela) ───────────────────────────────── */
@@ -26,6 +47,7 @@
   margin: 0 24px 24px 24px;
   border-radius: 8px !important;
   z-index: 997;
+  flex-shrink: 0;
 }
 
 table {

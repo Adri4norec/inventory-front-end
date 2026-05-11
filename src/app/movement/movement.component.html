@@ -90,7 +90,19 @@
             [ngClass]="movementForm.get('movementType')?.value === 'DESCARTE' ? 'field-third' : 'field-half'">
             <mat-label>Responsável</mat-label>
             <mat-icon matPrefix>person</mat-icon>
-            <input matInput formControlName="responsavel" />
+            <input
+              type="text"
+              matInput
+              formControlName="responsavel"
+              [matAutocomplete]="auto"
+              autocomplete="off"
+              placeholder="Digite pelo menos 3 letras..." />
+
+            <mat-autocomplete #auto="matAutocomplete" [displayWith]="displayUserName">
+              <mat-option *ngFor="let user of filteredUsers" [value]="user.fullName">
+                {{ user.fullName }}
+              </mat-option>
+            </mat-autocomplete>
           </mat-form-field>
 
           <mat-form-field appearance="outline" class="field-half">

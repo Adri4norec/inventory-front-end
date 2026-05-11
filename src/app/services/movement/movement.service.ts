@@ -1,14 +1,28 @@
-import { Injectable } from '@angular/core';
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { Injectable, Inject, PLATFORM_ID } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
+import { HttpClient, HttpParams, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { MovementRequest, MovementResponse } from './../../models/movement/movement.model';
+import { UserSearchResponse } from '../../models/loans/loans.model';
 import { environment } from '../../../environments/environment';
 
 @Injectable({ providedIn: 'root' })
 export class MovementService {
   private readonly API = `${environment.apiUrl}/api/v1/movements`;
 
-  constructor(private http: HttpClient) { }
+  constructor(
+    private http: HttpClient,
+    @Inject(PLATFORM_ID) private platformId: Object
+  ) { }
+
+  private getOptions() {
+    let headers = new HttpHeaders();
+    if (isPlatformBrowser(this.platformId)) {
+      const token = localStorage.getItem('access_token') || localStorage.getItem('token');
+      if (token) headers = headers.set('Authorization', `Bearer ${token}`);
+    }
+    return { headers };
+  }
 
   findHistoryByEquipament(
     equipamentId: string,
@@ -23,11 +37,11 @@ export class MovementService {
   }
 
   save(record: MovementRequest): Observable<MovementResponse> {
-    return this.http.post<MovementResponse>(this.API, record);
+    return this.http.post<MovementResponse>(this.API, record, this.getOptions());
   }
 
   findById(id: string): Observable<MovementResponse> {
-    return this.http.get<MovementResponse>(`${this.API}/${id}`);
+    return this.http.get<MovementResponse>(`${this.API}/${id}`, this.getOptions());
   }
 
   uploadImages(id: string, files: File[]): Observable<any> { 
@@ -36,6 +50,12 @@ export class MovementService {
       formData.append('files', file);
     });
   
-    return this.http.post(`${this.API}/${id}/images`, formData, { responseType: 'text' });
+    return this.http.post(`${this.API}/${id}/images`, formData, { ...this.getOptions(), responseType: 'text' });
+  }
+
+  searchUsers(nome: string): Observable<UserSearchResponse[]> {
+    const options = this.getOptions();
+    const params = new HttpParams().set('nome', nome);
+    return this.http.get<UserSearchResponse[]>(`${this.API}/search-users`, { ...options, params });
   }
 }

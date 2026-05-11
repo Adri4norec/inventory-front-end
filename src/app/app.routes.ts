@@ -9,6 +9,8 @@ import { authGuard } from './guards/auth.guard';
 import { LoanListComponent } from './loan-list/loan-list.component';
 import { LoanPreparationComponent } from './loan-preparation/loan-preparation.component';
 import { PreparationLoanComponent } from './preparation-loan/preparation-loan.component';
+import { PerPartListComponent } from './per-part/per-part-list.component';
+import { PerPartComponent } from './per-part/per-part.component';
 
 export const routes: Routes = [
   { path: '', component: LoginComponent },
@@ -96,5 +98,25 @@ export const routes: Routes = [
     canActivate: [authGuard],
     data: { title: 'Empréstimos' }
   },
+
+  {
+    path: 'inventario/acessorios/novo',
+    component: PerPartComponent,
+    canActivate: [authGuard],
+    data: { title: 'Novo Acessório' }
+  },
+  {
+    path: 'inventario/acessorios/editar/:id',
+    component: PerPartComponent,
+    canActivate: [authGuard],
+    data: { title: 'Editar Acessório' }
+  },
+  {
+    path: 'inventario/acessorios',
+    component: PerPartListComponent,
+    canActivate: [authGuard],
+    data: { title: 'Acessórios' }
+  },
+
   { path: '**', redirectTo: '' }
 ];

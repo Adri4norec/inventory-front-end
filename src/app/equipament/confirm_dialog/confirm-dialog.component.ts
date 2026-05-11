@@ -14,7 +14,7 @@ import { MatIconModule } from '@angular/material/icon';
       Confirmar Exclusão
     </h2>
     <mat-dialog-content>
-      <p>Tem certeza que deseja excluir o equipamento <strong>{{ data.name }}</strong>?</p>
+      <p>Tem certeza que deseja excluir o registro <strong>{{ data.name }}</strong>?</p>
       <p style="font-size: 0.8rem; color: #666;">Esta ação não poderá ser desfeita.</p>
     </mat-dialog-content>
     <mat-dialog-actions align="end">

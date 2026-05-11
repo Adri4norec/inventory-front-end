@@ -2,6 +2,8 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { of } from 'rxjs';
+import { debounceTime, distinctUntilChanged, switchMap, catchError } from 'rxjs/operators';
 
 import { MatCardModule } from '@angular/material/card';
 import { MatTableModule } from '@angular/material/table';
@@ -17,11 +19,13 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatAutocompleteModule } from '@angular/material/autocomplete';
 
 import { EquipamentService } from '../services/equipament/equipment.service';
 import { MovementService } from '../services/movement/movement.service';
 import { PhotoGaleryDialogComponent } from '../photo-galery-dialog/photo-galery-dialog.component';
 import { MovementRequest, MovementResponse, MovementType } from '../models/movement/movement.model';
+import { UserSearchResponse } from '../models/loans/loans.model';
 import { LayoutService } from '../services/layout/layout.service';
 import { formatStatusLabel, statusColorClass } from '../models/status/status-type';
 import { ToolbarUserActionsComponent } from '../shared/toolbar-user-actions/toolbar-user-actions.component';
@@ -33,7 +37,7 @@ import { ToolbarUserActionsComponent } from '../shared/toolbar-user-actions/tool
     CommonModule, RouterModule, ReactiveFormsModule, MatCardModule, MatTableModule,
     MatButtonModule, MatIconModule, MatDividerModule, MatMenuModule, MatToolbarModule,
     MatTooltipModule, MatDialogModule, MatChipsModule, MatFormFieldModule, MatInputModule,
-    MatSelectModule, MatSnackBarModule,
+    MatSelectModule, MatSnackBarModule, MatAutocompleteModule,
     ToolbarUserActionsComponent
   ],
   templateUrl: './movement.component.html',
@@ -49,6 +53,7 @@ export class MovementComponent implements OnInit {
   previsualizacoes: string[] = [];
   isViewMode = false;
   viewedMovement: MovementResponse | null = null;
+  filteredUsers: UserSearchResponse[] = [];
 
   displayedColumns: string[] = ['dataHora', 'movementType', 'responsavel', 'projeto', 'local', 'observacao', 'actions'];
 
@@ -99,6 +104,35 @@ export class MovementComponent implements OnInit {
       justificationControl?.updateValueAndValidity();
       obsControl?.updateValueAndValidity();
     });
+
+    // Autocomplete do responsável (mesmo padrão da tela de Empréstimo).
+    this.movementForm.get('responsavel')?.valueChanges.pipe(
+      debounceTime(300),
+      distinctUntilChanged(),
+      switchMap(value => {
+        const search = typeof value === 'string' ? value : '';
+        if (search.length >= 3) {
+          return this.movementService.searchUsers(search).pipe(
+            catchError((err) => {
+              // Mantém tela resiliente como no empréstimo, mas não "silencia" completamente no debug.
+              console.error('Erro ao buscar usuários (movimentação):', err);
+              return of([]);
+            })
+          );
+        }
+        return of([]);
+      })
+    ).subscribe(users => {
+      // Tolerante a variações do DTO do backend (fullName vs full_name/nome/name),
+      // mantendo o contrato de exibição/seleção como fullName (string).
+      const normalized = (users as any[]).map((u) => {
+        const fullName = String(u?.fullName ?? u?.full_name ?? u?.nome ?? u?.name ?? '').trim();
+        const id = String(u?.id ?? '').trim();
+        return { id, fullName } as UserSearchResponse;
+      }).filter((u) => !!u.fullName);
+
+      this.filteredUsers = normalized;
+    });
   }
 
   private initForm(): void {
@@ -110,6 +144,12 @@ export class MovementComponent implements OnInit {
       local: ['', Validators.required],
       observacao: ['']
     });
+  }
+
+  displayUserName(user: UserSearchResponse | string | null): string {
+    if (!user) return '';
+    if (typeof user === 'string') return user;
+    return user.fullName || '';
   }
 
   private loadMovementDetails(movementId: string): void {

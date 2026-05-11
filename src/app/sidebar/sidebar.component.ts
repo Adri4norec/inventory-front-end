@@ -28,7 +28,9 @@ export class SidebarComponent implements OnInit {
       expanded: false,
       children: [
         { label: 'Lista de Equipamentos', route: '/equipaments', allowedRoles: ['ADMIN', 'COLABORADOR'] },
-        { label: 'Novo Equipamento', route: '/cadastro', allowedRoles: ['ADMIN'] }
+        { label: 'Novo Equipamento', route: '/cadastro', allowedRoles: ['ADMIN'] },
+        { label: 'Listagem de acessórios', route: '/inventario/acessorios', allowedRoles: ['ADMIN', 'COLABORADOR'] },
+        { label: 'Novo acessório', route: '/inventario/acessorios/novo', allowedRoles: ['ADMIN', 'COLABORADOR'] }
       ]
     },
     {
