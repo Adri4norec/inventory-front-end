@@ -14,8 +14,11 @@ import { MatIconModule } from '@angular/material/icon';
       Confirmar Exclusão
     </h2>
     <mat-dialog-content>
-      <p>Tem certeza que deseja excluir o registro <strong>{{ data.name }}</strong>?</p>
-      <p style="font-size: 0.8rem; color: #666;">Esta ação não poderá ser desfeita.</p>
+      <p *ngIf="data.message; else defaultMessage">{{ data.message }}</p>
+      <ng-template #defaultMessage>
+        <p>Tem certeza que deseja excluir o registro <strong>{{ data.name }}</strong>?</p>
+      </ng-template>
+      <p style="font-size: 0.8rem; color: #666;">{{ data.detail || 'Esta ação não poderá ser desfeita.' }}</p>
     </mat-dialog-content>
     <mat-dialog-actions align="end">
       <button mat-button (click)="onCancel()" style="color: #6c757d;">Cancelar</button>
@@ -26,7 +29,7 @@ import { MatIconModule } from '@angular/material/icon';
 export class ConfirmDialogComponent {
   constructor(
     public dialogRef: MatDialogRef<ConfirmDialogComponent>,
-    @Inject(MAT_DIALOG_DATA) public data: { name: string }
+    @Inject(MAT_DIALOG_DATA) public data: { name?: string; message?: string; detail?: string }
   ) {}
 
   onCancel(): void {

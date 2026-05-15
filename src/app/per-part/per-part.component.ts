@@ -2,6 +2,8 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { of } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
@@ -12,9 +14,15 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatSelectModule } from '@angular/material/select';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatDatepickerModule } from '@angular/material/datepicker';
+import { MatNativeDateModule } from '@angular/material/core';
 
 import { PerPartService } from '../services/per-part/per-part.service';
+import { ProprietaryService } from '../services/equipament/proprietary.service';
 import { PerPartRequest } from '../models/per-part/per-part.model';
+import { ProprietaryResponse } from '../models/proprietaries/proprietary';
 import { LayoutService } from '../services/layout/layout.service';
 import { ToolbarUserActionsComponent } from '../shared/toolbar-user-actions/toolbar-user-actions.component';
 
@@ -34,24 +42,32 @@ import { ToolbarUserActionsComponent } from '../shared/toolbar-user-actions/tool
     MatFormFieldModule,
     MatInputModule,
     MatSnackBarModule,
+    MatSelectModule,
+    MatProgressSpinnerModule,
+    MatDatepickerModule,
+    MatNativeDateModule,
     ToolbarUserActionsComponent
   ],
   templateUrl: './per-part.component.html',
   styleUrls: ['./per-part.component.css']
 })
 export class PerPartComponent implements OnInit {
-  private static readonly DEFAULT_RESPONSAVEL = 'IRT';
+  private static readonly DEFAULT_PROPRIETARY_NAME = 'IRT';
 
   form!: FormGroup;
   isEdit = false;
   perPartId: string | null = null;
   isSaving = false;
 
+  proprietaries: ProprietaryResponse[] = [];
+  isLoadingProprietaries = false;
+
   constructor(
     private route: ActivatedRoute,
     private router: Router,
     private fb: FormBuilder,
     private perPartService: PerPartService,
+    private proprietaryService: ProprietaryService,
     private snackBar: MatSnackBar,
     public layout: LayoutService
   ) {}
@@ -63,7 +79,9 @@ export class PerPartComponent implements OnInit {
     this.form = this.fb.group({
       name: ['', [Validators.required, Validators.maxLength(255)]],
       quantity: [null as number | null, [Validators.required, Validators.min(1)]],
-      responsavel: ['']
+      responsavel: [''],
+      proprietaryId: [null as string | null],
+      dataVencimento: [null as Date | null]
     });
 
     const respCtrl = this.form.get('responsavel');
@@ -74,6 +92,8 @@ export class PerPartComponent implements OnInit {
     }
     respCtrl?.updateValueAndValidity({ emitEvent: false });
 
+    this.loadProprietaries();
+
     if (this.isEdit && this.perPartId) {
       this.perPartService.findById(this.perPartId).subscribe({
         next: (p) => {
@@ -81,7 +101,9 @@ export class PerPartComponent implements OnInit {
             {
               name: p.name,
               responsavel: p.responsavel ?? '',
-              quantity: p.quantity
+              quantity: p.quantity,
+              proprietaryId: p.proprietaryId ?? null,
+              dataVencimento: this.toDatePickerValue(p.dataVencimento)
             },
             { emitEvent: false }
           );
@@ -106,12 +128,18 @@ export class PerPartComponent implements OnInit {
     }
 
     const raw = this.form.getRawValue();
+    const selectedProprietaryId = raw.proprietaryId ? String(raw.proprietaryId) : null;
+    const proprietaryId =
+      selectedProprietaryId ?? (this.isEdit ? null : this.findDefaultProprietaryId());
+
+    const responsavel = String(raw.responsavel || '').trim();
+
     const body: PerPartRequest = {
       name: String(raw.name || '').trim(),
-      responsavel: this.isEdit
-        ? String(raw.responsavel || '').trim()
-        : PerPartComponent.DEFAULT_RESPONSAVEL,
-      quantity: Number(raw.quantity)
+      responsavel: responsavel || null,
+      quantity: Number(raw.quantity),
+      proprietaryId,
+      dataVencimento: this.toBackendDateTime(raw.dataVencimento)
     };
 
     this.isSaving = true;
@@ -136,6 +164,50 @@ export class PerPartComponent implements OnInit {
         this.snackBar.open(msg, 'Fechar', { duration: 6000 });
       }
     });
+  }
+
+  private loadProprietaries(): void {
+    this.isLoadingProprietaries = true;
+    this.proprietaryService
+      .listAll()
+      .pipe(
+        catchError(() => {
+          this.snackBar.open('Não foi possível carregar a lista de proprietários.', 'Fechar', {
+            duration: 5000
+          });
+          return of<ProprietaryResponse[]>([]);
+        })
+      )
+      .subscribe((list) => {
+        this.proprietaries = list ?? [];
+        this.isLoadingProprietaries = false;
+      });
+  }
+
+  private findDefaultProprietaryId(): string | null {
+    const target = PerPartComponent.DEFAULT_PROPRIETARY_NAME.toLowerCase();
+    return (
+      this.proprietaries.find((p) => (p.name ?? '').trim().toLowerCase() === target)?.id ?? null
+    );
+  }
+
+  private toBackendDateTime(value: Date | string | null | undefined): string | null {
+    if (!value) return null;
+    const date = value instanceof Date ? value : new Date(value);
+    if (isNaN(date.getTime())) return null;
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const yyyy = date.getFullYear();
+    const mm = pad(date.getMonth() + 1);
+    const dd = pad(date.getDate());
+    return `${yyyy}-${mm}-${dd}T00:00:00`;
+  }
+
+  private toDatePickerValue(iso: string | null | undefined): Date | null {
+    if (!iso) return null;
+    const datePart = iso.length >= 10 ? iso.substring(0, 10) : iso;
+    const [y, m, d] = datePart.split('-').map((n) => Number(n));
+    if (!y || !m || !d) return null;
+    return new Date(y, m - 1, d);
   }
 
   private extractBackendMessage(err: unknown, fallback: string): string {

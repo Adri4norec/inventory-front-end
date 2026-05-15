@@ -130,13 +130,17 @@
             <th mat-header-cell *matHeaderCellDef style="text-align: right; white-space: nowrap; width: 60px;"> Ações
             </th>
             <td mat-cell *matCellDef="let element" style="text-align: right;">
-              <ng-container *ngIf="!isExtinto(element.status); else semAcoes">
+              <ng-container *ngIf="!acoesBloqueadas(element.status); else semAcoes">
                 <button mat-icon-button [matMenuTriggerFor]="menu" aria-label="Ações do empréstimo">
                   <mat-icon>more_vert</mat-icon>
                 </button>
               </ng-container>
               <ng-template #semAcoes>
-                <button mat-icon-button disabled aria-label="Ações indisponíveis">
+                <button
+                  mat-icon-button
+                  disabled
+                  [matTooltip]="isEmManutencao(element.status) ? 'Ações indisponíveis: equipamento em manutenção' : 'Ações indisponíveis'"
+                  aria-label="Ações indisponíveis">
                   <mat-icon>more_vert</mat-icon>
                 </button>
               </ng-template>

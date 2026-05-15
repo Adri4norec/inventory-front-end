@@ -73,8 +73,13 @@ export class EquipamentService {
     return this.http.get<any>(`${this.API}/advanced-search`, { params });
   }
   
-  delete(id: string): Observable<void> {
+  deleteEquipment(id: string): Observable<void> {
     return this.http.delete<void>(`${this.API}/${id}`);
+  }
+
+  /** @deprecated Use deleteEquipment */
+  delete(id: string): Observable<void> {
+    return this.deleteEquipment(id);
   }
 
   update(id: string, record: EquipmentRequest): Observable<EquipmentResponse> {
@@ -83,7 +88,7 @@ export class EquipamentService {
 
   uploadImages(id: string, files: File[]): Observable<EquipmentResponse> {
     const formData = new FormData();
-    files.forEach(file => {
+    files.forEach((file) => {
       formData.append('files', file);
     });
     return this.http.post<EquipmentResponse>(`${this.API}/${id}/images`, formData);

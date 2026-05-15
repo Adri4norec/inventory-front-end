@@ -38,8 +38,17 @@
   letter-spacing: 0.3px;
 }
 
+.filter-card,
 .table-card {
   flex-shrink: 0;
+  z-index: 997;
+}
+
+.equipament-list-content .filter-card {
+  margin: 0 0 16px 0;
+}
+
+.equipament-list-content .table-card {
   margin: 0 0 16px 0;
 }
 
@@ -89,4 +98,9 @@
 
 .mat-mdc-header-row {
   background: #f8fafc !important;
+}
+
+/* ─── Ajustes dos Filtros (mesmo padrão de equipamentos/empréstimos) ── */
+::ng-deep .compact-filter .mat-mdc-form-field-subscript-wrapper {
+  display: none;
 }

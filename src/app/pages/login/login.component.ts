@@ -70,7 +70,7 @@ export class LoginComponent {
 
     this.authService.login(authData).subscribe({
       next: () => {
-        this.router.navigate(['/equipaments']);
+        void this.router.navigateByUrl('/equipaments');
       },
       error: (err) => {
         console.error('Objeto de erro completo:', err);

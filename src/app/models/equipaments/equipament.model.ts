@@ -15,6 +15,7 @@ export interface EquipmentResponse {
   proprietaryId?: string;
   perParts?: PerPartResponse[];
   imageUrls: string[];
+  dueDate?: string;
 }
 
 export interface EquipmentRequest {
@@ -24,6 +25,7 @@ export interface EquipmentRequest {
   proprietaryId: string;
   topo: string;
   perParts?: PerPartResponse[];
+  dueDate?: string | null;
 }
 
 export interface PageResponse<T> {

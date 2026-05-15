@@ -1,6 +1,6 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { NavigationEnd, RouterModule, Router } from '@angular/router';
+import { NavigationEnd, RouterModule, Router, ActivatedRoute } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { Subscription, filter } from 'rxjs';
 
@@ -22,6 +22,7 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
 import { MatOptionModule } from '@angular/material/core';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 
 // Imports para o Filtro de Data
 import { MatDatepickerModule } from '@angular/material/datepicker';
@@ -32,6 +33,7 @@ import { PhotoGaleryDialogComponent } from '../photo-galery-dialog/photo-galery-
 import { ConfirmDialogComponent } from './confirm_dialog/confirm-dialog.component';
 import { EquipmentResponse } from '../models/equipaments/equipament.model';
 import { EquipamentService } from '../services/equipament/equipment.service';
+import { LoanRefreshService } from '../services/loan/loan-refresh.service';
 import { AuthService } from '../services/auth/auth.service';
 import { LayoutService } from '../services/layout/layout.service';
 import { STATUS_TYPE_LABEL, STATUS_TYPE_OPTIONS, StatusType, normalizeStatusType, statusColorClass } from '../models/status/status-type';
@@ -63,6 +65,7 @@ import { ToolbarUserActionsComponent } from '../shared/toolbar-user-actions/tool
     MatInputModule,
     MatDatepickerModule,
     MatNativeDateModule,
+    MatSnackBarModule,
     ToolbarUserActionsComponent
   ],
   templateUrl: './equipament.component.html',
@@ -96,6 +99,7 @@ export class EquipamentComponent implements OnInit, OnDestroy {
     'tombo', 
     'statusName',
     'dateHour',
+    'dueDate',
     'usageType',
     'proprietaryName',
     'actions'
@@ -106,22 +110,49 @@ export class EquipamentComponent implements OnInit, OnDestroy {
     private authService: AuthService,
     private dialog: MatDialog,
     private router: Router,
+    private route: ActivatedRoute,
+    private snackBar: MatSnackBar,
+    private loanRefreshService: LoanRefreshService,
     public layout: LayoutService
   ) { }
 
   private readonly subs = new Subscription();
 
   ngOnInit(): void {
+    this.authService.resolveUserRole();
     this.isColaborador = this.authService.isColaborador();
     this.carregarDados();
 
-    // Garante que, ao voltar para a listagem, reflita qualquer mudança de status feita em outras telas (ex.: empréstimos).
+    this.subs.add(
+      this.authService.userRole$.subscribe(() => {
+        this.isColaborador = this.authService.isColaborador();
+      })
+    );
+
+    this.subs.add(
+      this.route.queryParamMap.subscribe((params) => {
+        if (params.get('accessDenied') === '1') {
+          this.snackBar.open('Acesso negado. Você não tem permissão para esta página.', 'Fechar', {
+            duration: 5000,
+            panelClass: ['error-snackbar']
+          });
+          this.router.navigate([], {
+            relativeTo: this.route,
+            queryParams: { accessDenied: null },
+            queryParamsHandling: 'merge',
+            replaceUrl: true
+          });
+        }
+      })
+    );
+
     this.subs.add(
       this.router.events.pipe(
         filter((e): e is NavigationEnd => e instanceof NavigationEnd),
         filter((e) => (e.urlAfterRedirects || e.url).startsWith('/equipaments'))
       ).subscribe(() => this.carregarDados(this.pageIndex, this.pageSize))
     );
+
   }
 
   ngOnDestroy(): void {
@@ -198,23 +229,36 @@ export class EquipamentComponent implements OnInit, OnDestroy {
 
   excluirEquipamento(equipamento: EquipmentResponse): void {
     const dialogRef = this.dialog.open(ConfirmDialogComponent, {
-      width: '400px',
-      data: { name: equipamento.name },
+      width: '440px',
+      data: {
+        message: `Excluir o equipamento "${equipamento.name}"?`,
+        detail: 'Empréstimos vinculados serão removidos e o item deixará de aparecer nas listagens.'
+      },
       disableClose: true
     });
 
     dialogRef.afterClosed().subscribe(result => {
-      if (result) {
-        this.isLoading = true;
-        this.equipmentService.delete(equipamento.id).subscribe({
-          next: () => this.carregarDados(this.pageIndex, this.pageSize),
-          error: () => {
-            this.isLoading = false;
-            alert('Erro ao tentar excluir o equipamento.');
-          }
-        });
-      }
+      if (!result) return;
+
+      this.isLoading = true;
+      this.equipmentService.deleteEquipment(equipamento.id).subscribe({
+        next: () => {
+          this.snackBar.open('Equipamento excluído com sucesso.', 'OK', { duration: 3000 });
+          this.loanRefreshService.notifyRefresh();
+          this.carregarDados(this.pageIndex, this.pageSize);
+        },
+        error: (err) => {
+          this.isLoading = false;
+          const msg = this.extractErrorMessage(err, 'Erro ao excluir equipamento.');
+          this.snackBar.open(msg, 'Fechar', { duration: 5000, panelClass: ['error-snackbar'] });
+        }
+      });
     });
+  }
+
+  private extractErrorMessage(err: unknown, fallback: string): string {
+    const e = err as { error?: { message?: string }; message?: string };
+    return e?.error?.message || e?.message || fallback;
   }
 
   visualizar(e: EquipmentResponse): void {
@@ -226,11 +270,14 @@ export class EquipamentComponent implements OnInit, OnDestroy {
     });
   }
 
-  verFotos(equipamento: any): void {
+  verFotos(equipamento: EquipmentResponse): void {
+    const urls = equipamento.imageUrls ?? [];
+    if (!urls.length) return;
+
     this.dialog.open(PhotoGaleryDialogComponent, {
       width: '850px',
       maxWidth: '90vw',
-      data: { urls: equipamento.imageUrls }
+      data: { urls }
     });
   }
 

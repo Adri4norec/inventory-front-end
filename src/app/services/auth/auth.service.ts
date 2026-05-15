@@ -37,8 +37,26 @@ export class AuthService {
     const stored = localStorage.getItem('userRole');
     if (stored === 'ADMIN' || stored === 'COLABORADOR') return stored;
 
-    // Preferir roles/claims vindas do JWT (backend novo).
-    return this.getRoleFromToken();
+    const fromToken = this.getRoleFromToken();
+    if (fromToken) return fromToken;
+
+    return this.normalizeRole(localStorage.getItem('roleName'));
+  }
+
+  /**
+   * Recalcula o perfil a partir do JWT e do roleName persistido no login.
+   */
+  resolveUserRole(): UserRole | null {
+    if (!isPlatformBrowser(this.platformId)) {
+      return null;
+    }
+
+    const role = this.getRoleFromToken() ?? this.normalizeRole(localStorage.getItem('roleName'));
+    if (role) {
+      localStorage.setItem('userRole', role);
+    }
+    this.updateUserRole();
+    return role;
   }
 
   getToken(): string | null {
@@ -61,17 +79,7 @@ export class AuthService {
    * Útil logo após o login.
    */
   syncUserRoleFromToken(): UserRole | null {
-    if (!isPlatformBrowser(this.platformId)) {
-      return null;
-    }
-    const role = this.getRoleFromToken();
-    if (role) {
-      localStorage.setItem('userRole', role);
-    } else {
-      localStorage.removeItem('userRole');
-    }
-    this.updateUserRole();
-    return role;
+    return this.resolveUserRole();
   }
 
   private persistSession(response: UserResponse): void {
@@ -92,7 +100,38 @@ export class AuthService {
       localStorage.removeItem('fullName');
     }
 
-    this.syncUserRoleFromToken();
+    if (response.roleName) {
+      localStorage.setItem('roleName', response.roleName);
+    } else {
+      localStorage.removeItem('roleName');
+    }
+
+    const role = this.getRoleFromToken() ?? this.normalizeRole(response.roleName);
+    if (role) {
+      localStorage.setItem('userRole', role);
+    } else {
+      localStorage.removeItem('userRole');
+    }
+    this.updateUserRole();
+  }
+
+  private normalizeRole(value: unknown): UserRole | null {
+    if (value == null) return null;
+    const text = String(value).trim();
+    if (!text) return null;
+
+    const upper = text.replace(/^ROLE_/, '').toUpperCase();
+
+    if (upper === 'ADMIN' || upper === 'ADMINISTRADOR' || upper === 'ADMINISTRATOR') {
+      return 'ADMIN';
+    }
+    if (upper === 'COLABORADOR' || upper === 'COLLABORATOR') {
+      return 'COLABORADOR';
+    }
+    if (upper.includes('ADMIN')) return 'ADMIN';
+    if (upper.includes('COLABOR')) return 'COLABORADOR';
+
+    return null;
   }
 
   private getRoleFromToken(): UserRole | null {
@@ -121,9 +160,10 @@ export class AuthService {
       candidates.push(String(raw));
     }
 
-    const normalized = candidates.map(r => r.replace(/^ROLE_/, '').toUpperCase());
-    if (normalized.includes('ADMIN')) return 'ADMIN';
-    if (normalized.includes('COLABORADOR')) return 'COLABORADOR';
+    for (const candidate of candidates) {
+      const role = this.normalizeRole(candidate);
+      if (role) return role;
+    }
     return null;
   }
 
@@ -156,7 +196,9 @@ export class AuthService {
       return;
     }
     const role = this.getUserRole();
-    this.userRoleSubject.next(role);
+    if (this.userRoleSubject.value !== role) {
+      this.userRoleSubject.next(role);
+    }
   }
 
   /**
@@ -220,6 +262,7 @@ export class AuthService {
     localStorage.removeItem('user');
     localStorage.removeItem('fullName');
     localStorage.removeItem('userRole');
+    localStorage.removeItem('roleName');
 
     this.updateUserRole();
   }

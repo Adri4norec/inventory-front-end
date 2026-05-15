@@ -1,8 +1,9 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { Router, NavigationEnd } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { AppShellComponent } from './layout/app-shell.component';
 import { filter } from 'rxjs/operators';
+
 @Component({
   selector: 'app-root',
   standalone: true,
@@ -10,15 +11,23 @@ import { filter } from 'rxjs/operators';
   templateUrl: './app.component.html',
   styleUrl: './app.component.css'
 })
-export class AppComponent {
-  mostrarLayout: boolean = true;
+export class AppComponent implements OnInit {
+  mostrarLayout = true;
 
-  constructor(private router: Router) {
+  private readonly rotasSemMenu = ['/', '/login', '/register'];
+
+  constructor(private router: Router) {}
+
+  ngOnInit(): void {
+    this.atualizarLayout(this.router.url);
+
     this.router.events.pipe(
-      filter(event => event instanceof NavigationEnd)
-    ).subscribe((event: any) => {
-      const rotasSemMenu = ['/', '/login', '/register'];
-      this.mostrarLayout = !rotasSemMenu.includes(event.urlAfterRedirects);
-    });
+      filter((event): event is NavigationEnd => event instanceof NavigationEnd)
+    ).subscribe((event) => this.atualizarLayout(event.urlAfterRedirects));
+  }
+
+  private atualizarLayout(url: string): void {
+    const path = url.split('?')[0].split('#')[0];
+    this.mostrarLayout = !this.rotasSemMenu.includes(path);
   }
 }

@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
+import { FormsModule } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
 import { MatTableModule } from '@angular/material/table';
 import { MatButtonModule } from '@angular/material/button';
@@ -12,6 +13,8 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
 
 import { PerPartService } from '../services/per-part/per-part.service';
 import { PerPartResponse } from '../models/per-part/per-part.model';
@@ -24,6 +27,7 @@ import { ConfirmDialogComponent } from '../equipament/confirm_dialog/confirm-dia
   standalone: true,
   imports: [
     CommonModule,
+    FormsModule,
     MatCardModule,
     MatTableModule,
     MatButtonModule,
@@ -35,18 +39,22 @@ import { ConfirmDialogComponent } from '../equipament/confirm_dialog/confirm-dia
     MatDialogModule,
     MatMenuModule,
     MatPaginatorModule,
+    MatFormFieldModule,
+    MatInputModule,
     ToolbarUserActionsComponent
   ],
   templateUrl: './per-part-list.component.html',
   styleUrls: ['./per-part-list.component.css']
 })
 export class PerPartListComponent implements OnInit {
-  displayedColumns: string[] = ['name', 'responsavel', 'quantity', 'actions'];
+  displayedColumns: string[] = ['name', 'proprietaryName', 'quantity', 'dataVencimento', 'actions'];
   dataSource: PerPartResponse[] = [];
   isLoading = true;
   totalElements = 0;
   pageSize = 10;
   pageIndex = 0;
+
+  filtros: { nome: string; responsavel: string } = { nome: '', responsavel: '' };
 
   constructor(
     private perPartService: PerPartService,
@@ -62,7 +70,7 @@ export class PerPartListComponent implements OnInit {
 
   carregar(page = this.pageIndex, size = this.pageSize): void {
     this.isLoading = true;
-    this.perPartService.listPaged(page, size).subscribe({
+    this.perPartService.advancedSearch(this.filtros, page, size).subscribe({
       next: (res) => {
         this.dataSource = res.content ?? [];
         this.totalElements = res.totalElements;
@@ -82,6 +90,16 @@ export class PerPartListComponent implements OnInit {
         this.snackBar.open(msg, 'Fechar', { duration: 5000 });
       }
     });
+  }
+
+  aplicarFiltros(): void {
+    this.pageIndex = 0;
+    this.carregar();
+  }
+
+  limparFiltros(): void {
+    this.filtros = { nome: '', responsavel: '' };
+    this.aplicarFiltros();
   }
 
   handlePageEvent(e: PageEvent): void {

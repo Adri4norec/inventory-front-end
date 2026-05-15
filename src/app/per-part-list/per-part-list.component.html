@@ -9,6 +9,35 @@
   </mat-toolbar>
 
   <div class="content equipament-list-content">
+
+    <mat-card appearance="outlined" class="filter-card">
+      <div style="display: flex; gap: 15px; flex-wrap: wrap; align-items: center;">
+
+        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="compact-filter"
+          style="flex: 1; min-width: 150px;">
+          <mat-label>Nome</mat-label>
+          <input matInput [(ngModel)]="filtros.nome" (keyup.enter)="aplicarFiltros()">
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="compact-filter"
+          style="flex: 1; min-width: 150px;">
+          <mat-label>Proprietário</mat-label>
+          <input matInput [(ngModel)]="filtros.responsavel" (keyup.enter)="aplicarFiltros()">
+        </mat-form-field>
+
+      </div>
+
+      <div style="display: flex; justify-content: space-between; gap: 12px; margin-top: 12px;">
+        <button mat-stroked-button type="button" (click)="limparFiltros()">
+          <mat-icon>close</mat-icon> Cancelar
+        </button>
+
+        <button mat-flat-button color="primary" (click)="aplicarFiltros()">
+          <mat-icon>search</mat-icon> Buscar
+        </button>
+      </div>
+    </mat-card>
+
     <div *ngIf="isLoading" class="loading-wrap">
       <mat-progress-bar mode="indeterminate" color="primary"></mat-progress-bar>
       <p class="loading-text">Carregando acessórios...</p>
@@ -32,15 +61,23 @@
                 <span [matTooltip]="row.name">{{ row.name }}</span>
               </td>
             </ng-container>
-            <ng-container matColumnDef="responsavel">
-              <th mat-header-cell *matHeaderCellDef>Responsável</th>
+            <ng-container matColumnDef="proprietaryName">
+              <th mat-header-cell *matHeaderCellDef>Proprietário (Posse)</th>
               <td mat-cell *matCellDef="let row">
-                <span [matTooltip]="row.responsavel || ''">{{ row.responsavel || '-' }}</span>
+                <span [matTooltip]="row.proprietaryName || ''">{{ row.proprietaryName || '-' }}</span>
               </td>
             </ng-container>
             <ng-container matColumnDef="quantity">
               <th mat-header-cell *matHeaderCellDef>Quantidade</th>
               <td mat-cell *matCellDef="let row">{{ row.quantity }}</td>
+            </ng-container>
+            <ng-container matColumnDef="dataVencimento">
+              <th mat-header-cell *matHeaderCellDef>Vencimento</th>
+              <td mat-cell *matCellDef="let row">
+                <span [matTooltip]="(row.dataVencimento | date:'dd/MM/yyyy HH:mm') || ''">
+                  {{ (row.dataVencimento | date:'dd/MM/yyyy') || '-' }}
+                </span>
+              </td>
             </ng-container>
             <ng-container matColumnDef="actions">
               <th mat-header-cell *matHeaderCellDef style="text-align: right; white-space: nowrap; width: 60px;">Ações</th>
@@ -64,7 +101,7 @@
             <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
             <tr class="mat-row" *matNoDataRow>
               <td class="mat-cell empty-cell" [attr.colspan]="displayedColumns.length">
-                Nenhum acessório cadastrado.
+                Nenhum acessório encontrado com os filtros selecionados.
               </td>
             </tr>
           </table>

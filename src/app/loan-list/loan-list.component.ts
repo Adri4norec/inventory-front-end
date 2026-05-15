@@ -1,6 +1,6 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router } from '@angular/router';
+import { NavigationEnd, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { MatTableModule } from '@angular/material/table';
 import { MatCardModule } from '@angular/material/card';
@@ -16,10 +16,11 @@ import { MatMenuModule } from '@angular/material/menu';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { forkJoin, Observable, of } from 'rxjs';
-import { catchError, map } from 'rxjs/operators';
+import { forkJoin, Observable, of, Subscription } from 'rxjs';
+import { catchError, filter, map } from 'rxjs/operators';
 
 import { LoanService } from '../services/loan/loan.service';
+import { LoanRefreshService } from '../services/loan/loan-refresh.service';
 import { EquipamentService } from '../services/equipament/equipment.service';
 import { LoanListResponse } from '../models/loans/loans.model';
 import { LayoutService } from '../services/layout/layout.service';
@@ -39,7 +40,7 @@ import { ToolbarUserActionsComponent } from '../shared/toolbar-user-actions/tool
   templateUrl: './loan-list.component.html',
   styleUrls: ['./loan-list.component.css']
 })
-export class LoanListComponent implements OnInit {
+export class LoanListComponent implements OnInit, OnDestroy {
 
   displayedColumns: string[] = ['codigo', 'categoria', 'name', 'description', 'status', 'loanDate', 'returnDate', 'acoes'];
   dataSource: LoanListResponse[] = [];
@@ -61,16 +62,34 @@ export class LoanListComponent implements OnInit {
   private requestedStatusFilter: StatusType | null = null;
   private readonly maxBootstrapFetchSize = 200;
 
+  private readonly subs = new Subscription();
+
   constructor(
     private loanService: LoanService,
     private equipamentService: EquipamentService,
     private router: Router,
     private snackBar: MatSnackBar,
+    private loanRefreshService: LoanRefreshService,
     public layout: LayoutService
   ) { }
 
   ngOnInit(): void {
     this.carregarDados();
+
+    this.subs.add(
+      this.router.events.pipe(
+        filter((e): e is NavigationEnd => e instanceof NavigationEnd),
+        filter((e) => (e.urlAfterRedirects || e.url).startsWith('/loans'))
+      ).subscribe(() => this.carregarDados(this.pageIndex, this.pageSize))
+    );
+
+    this.subs.add(
+      this.loanRefreshService.onRefresh$.subscribe(() => this.carregarDados(this.pageIndex, this.pageSize))
+    );
+  }
+
+  ngOnDestroy(): void {
+    this.subs.unsubscribe();
   }
 
   openSupportReturn(item: LoanListResponse): void {
@@ -275,6 +294,14 @@ export class LoanListComponent implements OnInit {
   isExtinto(status: unknown): boolean {
     const st = normalizeStatusType(status);
     return !st || !this.allowedStatuses.includes(st);
+  }
+
+  isEmManutencao(status: unknown): boolean {
+    return normalizeStatusType(status) === StatusType.EM_MANUTENCAO;
+  }
+
+  acoesBloqueadas(status: unknown): boolean {
+    return this.isExtinto(status) || this.isEmManutencao(status);
   }
 
   private lidarComErro(mensagem: string, err: any): void {

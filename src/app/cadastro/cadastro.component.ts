@@ -14,6 +14,8 @@ import { MatTooltipModule } from "@angular/material/tooltip";
 import { MatChipsModule } from "@angular/material/chips";
 import { MatListModule } from "@angular/material/list";
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatDatepickerModule } from '@angular/material/datepicker';
+import { MatNativeDateModule } from '@angular/material/core';
 import { forkJoin, of } from "rxjs";
 import { catchError, filter, map, switchMap, tap } from "rxjs/operators";
 
@@ -43,6 +45,8 @@ import { ToolbarUserActionsComponent } from "../shared/toolbar-user-actions/tool
     MatChipsModule,
     MatListModule,
     MatSnackBarModule,
+    MatDatepickerModule,
+    MatNativeDateModule,
     ToolbarUserActionsComponent
   ],
   templateUrl: './cadastro.component.html',
@@ -81,6 +85,7 @@ export class CadastroComponent implements OnInit {
       categoria: ['', Validators.required],
       proprietaryId: [null, Validators.required],
       usageType: ['', Validators.required],
+      dueDate: [null as Date | null],
       perParts: this.fb.array([]),
       imageUrls: [[]]
     });
@@ -152,7 +157,10 @@ export class CadastroComponent implements OnInit {
   }
 
   private fillForm(equipamento: EquipmentResponse): void {
-    this.equipamentoForm.patchValue(equipamento);
+    this.equipamentoForm.patchValue({
+      ...equipamento,
+      dueDate: this.toDatePickerValue(equipamento.dueDate)
+    });
     
     if (equipamento.imageUrls) {
       this.previsualizacoes = equipamento.imageUrls.map(url => 
@@ -181,8 +189,12 @@ export class CadastroComponent implements OnInit {
       return;
     }
 
-    const payload = this.equipamentoForm.getRawValue();
-    payload.perParts = payload.perParts.filter((p: any) => p.name?.trim());
+    const raw = this.equipamentoForm.getRawValue();
+    const payload: EquipmentRequest & Record<string, unknown> = {
+      ...raw,
+      dueDate: this.toBackendDate(raw.dueDate),
+      perParts: raw.perParts.filter((p: { name?: string }) => p.name?.trim())
+    };
 
     const action$ = (this.isEdicao && this.equipamentoId)
       ? this.equipmentService.update(this.equipamentoId, payload)
@@ -210,6 +222,22 @@ export class CadastroComponent implements OnInit {
 
   cancelar(): void {
     this.router.navigate(['/equipaments']);
+  }
+
+  private toBackendDate(value: Date | string | null | undefined): string | null {
+    if (!value) return null;
+    const date = value instanceof Date ? value : new Date(value);
+    if (isNaN(date.getTime())) return null;
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+  }
+
+  private toDatePickerValue(iso: string | null | undefined): Date | null {
+    if (!iso) return null;
+    const datePart = iso.length >= 10 ? iso.substring(0, 10) : iso;
+    const [y, m, d] = datePart.split('-').map((n) => Number(n));
+    if (!y || !m || !d) return null;
+    return new Date(y, m - 1, d);
   }
 
   bloquearLetras(event: KeyboardEvent): void {
