@@ -44,6 +44,7 @@ export class EquipamentService {
     return this.http.post<EquipmentResponse>(this.API, record);
   }
 
+
   findById(id: string): Observable<EquipmentResponse> {
     return this.http.get<EquipmentResponse>(`${this.API}/${id}`);
   }
@@ -88,7 +89,7 @@ export class EquipamentService {
 
   uploadImages(id: string, files: File[]): Observable<EquipmentResponse> {
     const formData = new FormData();
-    files.forEach((file) => {
+    files.forEach(file => {
       formData.append('files', file);
     });
     return this.http.post<EquipmentResponse>(`${this.API}/${id}/images`, formData);

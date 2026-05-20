@@ -14,16 +14,16 @@
       <div style="display: flex; gap: 15px; flex-wrap: wrap; align-items: center;">
 
         <mat-form-field appearance="outline" subscriptSizing="dynamic" class="compact-filter"
-          style="flex: 1; min-width: 150px;">
+          style="flex: 1; min-width: 150px; max-width: 500px;">
           <mat-label>Nome</mat-label>
           <input matInput [(ngModel)]="filtros.nome" (keyup.enter)="aplicarFiltros()">
         </mat-form-field>
 
-        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="compact-filter"
+        <!--<mat-form-field appearance="outline" subscriptSizing="dynamic" class="compact-filter"
           style="flex: 1; min-width: 150px;">
           <mat-label>Proprietário</mat-label>
           <input matInput [(ngModel)]="filtros.responsavel" (keyup.enter)="aplicarFiltros()">
-        </mat-form-field>
+        </mat-form-field>-->
 
       </div>
 
@@ -47,7 +47,7 @@
       <mat-card-header>
         <mat-card-title>
           <mat-icon>category</mat-icon>
-          Acessórios 
+          Acessórios
         </mat-card-title>
         <mat-card-subtitle>{{ totalElements }} registro(s)</mat-card-subtitle>
       </mat-card-header>
@@ -61,26 +61,23 @@
                 <span [matTooltip]="row.name">{{ row.name }}</span>
               </td>
             </ng-container>
-            <ng-container matColumnDef="proprietaryName">
-              <th mat-header-cell *matHeaderCellDef>Proprietário (Posse)</th>
-              <td mat-cell *matCellDef="let row">
-                <span [matTooltip]="row.proprietaryName || ''">{{ row.proprietaryName || '-' }}</span>
-              </td>
-            </ng-container>
             <ng-container matColumnDef="quantity">
               <th mat-header-cell *matHeaderCellDef>Quantidade</th>
-              <td mat-cell *matCellDef="let row">{{ row.quantity }}</td>
+              <td mat-cell *matCellDef="let row">
+                {{ row.quantity }} / {{ row.originalTotalQuantity ?? row.quantity }}
+              </td>
             </ng-container>
-            <ng-container matColumnDef="dataVencimento">
+            <!--<ng-container matColumnDef="dataVencimento">
               <th mat-header-cell *matHeaderCellDef>Vencimento</th>
               <td mat-cell *matCellDef="let row">
                 <span [matTooltip]="(row.dataVencimento | date:'dd/MM/yyyy HH:mm') || ''">
                   {{ (row.dataVencimento | date:'dd/MM/yyyy') || '-' }}
                 </span>
               </td>
-            </ng-container>
+            </ng-container>-->
             <ng-container matColumnDef="actions">
-              <th mat-header-cell *matHeaderCellDef style="text-align: right; white-space: nowrap; width: 60px;">Ações</th>
+              <th mat-header-cell *matHeaderCellDef style="text-align: right; white-space: nowrap; width: 60px;">Ações
+              </th>
               <td mat-cell *matCellDef="let row" style="text-align: right;">
                 <button mat-icon-button [matMenuTriggerFor]="menu" aria-label="Ações do acessório">
                   <mat-icon>more_vert</mat-icon>
@@ -107,13 +104,8 @@
           </table>
         </div>
 
-        <mat-paginator
-          [length]="totalElements"
-          [pageSize]="pageSize"
-          [pageIndex]="pageIndex"
-          [pageSizeOptions]="[5, 10, 25, 50]"
-          (page)="handlePageEvent($event)"
-          showFirstLastButtons
+        <mat-paginator [length]="totalElements" [pageSize]="pageSize" [pageIndex]="pageIndex"
+          [pageSizeOptions]="[5, 10, 25, 50]" (page)="handlePageEvent($event)" showFirstLastButtons
           aria-label="Selecionar página">
         </mat-paginator>
       </mat-card-content>

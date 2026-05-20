@@ -3,9 +3,9 @@
     <button mat-icon-button (click)="layout.toggleMenu()" aria-label="Abrir/fechar menu">
       <mat-icon>menu</mat-icon>
     </button>
-    <button mat-icon-button (click)="voltar()" matTooltip="Voltar para listagem">
+    <!--<button mat-icon-button (click)="voltar()" matTooltip="Voltar para listagem">
       <mat-icon>arrow_back</mat-icon>
-    </button>
+    </button>-->
     <span class="toolbar-title">{{ isEdit ? 'Editar Acessório' : 'Novo Acessório' }}</span>
     <span style="flex: 1 1 auto;"></span>
     <app-toolbar-user-actions></app-toolbar-user-actions>
@@ -43,48 +43,6 @@
             <mat-error *ngIf="form.get('quantity')?.hasError('min')">Informe um valor maior que zero</mat-error>
           </mat-form-field>
 
-          <mat-form-field appearance="outline" class="field-half">
-            <mat-label>Proprietário (opcional)</mat-label>
-            <mat-icon matPrefix>business</mat-icon>
-            <mat-select
-              formControlName="proprietaryId"
-              placeholder="Selecione um proprietário"
-              aria-label="Selecionar proprietário do acessório">
-              <mat-option *ngFor="let p of proprietaries" [value]="p.id">
-                {{ p.name }}
-              </mat-option>
-            </mat-select>
-            <mat-progress-spinner
-              *ngIf="isLoadingProprietaries"
-              matSuffix
-              diameter="18"
-              mode="indeterminate"
-              aria-label="Carregando proprietários">
-            </mat-progress-spinner>
-            <mat-hint>Opcional. Se não preenchido, será usado IRT por padrão.</mat-hint>
-          </mat-form-field>
-
-          <mat-form-field appearance="outline" class="field-half">
-            <mat-label>Data de Vencimento (opcional)</mat-label>
-            <mat-icon matPrefix>event</mat-icon>
-            <input
-              matInput
-              [matDatepicker]="vencimentoPicker"
-              formControlName="dataVencimento"
-              (click)="vencimentoPicker.open()"
-              placeholder="DD/MM/AAAA"
-              aria-label="Data de vencimento do acessório" />
-            <mat-datepicker-toggle matSuffix [for]="vencimentoPicker"></mat-datepicker-toggle>
-            <mat-datepicker #vencimentoPicker></mat-datepicker>
-            <mat-hint>Deixe em branco se não houver vencimento.</mat-hint>
-          </mat-form-field>
-
-          <mat-form-field *ngIf="isEdit" appearance="outline" class="field-full">
-            <mat-label>Responsável</mat-label>
-            <mat-icon matPrefix>person</mat-icon>
-            <input matInput formControlName="responsavel" autocomplete="off" />
-            <mat-error *ngIf="form.get('responsavel')?.hasError('required')">Responsável é obrigatório</mat-error>
-          </mat-form-field>
         </form>
       </mat-card-content>
 

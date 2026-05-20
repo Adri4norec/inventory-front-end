@@ -156,10 +156,6 @@ export class LoanListComponent implements OnInit, OnDestroy {
     this.syncEquipmentStatusThenFinalize(baseList, desiredPage, desiredSize, filtrosParaApi, attempt, bootstrapSize, response);
   }
 
-  /**
-   * Alinha o status da linha com o cadastro de equipamentos (movimentações, manutenção, etc.).
-   * Uma requisição por equipamento distinto (deduplica por equipmentId ou tombo), não N por linha.
-   */
   private syncEquipmentStatusThenFinalize(
     baseList: LoanListResponse[],
     desiredPage: number,
@@ -243,7 +239,6 @@ export class LoanListComponent implements OnInit, OnDestroy {
     });
   }
 
-  /** Remove linhas que são só cadastro disponível sem empréstimo (ruído do advanced-search). */
   private sanitizeLoanData(content: LoanListResponse[]): LoanListResponse[] {
     return content
       .filter((item) => item.status !== 'DISPONIVEL' || !!item.hasLoanHistory)

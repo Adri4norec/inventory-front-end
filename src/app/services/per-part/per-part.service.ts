@@ -65,6 +65,17 @@ export class PerPartService {
     return this.http.delete<void>(`${this.API}/${id}`);
   }
 
+  listAll(): Observable<PerPartResponse[]> {
+    return this.http.get<PageResponse<PerPartResponse> | PerPartResponse[]>(this.API).pipe(
+      map((res) => {
+        if (Array.isArray(res)) {
+          return res;
+        }
+        return (res as PageResponse<PerPartResponse>).content ?? [];
+      })
+    );
+  }
+
   private normalizePageResponse(
     res: PageResponse<PerPartResponse> | PerPartResponse[] | Record<string, unknown>,
     page: number,

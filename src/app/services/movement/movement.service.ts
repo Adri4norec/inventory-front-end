@@ -44,12 +44,12 @@ export class MovementService {
     return this.http.get<MovementResponse>(`${this.API}/${id}`, this.getOptions());
   }
 
-  uploadImages(id: string, files: File[]): Observable<any> { 
+  uploadImages(id: string, files: File[]): Observable<any> {
     const formData = new FormData();
     files.forEach(file => {
       formData.append('files', file);
     });
-  
+
     return this.http.post(`${this.API}/${id}/images`, formData, { ...this.getOptions(), responseType: 'text' });
   }
 
@@ -57,5 +57,9 @@ export class MovementService {
     const options = this.getOptions();
     const params = new HttpParams().set('nome', nome);
     return this.http.get<UserSearchResponse[]>(`${this.API}/search-users`, { ...options, params });
+  }
+
+  resolveImageUrl(fileName: string): string {
+    return `${environment.apiUrl}/uploads/${fileName}`;
   }
 }

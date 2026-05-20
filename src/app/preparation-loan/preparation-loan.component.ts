@@ -1,9 +1,9 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
-import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { of, EMPTY, Observable } from 'rxjs';
-import { debounceTime, distinctUntilChanged, switchMap, concatMap, finalize, catchError, tap } from 'rxjs/operators';
+import { debounceTime, distinctUntilChanged, switchMap, concatMap, finalize, catchError, tap, startWith, map } from 'rxjs/operators';
 
 import { MatCardModule } from '@angular/material/card';
 import { MatTableModule } from '@angular/material/table';
@@ -25,8 +25,10 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
 
 import { EquipamentService } from '../services/equipament/equipment.service';
 import { LoanService } from '../services/loan/loan.service';
+import { PerPartService } from '../services/per-part/per-part.service';
+import { PerPartResponse } from '../models/per-part/per-part.model';
 import { UserService } from '../services/user/user.service';
-import { LoanDetailResponse, LoanListResponse, UserSearchResponse } from '../models/loans/loans.model';
+import { LoanAccessoryResponse, LoanDetailResponse, LoanListResponse, UserSearchResponse } from '../models/loans/loans.model';
 import { LayoutService } from '../services/layout/layout.service';
 import { formatStatusLabel, STATUS_TYPE_LABEL, STATUS_TYPE_OPTIONS, StatusType, normalizeStatusType, statusColorClass } from '../models/status/status-type';
 import { ToolbarUserActionsComponent } from '../shared/toolbar-user-actions/toolbar-user-actions.component';
@@ -64,6 +66,19 @@ export class PreparationLoanComponent implements OnInit {
   equipamentId!: string;
   equipamento: any;
   loanForm!: FormGroup;
+  accessoryControl = new FormControl<PerPartResponse | string | null>(null);
+  accessoryQuantityControl = new FormControl<number>(1, [Validators.required, Validators.min(1)]);
+  filteredPerParts: Observable<PerPartResponse[]> = of([]);
+  availablePerParts: PerPartResponse[] = [];
+  selectedAccessory: PerPartResponse | null = null;
+  addedAccessories: Array<{
+    perPartId: string;
+    name: string;
+    quantity: number;
+    availableQuantity: number;
+    originalTotalQuantity: number;
+  }> = [];
+  accessoryError: string | null = null;
   loanTypes: { value: string, label: string }[] = [];
   selectedFiles: File[] = [];
   previsualizacoes: string[] = [];
@@ -87,6 +102,7 @@ export class PreparationLoanComponent implements OnInit {
     private route: ActivatedRoute,
     private equipamentService: EquipamentService,
     private loanService: LoanService,
+    private perPartService: PerPartService,
     private userService: UserService,
     private router: Router,
     private fb: FormBuilder,
@@ -139,6 +155,9 @@ export class PreparationLoanComponent implements OnInit {
       dataSedexControl?.updateValueAndValidity();
     });
 
+    this.setupAccessoryFiltering();
+    this.loadAllPerParts();
+
     this.loanForm.get('loanType')?.valueChanges.subscribe((value) => {
       this.applyAssinaturaToBaixaRules(value);
     });
@@ -155,6 +174,40 @@ export class PreparationLoanComponent implements OnInit {
       enviadoSedex: [false],
       dataSedex: [null]
     });
+  }
+
+  private setupAccessoryFiltering(): void {
+    this.filteredPerParts = this.accessoryControl.valueChanges.pipe(
+      startWith(''),
+      tap((value) => {
+        if (!value || typeof value === 'string') {
+          this.selectedAccessory = null;
+        }
+      }),
+      map((value) => (typeof value === 'string' ? value : value?.name ?? '')),
+      map((search) => this.filterPerParts(search))
+    );
+  }
+
+  private loadAllPerParts(): void {
+    this.perPartService.listAll().pipe(
+      catchError(() => {
+        this.snackBar.open('Não foi possível carregar acessórios disponíveis.', 'Fechar', { duration: 5000 });
+        return of<PerPartResponse[]>([]);
+      })
+    ).subscribe((list) => {
+      this.availablePerParts = list ?? [];
+    });
+  }
+
+  private filterPerParts(search: string): PerPartResponse[] {
+    const query = (search ?? '').toLowerCase().trim();
+    if (!query) {
+      return this.availablePerParts;
+    }
+    return this.availablePerParts.filter((item) =>
+      item.name?.toLowerCase().includes(query)
+    );
   }
 
   private coerceApiDate(value?: string | Date | null): Date | null {
@@ -267,6 +320,20 @@ export class PreparationLoanComponent implements OnInit {
     if (!alreadyHasName && colaboradorId) {
       this.loadResponsavelById(colaboradorId);
     }
+
+    if (Array.isArray((loan as any).acessorios)) {
+      this.setLoanAccessories((loan as any).acessorios as LoanAccessoryResponse[]);
+    }
+  }
+
+  private setLoanAccessories(acessorios: LoanAccessoryResponse[]): void {
+    this.addedAccessories = acessorios.map((item) => ({
+      perPartId: item.perPartId,
+      name: item.name,
+      quantity: item.quantidadeEmprestada,
+      availableQuantity: item.quantidadeEmprestada,
+      originalTotalQuantity: item.originalTotalQuantity
+    }));
   }
 
   private loadResponsavelById(colaboradorId: string): void {
@@ -323,12 +390,8 @@ export class PreparationLoanComponent implements OnInit {
     this.isPreparationDefaultStep = true;
 
     if (this.isStatusUpdateMode) {
-      const defaultStatus = StatusType.AGUARDANDO_ASSINATURA;
-      this.loanForm.patchValue({ loanType: defaultStatus }, { emitEvent: false });
-      this.loanTypes = [{ value: defaultStatus, label: STATUS_TYPE_LABEL[defaultStatus] }];
+      this.loanForm.get('loanType')?.disable();
     }
-
-    this.loanForm.get('loanType')?.disable();
     this.isTermoEnabled = false;
 
     if (!this.isStatusUpdateMode) {
@@ -349,6 +412,11 @@ export class PreparationLoanComponent implements OnInit {
     if (!user) return '';
     if (typeof user === 'string') return user;
     return user.fullName || '';
+  }
+
+  displayAccessoryFn(item: PerPartResponse | string | null): string {
+    if (!item) return '';
+    return typeof item === 'string' ? item : item.name || '';
   }
 
   get shouldShowLoanDetailsFields(): boolean {
@@ -400,10 +468,6 @@ export class PreparationLoanComponent implements OnInit {
         return;
       }
 
-      const aguardandoBaixa = StatusType.AGUARDANDO_BAIXA;
-      this.loanForm.patchValue({ loanType: aguardandoBaixa });
-      this.loanTypes = [{ value: aguardandoBaixa, label: STATUS_TYPE_LABEL[aguardandoBaixa] }];
-
       this.isFotosEnabled = false;
       this.isTermoEnabled = false;
 
@@ -422,7 +486,7 @@ export class PreparationLoanComponent implements OnInit {
     if (this.isReturnSupportMode || this.isReturnAdminMode || this.isReturnFromUsoFlow) return;
 
     const effective = normalizeStatusType(this.loanForm.get('loanType')?.value ?? currentStatus);
-    if (effective !== StatusType.AGUARDANDO_ASSINATURA) {
+    if (!this.isPreparationStatus(effective)) {
       this.isAssinaturaBaixaFlow = false;
       this.isTermoEnabled = true;
       this.isFotosEnabled = true;
@@ -432,7 +496,6 @@ export class PreparationLoanComponent implements OnInit {
     this.isAssinaturaBaixaFlow = true;
     this.isTermoEnabled = true;
     this.isFotosEnabled = false;
-
     this.selectedFiles = [];
     this.previsualizacoes = [];
   }
@@ -567,6 +630,65 @@ export class PreparationLoanComponent implements OnInit {
     if (!this.isFotosEnabled) return;
     this.selectedFiles.splice(index, 1);
     this.previsualizacoes.splice(index, 1);
+  }
+
+  onAccessorySelected(accessory: PerPartResponse): void {
+    this.selectedAccessory = accessory;
+    this.accessoryControl.setValue(accessory, { emitEvent: false });
+    this.accessoryError = null;
+  }
+
+  onAccessoryInputFocus(): void {
+    // Dispara o valueChanges para carregar a lista de acessórios ao focar no campo
+    if (!this.accessoryControl.value) {
+      this.accessoryControl.setValue('', { emitEvent: true });
+    }
+  }
+
+  addAccessoryToLoan(): void {
+    this.accessoryError = null;
+
+    if (!this.selectedAccessory) {
+      this.accessoryError = 'Selecione um acessório antes de adicionar.';
+      return;
+    }
+
+    const quantity = this.accessoryQuantityControl.value ?? 1;
+    if (quantity < 1) {
+      this.accessoryError = 'Quantidade inválida.';
+      return;
+    }
+
+    if (quantity > this.selectedAccessory.quantity) {
+      this.accessoryError = `Quantidade solicitada maior que o estoque disponível (${this.selectedAccessory.quantity}).`;
+      return;
+    }
+
+    const accessoryId = this.selectedAccessory.id;
+    const alreadyAdded = this.addedAccessories.find((item) => item.perPartId === accessoryId);
+    if (alreadyAdded) {
+      this.accessoryError = 'Este acessório já foi adicionado ao empréstimo.';
+      return;
+    }
+
+    this.addedAccessories = [
+      ...this.addedAccessories,
+      {
+        perPartId: accessoryId,
+        name: this.selectedAccessory.name,
+        quantity,
+        availableQuantity: this.selectedAccessory.quantity,
+        originalTotalQuantity: this.selectedAccessory.originalTotalQuantity ?? this.selectedAccessory.quantity
+      }
+    ];
+
+    this.accessoryControl.setValue(null, { emitEvent: false });
+    this.accessoryQuantityControl.setValue(1);
+    this.selectedAccessory = null;
+  }
+
+  removeAccessory(index: number): void {
+    this.addedAccessories.splice(index, 1);
   }
 
   private validatePdf(file: File | null | undefined): boolean {
@@ -783,7 +905,10 @@ export class PreparationLoanComponent implements OnInit {
       returnDate: formValue.returnDate ? new Date(formValue.returnDate).toISOString() : null,
       observation: formValue.observacao,
       enviadoSedex: formValue.enviadoSedex,
-      dataSedex: formValue.dataSedex ? new Date(formValue.dataSedex).toISOString() : null
+      dataSedex: formValue.dataSedex ? new Date(formValue.dataSedex).toISOString() : null,
+      acessorios: this.addedAccessories.length > 0
+        ? this.addedAccessories.map((item) => ({ perPartId: item.perPartId, quantity: item.quantity }))
+        : []
     };
   }
 

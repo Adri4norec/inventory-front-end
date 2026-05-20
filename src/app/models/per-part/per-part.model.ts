@@ -2,7 +2,6 @@
  * Acessórios (PerPart) — funcionalidade independente (sem vínculo obrigatório com equipamento no front).
  */
 export interface PerPartRequest {
-  equipamentId?: string | null;
   name: string;
   quantity: number;
   responsavel?: string | null;
@@ -23,4 +22,6 @@ export interface PerPartResponse {
   proprietaryName: string | null;
   /** ISO LocalDateTime, ex.: "2026-12-31T00:00:00". null quando não informado. */
   dataVencimento: string | null;
+  originalTotalQuantity: number;
+  active: boolean;
 }

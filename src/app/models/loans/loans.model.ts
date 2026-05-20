@@ -19,6 +19,18 @@ export interface LoanListResponse {
   dateHour?: string;
 }
 
+export interface AcessorioLoanInput {
+  perPartId: string;
+  quantity: number;
+}
+
+export interface LoanAccessoryResponse {
+  perPartId: string;
+  name: string;
+  quantidadeEmprestada: number;
+  originalTotalQuantity: number;
+}
+
 export interface LoanDetailResponse {
   id: string;
   equipmentId?: string;
@@ -37,6 +49,7 @@ export interface LoanDetailResponse {
   dateHour?: string;
   enviadoSedex?: boolean;
   dataSedex?: string;
+  acessorios: LoanAccessoryResponse[];
 }
 
 export interface EquipmentLoanResponse {

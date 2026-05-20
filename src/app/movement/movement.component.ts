@@ -105,7 +105,6 @@ export class MovementComponent implements OnInit {
       obsControl?.updateValueAndValidity();
     });
 
-    // Autocomplete do responsável (mesmo padrão da tela de Empréstimo).
     this.movementForm.get('responsavel')?.valueChanges.pipe(
       debounceTime(300),
       distinctUntilChanged(),
@@ -114,7 +113,6 @@ export class MovementComponent implements OnInit {
         if (search.length >= 3) {
           return this.movementService.searchUsers(search).pipe(
             catchError((err) => {
-              // Mantém tela resiliente como no empréstimo, mas não "silencia" completamente no debug.
               console.error('Erro ao buscar usuários (movimentação):', err);
               return of([]);
             })
@@ -123,8 +121,6 @@ export class MovementComponent implements OnInit {
         return of([]);
       })
     ).subscribe(users => {
-      // Tolerante a variações do DTO do backend (fullName vs full_name/nome/name),
-      // mantendo o contrato de exibição/seleção como fullName (string).
       const normalized = (users as any[]).map((u) => {
         const fullName = String(u?.fullName ?? u?.full_name ?? u?.nome ?? u?.name ?? '').trim();
         const id = String(u?.id ?? '').trim();
@@ -247,9 +243,15 @@ export class MovementComponent implements OnInit {
   }
 
   verFotos(e: any): void {
+    const fotosDoHistorico = e.imageUrls || [];
+
+    const urlsCompletas = fotosDoHistorico.map((nomeArquivo: string) => {
+      return this.movementService.resolveImageUrl(nomeArquivo);
+    });
+
     this.dialog.open(PhotoGaleryDialogComponent, {
       width: '850px',
-      data: { urls: e.imageUrls }
+      data: { urls: urlsCompletas }
     });
   }
 

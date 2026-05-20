@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -47,7 +47,7 @@ import { ConfirmDialogComponent } from '../equipament/confirm_dialog/confirm-dia
   styleUrls: ['./per-part-list.component.css']
 })
 export class PerPartListComponent implements OnInit {
-  displayedColumns: string[] = ['name', 'proprietaryName', 'quantity', 'dataVencimento', 'actions'];
+  displayedColumns: string[] = ['name', 'quantity', 'actions'];
   dataSource: PerPartResponse[] = [];
   isLoading = true;
   totalElements = 0;
@@ -72,7 +72,8 @@ export class PerPartListComponent implements OnInit {
     this.isLoading = true;
     this.perPartService.advancedSearch(this.filtros, page, size).subscribe({
       next: (res) => {
-        this.dataSource = res.content ?? [];
+        const content = res.content ?? [];
+        this.dataSource = content;
         this.totalElements = res.totalElements;
         this.pageIndex = res.number;
         this.pageSize = res.size;

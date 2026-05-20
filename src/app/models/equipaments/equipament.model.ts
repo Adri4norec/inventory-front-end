@@ -1,4 +1,5 @@
 import { StatusType } from '../status/status-type';
+import { AcessorioLoanInput } from '../loans/loans.model';
 
 export interface EquipmentResponse {
   id: string;
@@ -54,6 +55,10 @@ export interface LoanRequest {
   equipmentId: string;
   colaboradorId: string;
   loanDate: string;
+  returnDate?: string | null;
   helpdeskTicket: string;
   observation: string;
+  enviadoSedex?: boolean;
+  dataSedex?: string | null;
+  acessorios?: AcessorioLoanInput[];
 }

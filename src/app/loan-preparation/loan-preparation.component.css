@@ -71,6 +71,67 @@
   }
 }
 
+.accessory-section {
+  margin-top: 24px;
+  padding: 18px;
+  border-radius: 10px;
+  border: 1px solid rgba(59, 130, 246, 0.18);
+  background: #f9fbff;
+}
+
+.accessory-input-grid {
+  display: grid;
+  grid-template-columns: 1.9fr 0.7fr 0.8fr;
+  gap: 12px;
+  align-items: end;
+}
+
+.field-quarter {
+  width: 100%;
+}
+
+/* Container para alinhar o botão perfeitamente com a altura dos inputs ao lado */
+.accessory-add-button {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  height: 56px;
+}
+
+button.accessory-add-action.mat-mdc-raised-button,
+button.accessory-add-action.mat-raised-button,
+button.accessory-add-action {
+  min-width: 150px !important;
+  width: auto !important;
+  height: 44px !important;
+  border-radius: 4px !important;
+  text-transform: none !important;
+  font-weight: 600 !important;
+}
+
+button.accessory-add-action .mdc-button__label,
+button.accessory-add-action .mat-mdc-button-label {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+}
+
+button.accessory-add-action .mat-mdc-button-ripple,
+button.accessory-add-action .mat-mdc-button-touch-target {
+  border-radius: 4px !important;
+}
+
+.accessory-chip-list {
+  margin-top: 16px;
+}
+
+.field-error {
+  color: #b91c1c;
+  margin-top: 10px;
+  font-size: 13px;
+}
+
 @media (max-width: 768px) {
   .row-inputs {
     grid-template-columns: 1fr;
@@ -81,4 +142,22 @@
     align-items: flex-start;
     gap: 12px;
   }
+}
+
+.accessory-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.accessory-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: #e8f1ff;
+  border: 1px solid #bfdbfe;
+  color: #1d4ed8;
 }

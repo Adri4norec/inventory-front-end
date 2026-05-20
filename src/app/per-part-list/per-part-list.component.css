@@ -104,3 +104,24 @@
 ::ng-deep .compact-filter .mat-mdc-form-field-subscript-wrapper {
   display: none;
 }
+
+/* Status badge for per-part rows */
+.status-badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  vertical-align: middle;
+}
+.status-badge.available {
+  background: #e6f4ea;
+  color: #0f5132;
+  border: 1px solid rgba(15,81,50,0.12);
+}
+.status-badge.borrowed {
+  background: #e7f0ff;
+  color: #084298;
+  border: 1px solid rgba(8,66,152,0.12);
+}

@@ -1,7 +1,8 @@
 import { Injectable, Inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { HttpClient, HttpParams, HttpHeaders } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, throwError } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 import { LoanListResponse, EquipmentLoanResponse, UserSearchResponse } from '../../models/loans/loans.model';
 import { StatusType } from '../../models/status/status-type';
 import { environment } from '../../../environments/environment';
@@ -75,7 +76,27 @@ export class LoanService {
   }
 
   prepareLoan(request: any): Observable<any> {
-    return this.http.post<any>(`${this.apiUrl}/loan/prepare`, request, this.getOptions());
+    return this.http.post<any>(`${this.apiUrl}/loan/prepare`, request, this.getOptions()).pipe(
+      catchError((err) => {
+        if (err?.status === 409 && err?.error?.message === 'INSUFFICIENT_STOCK') {
+          const details = err.error?.details ?? err.error?.payload ?? {};
+          const itemName = (details?.itemName || details?.name || 'este item') as string;
+          const available = details?.availableQuantity ?? details?.available ?? null;
+          const friendlyMessage = available != null
+            ? `Não foi possível realizar o empréstimo. O item '${itemName}' possui apenas ${available} unidades disponíveis.`
+            : 'Não foi possível realizar o empréstimo. Um dos acessórios selecionados não possui estoque suficiente.';
+          return throwError(() => ({
+            status: 409,
+            error: {
+              type: 'INSUFFICIENT_STOCK',
+              message: friendlyMessage,
+              details
+            }
+          }));
+        }
+        return throwError(() => err);
+      })
+    );
   }
 
   updateLoanStatus(id: string, newStatus: string): Observable<void> {
