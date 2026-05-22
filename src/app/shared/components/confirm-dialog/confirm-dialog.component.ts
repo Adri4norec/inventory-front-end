@@ -4,6 +4,12 @@ import { MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/materia
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
+export interface ConfirmDialogData {
+  name?: string;
+  message?: string;
+  detail?: string;
+}
+
 @Component({
   selector: 'app-confirm-dialog',
   standalone: true,
@@ -24,12 +30,12 @@ import { MatIconModule } from '@angular/material/icon';
       <button mat-button (click)="onCancel()" style="color: #6c757d;">Cancelar</button>
       <button mat-raised-button color="warn" (click)="onConfirm()">Excluir Registro</button>
     </mat-dialog-actions>
-  `
+  `,
 })
 export class ConfirmDialogComponent {
   constructor(
     public dialogRef: MatDialogRef<ConfirmDialogComponent>,
-    @Inject(MAT_DIALOG_DATA) public data: { name?: string; message?: string; detail?: string }
+    @Inject(MAT_DIALOG_DATA) public data: ConfirmDialogData,
   ) {}
 
   onCancel(): void {

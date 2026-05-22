@@ -26,6 +26,7 @@ import { EquipmentResponse, EquipmentRequest } from "../models/equipaments/equip
 import { LayoutService } from "../services/layout/layout.service";
 import { environment } from "../../environments/environment";
 import { ToolbarUserActionsComponent } from "../shared/toolbar-user-actions/toolbar-user-actions.component";
+import { AutocompleteCreateComponent } from "../shared/components/autocomplete-create/autocomplete-create.component";
 
 @Component({
   selector: 'app-cadastro',
@@ -47,7 +48,8 @@ import { ToolbarUserActionsComponent } from "../shared/toolbar-user-actions/tool
     MatSnackBarModule,
     MatDatepickerModule,
     MatNativeDateModule,
-    ToolbarUserActionsComponent
+    ToolbarUserActionsComponent,
+    AutocompleteCreateComponent
   ],
   templateUrl: './cadastro.component.html',
   styleUrls: ['./cadastro.component.scss']
@@ -93,7 +95,9 @@ export class CadastroComponent implements OnInit {
 
   private loadInitialData(): void {
     this.proprietaryService.listAll().pipe(
-      tap(data => this.proprietaries = data),
+      tap(data => {
+        this.proprietaries = data;
+      }),
       switchMap(() => this.route.paramMap),
       map(params => params.get('id')),
       tap(id => this.equipamentoId = id),
@@ -173,7 +177,9 @@ export class CadastroComponent implements OnInit {
     if (!this.perParts.length && !this.isVisualizacao) this.adicionarPeca();
 
     const prop = this.proprietaries.find(p => p.name === equipamento.proprietaryName);
-    if (prop) this.equipamentoForm.get('proprietaryId')?.setValue(prop.id);
+    if (prop) {
+      this.equipamentoForm.get('proprietaryId')?.setValue(prop.id);
+    }
 
     if (this.isVisualizacao) this.equipamentoForm.disable();
   }
@@ -238,6 +244,65 @@ export class CadastroComponent implements OnInit {
     const [y, m, d] = datePart.split('-').map((n) => Number(n));
     if (!y || !m || !d) return null;
     return new Date(y, m - 1, d);
+  }
+
+  onSearchProprietario(term: string): void {
+    this.proprietaryService.listAll().subscribe({
+      next: (data) => {
+        const trimmed = term?.trim() ?? '';
+        this.proprietaries = trimmed
+          ? data.filter((p) => p.name.toLowerCase().includes(trimmed.toLowerCase()))
+          : data;
+      },
+      error: () => {
+        this.proprietaries = [];
+        this.showMessage('Não foi possível carregar a lista de proprietários.');
+      },
+    });
+  }
+
+  onCreateNewProprietario(term: string): void {
+    const name = term?.trim();
+    if (!name) {
+      this.showMessage('Informe o nome do proprietário.');
+      return;
+    }
+
+    this.proprietaryService.create({ name }).subscribe({
+      next: (created) => {
+        this.proprietaries = this.mergeProprietary(this.proprietaries, created);
+        this.equipamentoForm.get('proprietaryId')?.setValue(created.id);
+        this.snackBar.open(`Proprietário "${created.name}" criado com sucesso.`, 'Fechar', {
+          duration: 4000,
+          verticalPosition: 'top',
+        });
+      },
+      error: (err) => this.showMessage(this.resolveApiErrorMessage(err, 'Erro ao criar proprietário.')),
+    });
+  }
+
+  private mergeProprietary(
+    list: ProprietaryResponse[],
+    created: ProprietaryResponse,
+  ): ProprietaryResponse[] {
+    if (list.some((p) => p.id === created.id)) {
+      return list;
+    }
+    return [...list, created].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+  }
+
+  private resolveApiErrorMessage(err: unknown, fallback: string): string {
+    const body = (err as { error?: unknown })?.error;
+    if (typeof body === 'string' && body.trim()) {
+      return body;
+    }
+    if (typeof body === 'object' && body != null && 'message' in body) {
+      const message = String((body as { message: unknown }).message).trim();
+      if (message) {
+        return message;
+      }
+    }
+    return fallback;
   }
 
   bloquearLetras(event: KeyboardEvent): void {

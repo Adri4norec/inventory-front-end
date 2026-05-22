@@ -96,7 +96,7 @@
                     </mat-form-field>
 
                     <mat-form-field appearance="outline" class="field-half"
-                        *ngIf="!isReturnSupportMode && !isReturnFromUsoFlow">
+                        *ngIf="!isReturnSupportMode && !isReturnAdminMode">
                         <mat-label>Projeto</mat-label>
                         <mat-icon matPrefix>work</mat-icon>
                         <input matInput formControlName="projeto" />
@@ -110,7 +110,7 @@
                     </mat-form-field>
 
                     <mat-form-field appearance="outline" class="field-half"
-                        *ngIf="!isReturnSupportMode && !isReturnFromUsoFlow">
+                        *ngIf="!isReturnSupportMode && !isReturnAdminMode">
                         <mat-label>Data de Devolução (Opcional)</mat-label>
                         <input matInput [matDatepicker]="returnPicker" formControlName="returnDate"
                             (click)="returnPicker.open()">
@@ -126,8 +126,8 @@
                                     autocomplete="off" placeholder="Digite para buscar..." (focus)="onAccessoryInputFocus()">
                                 <mat-autocomplete #accessoryAuto="matAutocomplete" [displayWith]="displayAccessoryFn"
                                     (optionSelected)="onAccessorySelected($event.option.value)">
-                                    <mat-option *ngFor="let item of filteredPerParts | async" [value]="item">
-                                        {{ item.name }} — {{ item.quantity }} / {{ item.originalTotalQuantity }} em estoque
+                                    <mat-option *ngFor="let item of filteredPerParts | async" [value]="item" [disabled]="item.quantity === 0">
+                                        {{ getAccessoryOptionLabel(item) }}
                                     </mat-option>
                                 </mat-autocomplete>
                             </mat-form-field>
@@ -138,9 +138,9 @@
                             </mat-form-field>
 
                             <div class="accessory-add-button">
-                                <button mat-flat-button color="primary" class="accessory-add-action" type="button" [disabled]="accessoryQuantityControl.invalid || !selectedAccessory" (click)="addAccessoryToLoan()">
+                                <button type="button" class="custom-add-btn" [disabled]="accessoryQuantityControl.invalid || !selectedAccessory" (click)="addAccessoryToLoan()">
                                     <mat-icon>add</mat-icon>
-                                    Adicionar
+                                    Adicionar item
                                 </button>
                             </div>
                         </div>
@@ -244,6 +244,25 @@
                             </div>
 
                             <div class="attachment-col" *ngIf="isReturnAdminMode">
+                                <div class="download-original-term-block">
+                                    <button
+                                        mat-raised-button
+                                        color="primary"
+                                        type="button"
+                                        class="btn-download-original-term"
+                                        [disabled]="!loanDetails?.hasOriginalTerm"
+                                        (click)="onDownloadOriginalTermClick()">
+                                        <mat-icon>file_download</mat-icon>
+                                        Baixar termo de responsabilidade
+                                    </button>
+
+                                    <div
+                                        *ngIf="loanDetails?.status === 'EM_DEVOLUCAO' && !loanDetails?.hasOriginalTerm"
+                                        class="alert-warning">
+                                        <small style="color: #f44336;">⚠️ Documento original não encontrado no sistema.</small>
+                                    </div>
+                                </div>
+
                                 <h3 class="section-subtitle">
                                     <mat-icon>description</mat-icon>
                                     Termo de Baixa Assinado (PDF)

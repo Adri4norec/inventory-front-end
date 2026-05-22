@@ -28,7 +28,14 @@ import { LoanService } from '../services/loan/loan.service';
 import { PerPartService } from '../services/per-part/per-part.service';
 import { PerPartResponse } from '../models/per-part/per-part.model';
 import { UserService } from '../services/user/user.service';
-import { LoanAccessoryResponse, LoanDetailResponse, LoanListResponse, UserSearchResponse } from '../models/loans/loans.model';
+import {
+  LoanAcessorioResponse,
+  LoanDetailResponse,
+  LoanListResponse,
+  LoanRequest,
+  UserSearchResponse
+} from '../models/loans/loans.model';
+import { LoanRefreshService } from '../services/loan/loan-refresh.service';
 import { LayoutService } from '../services/layout/layout.service';
 import { formatStatusLabel, STATUS_TYPE_LABEL, STATUS_TYPE_OPTIONS, StatusType, normalizeStatusType, statusColorClass } from '../models/status/status-type';
 import { ToolbarUserActionsComponent } from '../shared/toolbar-user-actions/toolbar-user-actions.component';
@@ -86,6 +93,7 @@ export class PreparationLoanComponent implements OnInit {
   writeOffPdfFile: File | null = null;
   filteredUsers: UserSearchResponse[] = [];
   currentLoanId?: string;
+  loanDetails: LoanDetailResponse | null = null;
   isStatusUpdateMode = false;
   screenMode: 'default' | 'return-support' | 'return-admin' = 'default';
   isSaving = false;
@@ -107,6 +115,7 @@ export class PreparationLoanComponent implements OnInit {
     private router: Router,
     private fb: FormBuilder,
     private snackBar: MatSnackBar,
+    private loanRefreshService: LoanRefreshService,
     public layout: LayoutService
   ) {
     this.initForm();
@@ -156,7 +165,7 @@ export class PreparationLoanComponent implements OnInit {
     });
 
     this.setupAccessoryFiltering();
-    this.loadAllPerParts();
+    this.loadAvailablePerParts();
 
     this.loanForm.get('loanType')?.valueChanges.subscribe((value) => {
       this.applyAssinaturaToBaixaRules(value);
@@ -189,15 +198,19 @@ export class PreparationLoanComponent implements OnInit {
     );
   }
 
-  private loadAllPerParts(): void {
-    this.perPartService.listAll().pipe(
-      catchError(() => {
-        this.snackBar.open('Não foi possível carregar acessórios disponíveis.', 'Fechar', { duration: 5000 });
-        return of<PerPartResponse[]>([]);
-      })
+  private loadAvailablePerParts(): void {
+    this.perPartService.listAvailable().pipe(
+      catchError(() => of<PerPartResponse[]>([]))
     ).subscribe((list) => {
-      this.availablePerParts = list ?? [];
+      this.availablePerParts = (list ?? []).filter((item) => item.responsavel == null);
     });
+  }
+
+  getAccessoryOptionLabel(item: PerPartResponse): string {
+    if (item.quantity === 0) {
+      return `${item.name} — (Indisponível / Esgotado)`;
+    }
+    return `${item.name} — (${item.quantity} restantes)`;
   }
 
   private filterPerParts(search: string): PerPartResponse[] {
@@ -322,11 +335,11 @@ export class PreparationLoanComponent implements OnInit {
     }
 
     if (Array.isArray((loan as any).acessorios)) {
-      this.setLoanAccessories((loan as any).acessorios as LoanAccessoryResponse[]);
+      this.setLoanAccessories((loan as any).acessorios as LoanAcessorioResponse[]);
     }
   }
 
-  private setLoanAccessories(acessorios: LoanAccessoryResponse[]): void {
+  private setLoanAccessories(acessorios: LoanAcessorioResponse[]): void {
     this.addedAccessories = acessorios.map((item) => ({
       perPartId: item.perPartId,
       name: item.name,
@@ -423,7 +436,7 @@ export class PreparationLoanComponent implements OnInit {
     if (!this.isReturnSupportMode && !this.isReturnFromUsoFlow) return true;
 
     const st = normalizeStatusType(this.loanForm?.get('loanType')?.value);
-    return st === StatusType.EM_DEVOLUCAO;
+    return st === StatusType.EM_DEVOLUCAO || st === StatusType.EM_USO;
   }
 
   get pageTitle(): string {
@@ -451,7 +464,6 @@ export class PreparationLoanComponent implements OnInit {
         return;
       }
 
-      this.loanForm.patchValue({ loanType: StatusType.EM_DEVOLUCAO });
       Object.keys(this.loanForm.controls).forEach((key) => this.loanForm.get(key)?.disable());
 
       this.selectedFiles = [];
@@ -504,8 +516,10 @@ export class PreparationLoanComponent implements OnInit {
     if (!this.currentLoanId) return;
     this.isReturnFromUsoFlow = true;
 
-    this.loanForm.patchValue({ loanType: StatusType.EM_DEVOLUCAO });
-    Object.keys(this.loanForm.controls).forEach((key) => this.loanForm.get(key)?.disable());
+    // Desabilita todos os campos de formulário para leitura-apenas
+    Object.keys(this.loanForm.controls).forEach((key) => {
+      this.loanForm.get(key)?.disable({ emitEvent: false });
+    });
 
     this.selectedFiles = [];
     this.previsualizacoes = [];
@@ -542,17 +556,18 @@ export class PreparationLoanComponent implements OnInit {
 
   carregarEmprestimo(loanId: string, statusOnly: boolean): void {
     this.loanService.getLoanById(loanId).subscribe({
-      next: (loan: LoanDetailResponse & LoanListResponse) => {
+      next: (loan: LoanDetailResponse) => {
+        this.loanDetails = loan;
         if (loan.equipmentId) {
           this.equipamentId = loan.equipmentId;
           this.carregarEquipamento(loan as any, statusOnly);
         } else {
           this.equipamento = {
             id: loan.id,
-            topo: loan.codigo,
-            categoria: loan.categoria,
-            name: loan.name,
-            description: loan.description,
+            topo: (loan as any).codigo,
+            categoria: (loan as any).categoria,
+            name: (loan as any).name,
+            description: (loan as any).description,
             statusName: loan.status,
             proprietaryName: (loan as any).proprietaryName,
             usageType: (loan as any).usageType,
@@ -598,7 +613,9 @@ export class PreparationLoanComponent implements OnInit {
 
   configurarOpcoesEmprestimo(): void {
     if (this.isStatusUpdateMode) {
-      this.loanTypes = [...this.statusOptions];
+      this.loanTypes = this.statusOptions.filter(
+        (o) => !LoanService.PATCH_FORBIDDEN_STATUSES.has(o.value)
+      );
     } else {
       const initial = this.statusOptions.find((o) => o.value === StatusType.EM_PREPARACAO) ?? this.statusOptions[0];
       this.loanTypes = [initial];
@@ -731,6 +748,37 @@ export class PreparationLoanComponent implements OnInit {
     this.writeOffPdfFile = null;
   }
 
+  onDownloadOriginalTermClick(): void {
+    const loanId = this.loanDetails?.id ?? this.currentLoanId;
+    if (!loanId) {
+      return;
+    }
+
+    if (!this.loanDetails?.hasOriginalTerm) {
+      this.snackBar.open('Documento original não encontrado.', 'OK', { duration: 4000 });
+      return;
+    }
+
+    this.downloadTermoOriginal(loanId);
+  }
+
+  downloadTermoOriginal(loanId: string): void {
+    this.loanService.downloadOriginalTerm(loanId).subscribe({
+      next: (blob: Blob) => {
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `termo_original_${loanId}.pdf`;
+        link.click();
+        window.URL.revokeObjectURL(url);
+      },
+      error: (err) => {
+        console.error('Erro ao baixar o termo original', err);
+        this.showError(err, 'Erro ao efetuar o download do documento físico.');
+      },
+    });
+  }
+
   onSubmit(): void {
     if (this.isSaving) return;
     if (!this.validateContext()) return;
@@ -800,12 +848,22 @@ export class PreparationLoanComponent implements OnInit {
 
   private handleSupportReturn(isUsoFlow: boolean) {
     const loanId = this.currentLoanId as string;
+    const equipmentId = this.loanDetails?.equipmentId ?? this.equipamento?.id ?? '';
     const request$ = this.loanService.registerSupportReturn(loanId, this.selectedFiles).pipe(
-      concatMap(() => (isUsoFlow && this.pdfFile) ? this.loanService.uploadDocuments(loanId, [this.pdfFile]) : of([]))
+      concatMap(() => (isUsoFlow && this.pdfFile) ? this.loanService.uploadDocuments(loanId, [this.pdfFile]) : of([])),
+      concatMap(() => equipmentId ? this.equipamentService.syncEquipmentPhotos(equipmentId).pipe(
+        catchError((err) => {
+          console.error('Erro ao sincronizar fotos do equipamento:', err);
+          return of(null);
+        })
+      ) : of(null))
     );
 
     return request$.pipe(
       tap(() => {
+        this.loanForm.patchValue({ loanType: StatusType.EM_DEVOLUCAO });
+        this.loanRefreshService.notifyRefresh();
+        this.loadAvailablePerParts();
         const msg = isUsoFlow
           ? 'Devolução iniciada! Status atualizado para EM_DEVOLUCAO.'
           : 'Devolução registrada com sucesso!';
@@ -823,7 +881,10 @@ export class PreparationLoanComponent implements OnInit {
     const loanId = this.currentLoanId as string;
     const pdf = this.writeOffPdfFile as File;
     return this.loanService.finalizeReturnAndReleaseEquipment(loanId, pdf).pipe(
-      tap(() => this.finalizeSuccess('Devolução finalizada e equipamento liberado!', '/loans')),
+      tap(() => {
+        this.loanRefreshService.notifyRefresh();
+        this.reloadDadosAposFinalizacao('Devolução finalizada e equipamento liberado!');
+      }),
       catchError((err) => {
         this.showError(err, 'Erro ao finalizar devolução.');
         return EMPTY;
@@ -847,6 +908,14 @@ export class PreparationLoanComponent implements OnInit {
     }
 
     const statusParaEnviar = this.loanForm.get('loanType')?.value;
+    if (LoanService.PATCH_FORBIDDEN_STATUSES.has(String(statusParaEnviar))) {
+      this.snackBar.open(
+        'Os status Em Devolução e Devolvido só podem ser definidos pelo fluxo de devolução (fotos + termo PDF).',
+        'OK',
+        { duration: 5000 }
+      );
+      return EMPTY;
+    }
     return this.loanService.updateLoanStatus(loanId, statusParaEnviar).pipe(
       tap(() => this.finalizeSuccess('Status atualizado com sucesso!', '/loans')),
       catchError((err) => {
@@ -895,21 +964,58 @@ export class PreparationLoanComponent implements OnInit {
     );
   }
 
-  private mapFormToRequest() {
+  private mapFormToRequest(): LoanRequest {
     const formValue = this.loanForm.getRawValue();
+    const colaboradorId =
+      typeof formValue.responsavel === 'object' && formValue.responsavel?.id
+        ? String(formValue.responsavel.id)
+        : '';
     return {
       equipmentId: this.equipamentId,
-      colaboradorId: formValue.responsavel?.id,
-      helpdeskTicket: formValue.projeto,
+      colaboradorId,
+      helpdeskTicket: formValue.projeto ?? '',
       loanDate: formValue.loanDate ? new Date(formValue.loanDate).toISOString() : new Date().toISOString(),
       returnDate: formValue.returnDate ? new Date(formValue.returnDate).toISOString() : null,
-      observation: formValue.observacao,
-      enviadoSedex: formValue.enviadoSedex,
+      observation: formValue.observacao ?? null,
+      enviadoSedex: !!formValue.enviadoSedex,
       dataSedex: formValue.dataSedex ? new Date(formValue.dataSedex).toISOString() : null,
-      acessorios: this.addedAccessories.length > 0
-        ? this.addedAccessories.map((item) => ({ perPartId: item.perPartId, quantity: item.quantity }))
-        : []
+      acessorios: this.addedAccessories.map((item) => ({
+        perPartId: item.perPartId,
+        quantity: item.quantity
+      }))
     };
+  }
+
+  private reloadDadosAposFinalizacao(message: string): void {
+    const loanId = this.currentLoanId;
+    if (!loanId) {
+      this.finalizeSuccess(message, '/loans');
+      return;
+    }
+
+    this.loanService.getLoanById(loanId).subscribe({
+      next: (loan) => {
+        this.patchLoanFormFromLoan(loan as any);
+        this.loadAvailablePerParts();
+        if (this.equipamentId) {
+          this.equipamentService.findById(this.equipamentId).subscribe({
+            next: (res) => {
+              this.equipamento = res;
+              this.snackBar.open(message, 'Sucesso', { duration: 4000 });
+              this.router.navigate(['/loans']);
+            },
+            error: () => {
+              this.snackBar.open(message, 'Sucesso', { duration: 4000 });
+              this.router.navigate(['/loans']);
+            }
+          });
+        } else {
+          this.snackBar.open(message, 'Sucesso', { duration: 4000 });
+          this.router.navigate(['/loans']);
+        }
+      },
+      error: () => this.finalizeSuccess(message, '/loans')
+    });
   }
 
   private finalizeSuccess(message: string, route: string): void {

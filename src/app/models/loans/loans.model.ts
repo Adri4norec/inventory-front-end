@@ -1,5 +1,12 @@
 import { StatusType } from '../status/status-type';
 
+export interface PageResponse<T> {
+  content: T[];
+  totalElements: number;
+  number: number;
+  size: number;
+}
+
 export interface LoanListResponse {
   id: string;
   codigo: string;
@@ -19,17 +26,35 @@ export interface LoanListResponse {
   dateHour?: string;
 }
 
-export interface AcessorioLoanInput {
+export interface LoanAcessorioRequest {
   perPartId: string;
   quantity: number;
 }
 
-export interface LoanAccessoryResponse {
+/** @deprecated Use LoanAcessorioRequest */
+export type AcessorioLoanInput = LoanAcessorioRequest;
+
+export interface LoanRequest {
+  equipmentId: string;
+  colaboradorId: string;
+  helpdeskTicket: string;
+  loanDate: string;
+  returnDate: string | null;
+  observation: string | null;
+  enviadoSedex: boolean;
+  dataSedex: string | null;
+  acessorios: LoanAcessorioRequest[];
+}
+
+export interface LoanAcessorioResponse {
   perPartId: string;
   name: string;
   quantidadeEmprestada: number;
   originalTotalQuantity: number;
 }
+
+/** @deprecated Use LoanAcessorioResponse */
+export type LoanAccessoryResponse = LoanAcessorioResponse;
 
 export interface LoanDetailResponse {
   id: string;
@@ -49,7 +74,8 @@ export interface LoanDetailResponse {
   dateHour?: string;
   enviadoSedex?: boolean;
   dataSedex?: string;
-  acessorios: LoanAccessoryResponse[];
+  hasOriginalTerm?: boolean;
+  acessorios: LoanAcessorioResponse[];
 }
 
 export interface EquipmentLoanResponse {
@@ -62,6 +88,10 @@ export interface EquipmentLoanResponse {
 }
 
 export interface UserSearchResponse {
-    id: string;       
-    fullName: string; 
+  id: string;
+  fullName: string;
 }
+
+export type LoanStatusPatch =
+  | 'CANCELADO'
+  | 'EMPRESTIMO_FINALIZADO';

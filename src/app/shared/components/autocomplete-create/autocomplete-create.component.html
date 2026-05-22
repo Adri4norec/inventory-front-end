@@ -1,0 +1,49 @@
+<mat-form-field
+  appearance="outline"
+  class="autocomplete-create-field"
+  >
+  <mat-label>{{ label }}</mat-label>
+
+  <mat-icon *ngIf="icon" matPrefix>{{ icon }}</mat-icon>
+
+  <input
+    type="text"
+    matInput
+    [formControl]="displayControl"
+    [errorStateMatcher]="parentErrorMatcher"
+    [matAutocomplete]="auto"
+    #trigger="matAutocompleteTrigger"
+    [placeholder]="placeholder"
+    autocomplete="off"
+    (blur)="onInputBlur()"
+    (focus)="onInputFocus()" />
+
+  <mat-icon
+    matSuffix
+    class="dropdown-arrow-icon"
+    role="button"
+    tabindex="-1"
+    aria-label="Abrir opções"
+    [class.is-disabled]="displayControl.disabled"
+    (click)="onSuffixIconClick($event, trigger)">
+    arrow_drop_down
+  </mat-icon>
+
+  <mat-autocomplete
+    #auto="matAutocomplete"
+    [displayWith]="displayWith"
+    (optionSelected)="onOptionSelected($event)">
+    <mat-option *ngFor="let option of options" [value]="option">
+      {{ getLabel(option) }}
+    </mat-option>
+    <mat-option
+      *ngIf="showCreateOption"
+      class="create-new-option"
+      [value]="createNewSentinel"
+      (mousedown)="onCreateNewMousedown($event)">
+      + Criar Novo: '{{ currentSearchTerm }}'
+    </mat-option>
+  </mat-autocomplete>
+
+  <mat-error *ngIf="showRequiredError">{{ requiredError }}</mat-error>
+</mat-form-field>

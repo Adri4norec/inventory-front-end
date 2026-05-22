@@ -28,7 +28,7 @@ import { UserService } from '../services/user/user.service';
 import { EquipmentLoanResponse } from '../models/loans/loans.model';
 import { PerPartResponse } from '../models/per-part/per-part.model';
 import { UserResponse } from '../models/users/UserResponse';
-import { LoanRequest } from '../models/equipaments/equipament.model';
+import { LoanRequest } from '../models/loans/loans.model';
 import { LayoutService } from '../services/layout/layout.service';
 import { ToolbarUserActionsComponent } from '../shared/toolbar-user-actions/toolbar-user-actions.component';
 
@@ -98,7 +98,7 @@ export class LoanPreparationComponent implements OnInit {
   ngOnInit(): void {
     this.carregarColaboradores();
     this.setupAccessoryFiltering();
-    this.loadAllPerParts();
+    this.loadAvailablePerParts();
 
     this.route.queryParams.subscribe(params => {
       const tombo = params['tombo'];
@@ -135,15 +135,19 @@ export class LoanPreparationComponent implements OnInit {
     );
   }
 
-  private loadAllPerParts(): void {
-    this.perPartService.listAll().pipe(
-      catchError(() => {
-        this.snackBar.open('Não foi possível carregar acessórios disponíveis.', 'Fechar', { duration: 5000 });
-        return of<PerPartResponse[]>([]);
-      })
+  private loadAvailablePerParts(): void {
+    this.perPartService.listAvailable().pipe(
+      catchError(() => of<PerPartResponse[]>([]))
     ).subscribe((list) => {
-      this.availablePerParts = list ?? [];
+      this.availablePerParts = (list ?? []).filter((item) => item.responsavel == null);
     });
+  }
+
+  getAccessoryOptionLabel(item: PerPartResponse): string {
+    if (item.quantity === 0) {
+      return `${item.name} — (Indisponível / Esgotado)`;
+    }
+    return `${item.name} — (${item.quantity} restantes)`;
   }
 
   private filterPerParts(search: string): PerPartResponse[] {
@@ -238,15 +242,24 @@ export class LoanPreparationComponent implements OnInit {
       return;
     }
 
+    const loanDateRaw = this.loanForm.value.loanDate;
+    const loanDateIso = loanDateRaw instanceof Date
+      ? loanDateRaw.toISOString()
+      : new Date(loanDateRaw).toISOString();
+
     const request: LoanRequest = {
       equipmentId: this.loanForm.value.equipmentId,
       colaboradorId: this.loanForm.value.colaboradorId,
-      loanDate: this.loanForm.value.loanDate,
+      loanDate: loanDateIso,
+      returnDate: null,
       helpdeskTicket: 'N/A',
       observation: 'Preparação iniciada via sistema',
-      acessorios: this.addedAccessories.length > 0
-        ? this.addedAccessories.map((item) => ({ perPartId: item.perPartId, quantity: item.quantity }))
-        : []
+      enviadoSedex: false,
+      dataSedex: null,
+      acessorios: this.addedAccessories.map((item) => ({
+        perPartId: item.perPartId,
+        quantity: item.quantity
+      }))
     };
 
     this.loanService.prepareLoan(request).subscribe({

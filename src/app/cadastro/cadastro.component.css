@@ -57,11 +57,12 @@
   color: #6b7280;
 }
 
-/* ─── Formulário ─────────────────────────────────── */
+/* ─── Formulário (mesmo padrão de preparation-loan) ─ */
 .form-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8px 20px;
+  align-items: start;
   padding: 24px 0 8px;
 }
 
@@ -72,6 +73,23 @@
 
 .field-half {
   width: 100%;
+}
+
+/* Evita que o Tombo estique na mesma linha quando o Proprietário exibe erro */
+.form-grid > mat-form-field,
+.form-grid > app-autocomplete-create {
+  align-self: start;
+  height: auto;
+}
+
+.form-grid mat-form-field.mat-mdc-form-field {
+  display: block;
+  height: auto;
+}
+
+.field-topo input[matInput] {
+  -moz-appearance: textfield;
+  appearance: textfield;
 }
 
 /* Tipo de uso sozinho na linha, mesma largura de um campo “meio” (coluna esquerda) */

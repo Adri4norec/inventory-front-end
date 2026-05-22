@@ -58,6 +58,7 @@ export class PerPartComponent implements OnInit {
   isEdit = false;
   perPartId: string | null = null;
   isSaving = false;
+  isChildRecord = false;
 
   proprietaries: ProprietaryResponse[] = [];
   isLoadingProprietaries = false;
@@ -79,28 +80,28 @@ export class PerPartComponent implements OnInit {
     this.form = this.fb.group({
       name: ['', [Validators.required, Validators.maxLength(255)]],
       quantity: [null as number | null, [Validators.required, Validators.min(1)]],
-      responsavel: [''],
       proprietaryId: [null as string | null],
       dataVencimento: [null as Date | null]
     });
-
-    const respCtrl = this.form.get('responsavel');
-    if (this.isEdit) {
-      respCtrl?.setValidators([Validators.required, Validators.maxLength(255)]);
-    } else {
-      respCtrl?.clearValidators();
-    }
-    respCtrl?.updateValueAndValidity({ emitEvent: false });
 
     this.loadProprietaries();
 
     if (this.isEdit && this.perPartId) {
       this.perPartService.findById(this.perPartId).subscribe({
         next: (p) => {
+          if (p.responsavel != null) {
+            this.isChildRecord = true;
+            this.snackBar.open(
+              'Registros em uso (filhos) não podem ser editados manualmente.',
+              'Fechar',
+              { duration: 6000 }
+            );
+            this.router.navigate(['/inventario/acessorios']);
+            return;
+          }
           this.form.patchValue(
             {
               name: p.name,
-              responsavel: p.responsavel ?? '',
               quantity: p.quantity,
               proprietaryId: p.proprietaryId ?? null,
               dataVencimento: this.toDatePickerValue(p.dataVencimento)
@@ -108,9 +109,7 @@ export class PerPartComponent implements OnInit {
             { emitEvent: false }
           );
         },
-        error: (err) => {
-          const msg = this.extractBackendMessage(err, 'Acessório não encontrado.');
-          this.snackBar.open(msg, 'Fechar', { duration: 6000 });
+        error: () => {
           this.router.navigate(['/inventario/acessorios']);
         }
       });
@@ -122,7 +121,7 @@ export class PerPartComponent implements OnInit {
   }
 
   onSubmit(): void {
-    if (this.form.invalid || this.isSaving) {
+    if (this.form.invalid || this.isSaving || this.isChildRecord) {
       this.form.markAllAsTouched();
       return;
     }
@@ -132,11 +131,8 @@ export class PerPartComponent implements OnInit {
     const proprietaryId =
       selectedProprietaryId ?? (this.isEdit ? null : this.findDefaultProprietaryId());
 
-    const responsavel = String(raw.responsavel || '').trim();
-
     const body: PerPartRequest = {
       name: String(raw.name || '').trim(),
-      responsavel: responsavel || null,
       quantity: Number(raw.quantity),
       proprietaryId,
       dataVencimento: this.toBackendDateTime(raw.dataVencimento)
@@ -158,10 +154,8 @@ export class PerPartComponent implements OnInit {
         );
         this.router.navigate(['/inventario/acessorios']);
       },
-      error: (err) => {
+      error: () => {
         this.isSaving = false;
-        const msg = this.extractBackendMessage(err, 'Não foi possível salvar o acessório.');
-        this.snackBar.open(msg, 'Fechar', { duration: 6000 });
       }
     });
   }
@@ -208,24 +202,5 @@ export class PerPartComponent implements OnInit {
     const [y, m, d] = datePart.split('-').map((n) => Number(n));
     if (!y || !m || !d) return null;
     return new Date(y, m - 1, d);
-  }
-
-  private extractBackendMessage(err: unknown, fallback: string): string {
-    const e = err as {
-      error?: { message?: string };
-      message?: string;
-      status?: number;
-    };
-    if (e?.status === 404) {
-      return this.formatNotFoundMessage(e?.error?.message);
-    }
-    return e?.error?.message || e?.message || fallback;
-  }
-
-  private formatNotFoundMessage(detail?: string | null): string {
-    if (detail && detail.trim()) {
-      return detail;
-    }
-    return 'Acessório não encontrado (PER_PART_NOT_FOUND).';
   }
 }

@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, Subject } from 'rxjs';
+import { tap } from 'rxjs/operators';
 import { EquipmentLoanResponse, 
   EquipmentRequest, 
   EquipmentResponse, 
@@ -85,6 +86,16 @@ export class EquipamentService {
 
   update(id: string, record: EquipmentRequest): Observable<EquipmentResponse> {
     return this.http.put<EquipmentResponse>(`${this.API}/${id}`, record);
+  }
+
+  private readonly equipmentPhotosRefresh$ = new Subject<string>();
+  readonly onEquipmentPhotosRefresh$ = this.equipmentPhotosRefresh$.asObservable();
+
+  syncEquipmentPhotos(id: string): Observable<EquipmentResponse> {
+    const params = new HttpParams().set('src', Date.now().toString());
+    return this.http.get<EquipmentResponse>(`${this.API}/${id}`, { params }).pipe(
+      tap(() => this.equipmentPhotosRefresh$.next(id))
+    );
   }
 
   uploadImages(id: string, files: File[]): Observable<EquipmentResponse> {

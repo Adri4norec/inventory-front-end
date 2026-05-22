@@ -1,4 +1,4 @@
-import { Component, OnInit, Input } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -15,12 +15,17 @@ import { MatMenuModule } from '@angular/material/menu';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 
 import { PerPartService } from '../services/per-part/per-part.service';
-import { PerPartResponse } from '../models/per-part/per-part.model';
+import {
+  PerPartAvailabilityStatus,
+  PerPartResponse,
+  PerPartSearchFilters
+} from '../models/per-part/per-part.model';
 import { LayoutService } from '../services/layout/layout.service';
 import { ToolbarUserActionsComponent } from '../shared/toolbar-user-actions/toolbar-user-actions.component';
-import { ConfirmDialogComponent } from '../equipament/confirm_dialog/confirm-dialog.component';
+import { ConfirmDialogComponent } from '../shared/components/confirm-dialog/confirm-dialog.component';
 
 @Component({
   selector: 'app-per-part-list',
@@ -41,12 +46,14 @@ import { ConfirmDialogComponent } from '../equipament/confirm_dialog/confirm-dia
     MatPaginatorModule,
     MatFormFieldModule,
     MatInputModule,
+    MatSlideToggleModule,
     ToolbarUserActionsComponent
   ],
   templateUrl: './per-part-list.component.html',
   styleUrls: ['./per-part-list.component.css']
 })
 export class PerPartListComponent implements OnInit {
+  verItensEmUso = false;
   displayedColumns: string[] = ['name', 'quantity', 'actions'];
   dataSource: PerPartResponse[] = [];
   isLoading = true;
@@ -54,7 +61,7 @@ export class PerPartListComponent implements OnInit {
   pageSize = 10;
   pageIndex = 0;
 
-  filtros: { nome: string; responsavel: string } = { nome: '', responsavel: '' };
+  filtros: { nome: string } = { nome: '' };
 
   constructor(
     private perPartService: PerPartService,
@@ -68,9 +75,32 @@ export class PerPartListComponent implements OnInit {
     this.carregar(this.pageIndex, this.pageSize);
   }
 
+  get isEmUsoView(): boolean {
+    return this.verItensEmUso;
+  }
+
+  onToggleVisao(): void {
+    this.updateDisplayedColumns();
+    this.pageIndex = 0;
+    this.carregar();
+  }
+
+  private updateDisplayedColumns(): void {
+    this.displayedColumns = this.verItensEmUso
+      ? ['name', 'quantity', 'responsavel']
+      : ['name', 'quantity', 'actions'];
+  }
+
+  private buildSearchFilters(): PerPartSearchFilters {
+    return {
+      nome: this.filtros.nome,
+      status: (this.verItensEmUso ? 'EM_USO' : 'DISPONIVEL') as PerPartAvailabilityStatus
+    };
+  }
+
   carregar(page = this.pageIndex, size = this.pageSize): void {
     this.isLoading = true;
-    this.perPartService.advancedSearch(this.filtros, page, size).subscribe({
+    this.perPartService.advancedSearch(this.buildSearchFilters(), page, size).subscribe({
       next: (res) => {
         const content = res.content ?? [];
         this.dataSource = content;
@@ -85,10 +115,8 @@ export class PerPartListComponent implements OnInit {
         }
         this.isLoading = false;
       },
-      error: (err) => {
+      error: () => {
         this.isLoading = false;
-        const msg = this.extractErrorMessage(err, 'Não foi possível carregar os acessórios.');
-        this.snackBar.open(msg, 'Fechar', { duration: 5000 });
       }
     });
   }
@@ -99,7 +127,7 @@ export class PerPartListComponent implements OnInit {
   }
 
   limparFiltros(): void {
-    this.filtros = { nome: '', responsavel: '' };
+    this.filtros = { nome: '' };
     this.aplicarFiltros();
   }
 
@@ -107,6 +135,18 @@ export class PerPartListComponent implements OnInit {
     this.pageIndex = e.pageIndex;
     this.pageSize = e.pageSize;
     this.carregar(this.pageIndex, this.pageSize);
+  }
+
+  podeEditarExcluir(row: PerPartResponse): boolean {
+    return !this.verItensEmUso && row.responsavel == null;
+  }
+
+  formatQuantity(row: PerPartResponse): string {
+    if (this.verItensEmUso) {
+      return String(row.quantity);
+    }
+    const total = row.originalTotalQuantity ?? row.quantity;
+    return `${row.quantity} / ${total}`;
   }
 
   editar(row: PerPartResponse): void {
@@ -126,16 +166,8 @@ export class PerPartListComponent implements OnInit {
           this.snackBar.open('Acessório excluído com sucesso.', 'OK', { duration: 3000 });
           this.carregar();
         },
-        error: (err) => {
-          const msg = this.extractErrorMessage(err, 'Erro ao excluir o acessório.');
-          this.snackBar.open(msg, 'Fechar', { duration: 5000 });
-        }
+        error: () => { /* mensagem via interceptor */ }
       });
     });
-  }
-
-  private extractErrorMessage(err: unknown, fallback: string): string {
-    const e = err as { error?: { message?: string }; message?: string };
-    return e?.error?.message || e?.message || fallback;
   }
 }

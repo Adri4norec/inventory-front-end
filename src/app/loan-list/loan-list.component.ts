@@ -42,7 +42,7 @@ import { ToolbarUserActionsComponent } from '../shared/toolbar-user-actions/tool
 })
 export class LoanListComponent implements OnInit, OnDestroy {
 
-  displayedColumns: string[] = ['codigo', 'categoria', 'name', 'description', 'status', 'loanDate', 'returnDate', 'acoes'];
+  displayedColumns: string[] = ['codigo', 'name', 'categoria', 'description', 'status', 'loanDate', 'returnDate', 'acoes'];
   dataSource: LoanListResponse[] = [];
   isLoading = true;
   totalElements = 0;
@@ -90,12 +90,6 @@ export class LoanListComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.subs.unsubscribe();
-  }
-
-  openSupportReturn(item: LoanListResponse): void {
-    this.router.navigate(['/loans', item.id, 'preparation-loan'], {
-      queryParams: { mode: 'return-support' }
-    });
   }
 
   openAdminFinalizeReturn(item: LoanListResponse): void {
@@ -313,8 +307,8 @@ export class LoanListComponent implements OnInit, OnDestroy {
     return statusColorClass(status);
   }
 
-  podeDevolver(status: string): boolean {
-    return status === 'EMPRESTIMO_FINALIZADO';
+  podeIniciarDevolucao(status: string): boolean {
+    return normalizeStatusType(status) === StatusType.EM_USO;
   }
 
   podeFinalizarDevolucao(status: string): boolean {

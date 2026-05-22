@@ -4,8 +4,12 @@ import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 
 import { environment } from '../../../environments/environment';
-import { PerPartRequest, PerPartResponse } from '../../models/per-part/per-part.model';
-import { PageResponse } from '../../models/equipaments/equipament.model';
+import {
+  PageResponse,
+  PerPartRequest,
+  PerPartResponse,
+  PerPartSearchFilters
+} from '../../models/per-part/per-part.model';
 
 @Injectable({ providedIn: 'root' })
 export class PerPartService {
@@ -29,7 +33,7 @@ export class PerPartService {
   }
 
   advancedSearch(
-    filtros: { nome?: string | null; responsavel?: string | null },
+    filtros: PerPartSearchFilters,
     page: number,
     size: number
   ): Observable<PageResponse<PerPartResponse>> {
@@ -42,6 +46,10 @@ export class PerPartService {
 
     const responsavel = (filtros?.responsavel ?? '').trim();
     if (responsavel.length > 0) params = params.set('responsavel', responsavel);
+
+    if (filtros?.status) {
+      params = params.set('status', filtros.status);
+    }
 
     params = this.withDefaultSort(params);
     return this.http
@@ -65,14 +73,11 @@ export class PerPartService {
     return this.http.delete<void>(`${this.API}/${id}`);
   }
 
-  listAll(): Observable<PerPartResponse[]> {
-    return this.http.get<PageResponse<PerPartResponse> | PerPartResponse[]>(this.API).pipe(
-      map((res) => {
-        if (Array.isArray(res)) {
-          return res;
-        }
-        return (res as PageResponse<PerPartResponse>).content ?? [];
-      })
+  listAvailable(page = 0, size = 500): Observable<PerPartResponse[]> {
+    return this.advancedSearch({ status: 'DISPONIVEL' }, page, size).pipe(
+      map((pageRes) =>
+        (pageRes.content ?? []).filter((item) => item.responsavel == null)
+      )
     );
   }
 

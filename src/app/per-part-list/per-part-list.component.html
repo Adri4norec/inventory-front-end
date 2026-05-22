@@ -3,7 +3,7 @@
     <button mat-icon-button (click)="layout.toggleMenu()" aria-label="Abrir/fechar menu">
       <mat-icon>menu</mat-icon>
     </button>
-    <span class="toolbar-title">Listagem de acessórios</span>
+    <span class="toolbar-title">Lista de acessórios</span>
     <span style="flex: 1 1 auto;"></span>
     <app-toolbar-user-actions></app-toolbar-user-actions>
   </mat-toolbar>
@@ -11,20 +11,22 @@
   <div class="content equipament-list-content">
 
     <mat-card appearance="outlined" class="filter-card">
-      <div style="display: flex; gap: 15px; flex-wrap: wrap; align-items: center;">
+      <div class="filter-row">
+        <div class="filter-controls">
+          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="compact-filter"
+            style="flex: 1; min-width: 150px; max-width: 500px;">
+            <mat-label>Nome</mat-label>
+            <input matInput [(ngModel)]="filtros.nome" (keyup.enter)="aplicarFiltros()">
+          </mat-form-field>
+        </div>
 
-        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="compact-filter"
-          style="flex: 1; min-width: 150px; max-width: 500px;">
-          <mat-label>Nome</mat-label>
-          <input matInput [(ngModel)]="filtros.nome" (keyup.enter)="aplicarFiltros()">
-        </mat-form-field>
-
-        <!--<mat-form-field appearance="outline" subscriptSizing="dynamic" class="compact-filter"
-          style="flex: 1; min-width: 150px;">
-          <mat-label>Proprietário</mat-label>
-          <input matInput [(ngModel)]="filtros.responsavel" (keyup.enter)="aplicarFiltros()">
-        </mat-form-field>-->
-
+        <mat-slide-toggle
+          [(ngModel)]="verItensEmUso"
+          (change)="onToggleVisao()"
+          color="primary"
+          class="view-toggle">
+          Ver itens em uso
+        </mat-slide-toggle>
       </div>
 
       <div style="display: flex; justify-content: space-between; gap: 12px; margin-top: 12px;">
@@ -44,12 +46,16 @@
     </div>
 
     <mat-card *ngIf="!isLoading" appearance="outlined" class="table-card">
-      <mat-card-header>
-        <mat-card-title>
-          <mat-icon>category</mat-icon>
-          Acessórios
-        </mat-card-title>
-        <mat-card-subtitle>{{ totalElements }} registro(s)</mat-card-subtitle>
+      <mat-card-header class="table-card-header-row">
+        <div class="table-card-header-text">
+          <mat-card-title>
+            <mat-icon>category</mat-icon>
+            Acessórios
+          </mat-card-title>
+          <mat-card-subtitle>
+            {{ verItensEmUso ? 'Itens em uso' : 'Itens disponíveis' }} — {{ totalElements }} registro(s)
+          </mat-card-subtitle>
+        </div>
       </mat-card-header>
 
       <mat-card-content class="table-card-content">
@@ -64,34 +70,34 @@
             <ng-container matColumnDef="quantity">
               <th mat-header-cell *matHeaderCellDef>Quantidade</th>
               <td mat-cell *matCellDef="let row">
-                {{ row.quantity }} / {{ row.originalTotalQuantity ?? row.quantity }}
+                {{ formatQuantity(row) }}
               </td>
             </ng-container>
-            <!--<ng-container matColumnDef="dataVencimento">
-              <th mat-header-cell *matHeaderCellDef>Vencimento</th>
+            <ng-container matColumnDef="responsavel">
+              <th mat-header-cell *matHeaderCellDef>Responsável</th>
               <td mat-cell *matCellDef="let row">
-                <span [matTooltip]="(row.dataVencimento | date:'dd/MM/yyyy HH:mm') || ''">
-                  {{ (row.dataVencimento | date:'dd/MM/yyyy') || '-' }}
-                </span>
+                <span [matTooltip]="row.responsavel || ''">{{ row.responsavel || '-' }}</span>
               </td>
-            </ng-container>-->
+            </ng-container>
             <ng-container matColumnDef="actions">
               <th mat-header-cell *matHeaderCellDef style="text-align: right; white-space: nowrap; width: 60px;">Ações
               </th>
               <td mat-cell *matCellDef="let row" style="text-align: right;">
-                <button mat-icon-button [matMenuTriggerFor]="menu" aria-label="Ações do acessório">
-                  <mat-icon>more_vert</mat-icon>
-                </button>
-                <mat-menu #menu="matMenu">
-                  <button mat-menu-item type="button" (click)="editar(row)">
-                    <mat-icon color="primary">edit</mat-icon>
-                    <span>Editar</span>
+                <ng-container *ngIf="podeEditarExcluir(row)">
+                  <button mat-icon-button [matMenuTriggerFor]="menu" aria-label="Ações do acessório">
+                    <mat-icon>more_vert</mat-icon>
                   </button>
-                  <button mat-menu-item type="button" (click)="excluir(row)">
-                    <mat-icon color="warn">delete</mat-icon>
-                    <span>Excluir</span>
-                  </button>
-                </mat-menu>
+                  <mat-menu #menu="matMenu">
+                    <button mat-menu-item type="button" (click)="editar(row)">
+                      <mat-icon color="primary">edit</mat-icon>
+                      <span>Editar</span>
+                    </button>
+                    <button mat-menu-item type="button" (click)="excluir(row)">
+                      <mat-icon color="warn">delete</mat-icon>
+                      <span>Excluir</span>
+                    </button>
+                  </mat-menu>
+                </ng-container>
               </td>
             </ng-container>
             <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>

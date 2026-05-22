@@ -16,7 +16,7 @@ import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 
 import { UserResponse } from '../models/users/UserResponse';
 import { UserService } from '../services/user/user.service';
-import { ConfirmDialogComponent } from '../equipament/confirm_dialog/confirm-dialog.component';
+import { ConfirmDialogComponent } from '../shared/components/confirm-dialog/confirm-dialog.component';
 import { LayoutService } from '../services/layout/layout.service';
 import { ToolbarUserActionsComponent } from '../shared/toolbar-user-actions/toolbar-user-actions.component';
 

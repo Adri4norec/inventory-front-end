@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { of } from 'rxjs';
-import { debounceTime, distinctUntilChanged, switchMap, catchError } from 'rxjs/operators';
+import { debounceTime, distinctUntilChanged, switchMap, concatMap, catchError } from 'rxjs/operators';
 
 import { MatCardModule } from '@angular/material/card';
 import { MatTableModule } from '@angular/material/table';
@@ -219,8 +219,20 @@ export class MovementComponent implements OnInit {
       next: (response) => {
         // Se houver arquivos, faz o upload. Se não, apenas finaliza.
         if (this.selectedFiles.length > 0) {
-          this.movementService.uploadImages(response.id, this.selectedFiles).subscribe({
-            next: () => this.finalizarSalvamento()
+          const refresh$ = this.equipamentId
+            ? this.equipamentService.syncEquipmentPhotos(this.equipamentId).pipe(
+                catchError((err) => {
+                  console.error('Erro ao sincronizar fotos do equipamento:', err);
+                  return of(null);
+                })
+              )
+            : of(null);
+
+          this.movementService.uploadImages(response.id, this.selectedFiles).pipe(
+            concatMap(() => refresh$)
+          ).subscribe({
+            next: () => this.finalizarSalvamento(),
+            error: () => this.finalizarSalvamento()
           });
         } else {
           this.finalizarSalvamento();

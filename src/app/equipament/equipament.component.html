@@ -91,17 +91,17 @@
         <div class="table-scroll">
           <table mat-table [dataSource]="equipamentos">
 
-            <ng-container matColumnDef="categoria">
-              <th mat-header-cell *matHeaderCellDef> Categoria </th>
-              <td mat-cell *matCellDef="let element">
-                <span [matTooltip]="element.categoria">{{ element.categoria || '-' }}</span>
-              </td>
-            </ng-container>
-
             <ng-container matColumnDef="name">
               <th mat-header-cell *matHeaderCellDef> Nome </th>
               <td mat-cell *matCellDef="let element">
                 <strong [matTooltip]="element.name">{{ element.name }}</strong>
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="categoria">
+              <th mat-header-cell *matHeaderCellDef> Categoria </th>
+              <td mat-cell *matCellDef="let element">
+                <span [matTooltip]="element.categoria">{{ element.categoria || '-' }}</span>
               </td>
             </ng-container>
 

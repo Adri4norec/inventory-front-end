@@ -3,9 +3,6 @@
     <button mat-icon-button (click)="layout.toggleMenu()" aria-label="Abrir/fechar menu">
       <mat-icon>menu</mat-icon>
     </button>
-    <!--<button mat-icon-button (click)="cancelar()" matTooltip="Voltar">
-      <mat-icon>arrow_back</mat-icon>
-    </button>-->
     <span class="toolbar-title">
       {{ isVisualizacao ? 'Detalhes do Equipamento' : (isEdicao ? 'Editar Equipamento' : 'Cadastro de Equipamento') }}
     </span>
@@ -15,13 +12,13 @@
 
   <div class="content">
     <mat-card appearance="outlined" class="form-card">
-      <mat-card-header>
+      <!--<mat-card-header>
         <mat-card-title>
           <mat-icon>build</mat-icon>
           {{ isVisualizacao ? 'Visualizando Registro' : (isEdicao ? 'Editando Registro' : 'Novo Equipamento') }}
         </mat-card-title>
         <mat-card-subtitle>Registro de equipamentos no inventário</mat-card-subtitle>
-      </mat-card-header>
+      </mat-card-header>-->
 
       <mat-divider></mat-divider>
 
@@ -70,31 +67,21 @@
             </mat-error>
           </mat-form-field>
 
-          <mat-form-field appearance="outline" class="field-half">
-            <mat-label>Tombo / Identificador (Opcional)</mat-label>
+          <mat-form-field appearance="outline" class="field-half field-topo">
+            <mat-label>Tombo / Identificador (opcional)</mat-label>
             <mat-icon matPrefix>tag</mat-icon>
-            <input matInput type="number" formControlName="topo" placeholder="Ex: 1234"
-              (keydown)="bloquearLetras($event)" [readonly]="isVisualizacao">
-            
-            <mat-hint *ngIf="!isVisualizacao">Se deixado em branco, um código será gerado automaticamente.</mat-hint>
-            
+            <input matInput type="text" inputmode="numeric" formControlName="topo" placeholder="Ex: 1234"
+              (keydown)="bloquearLetras($event)" [readonly]="isVisualizacao" />
             <mat-error *ngIf="equipamentoForm.get('topo')?.hasError('pattern')">
               Apenas números são permitidos
             </mat-error>
           </mat-form-field>
 
-          <mat-form-field appearance="outline" class="field-half">
-            <mat-label>Proprietário</mat-label>
-            <mat-icon matPrefix>person</mat-icon>
-            <mat-select formControlName="proprietaryId" placeholder="Selecione um proprietário">
-              <mat-option *ngFor="let p of proprietaries" [value]="p.id">
-                {{ p.name }}
-              </mat-option>
-            </mat-select>
-            <mat-error *ngIf="equipamentoForm.get('proprietaryId')?.hasError('required')">
-              Proprietário é obrigatório
-            </mat-error>
-          </mat-form-field>
+          <app-autocomplete-create class="field-half" label="Proprietário"
+            placeholder="Digite para buscar proprietário..." icon="person" [options]="proprietaries" bindLabel="name"
+            bindValue="id" formControlName="proprietaryId" requiredError="Proprietário é obrigatório"
+            (search)="onSearchProprietario($event)" (createNew)="onCreateNewProprietario($event)">
+          </app-autocomplete-create>
 
           <mat-form-field appearance="outline" class="field-half">
             <mat-label>Tipo de Uso</mat-label>
@@ -115,12 +102,8 @@
           <mat-form-field appearance="outline" class="field-half">
             <mat-label>Data de Vencimento (opcional)</mat-label>
             <mat-icon matPrefix>event</mat-icon>
-            <input
-              matInput
-              [matDatepicker]="dueDatePicker"
-              formControlName="dueDate"
-              (click)="!isVisualizacao && dueDatePicker.open()"
-              placeholder="DD/MM/AAAA"
+            <input matInput [matDatepicker]="dueDatePicker" formControlName="dueDate"
+              (click)="!isVisualizacao && dueDatePicker.open()" placeholder="DD/MM/AAAA"
               aria-label="Data de vencimento do equipamento" />
             <mat-datepicker-toggle matSuffix [for]="dueDatePicker" [disabled]="isVisualizacao"></mat-datepicker-toggle>
             <mat-datepicker #dueDatePicker></mat-datepicker>

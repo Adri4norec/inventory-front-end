@@ -30,7 +30,7 @@ import { MatNativeDateModule } from '@angular/material/core';
 
 // Componentes e Serviços
 import { PhotoGaleryDialogComponent } from '../photo-galery-dialog/photo-galery-dialog.component';
-import { ConfirmDialogComponent } from './confirm_dialog/confirm-dialog.component';
+import { ConfirmDialogComponent } from '../shared/components/confirm-dialog/confirm-dialog.component';
 import { EquipmentResponse } from '../models/equipaments/equipament.model';
 import { EquipamentService } from '../services/equipament/equipment.service';
 import { LoanRefreshService } from '../services/loan/loan-refresh.service';
@@ -93,8 +93,8 @@ export class EquipamentComponent implements OnInit, OnDestroy {
   statusFilterOptions = STATUS_TYPE_OPTIONS;
 
   displayedColumns: string[] = [
-    'categoria',
     'name',
+    'categoria',
     'description',
     'tombo', 
     'statusName',
@@ -151,6 +151,12 @@ export class EquipamentComponent implements OnInit, OnDestroy {
         filter((e): e is NavigationEnd => e instanceof NavigationEnd),
         filter((e) => (e.urlAfterRedirects || e.url).startsWith('/equipaments'))
       ).subscribe(() => this.carregarDados(this.pageIndex, this.pageSize))
+    );
+
+    this.subs.add(
+      this.equipmentService.onEquipmentPhotosRefresh$.subscribe(() => {
+        this.carregarDados(this.pageIndex, this.pageSize);
+      })
     );
 
   }

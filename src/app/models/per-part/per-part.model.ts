@@ -1,13 +1,13 @@
 /**
- * Acessórios (PerPart) — funcionalidade independente (sem vínculo obrigatório com equipamento no front).
+ * Acessórios (PerPart) — persistência Pai/Filho via campo `responsavel`.
+ * null = Disponível (Pai) | string = Em Uso (Filho gerado pelo sistema).
  */
+export type PerPartAvailabilityStatus = 'DISPONIVEL' | 'EM_USO';
+
 export interface PerPartRequest {
   name: string;
   quantity: number;
-  responsavel?: string | null;
-  /** UUID do Proprietário (FK). null/ausente quando não informado. */
   proprietaryId?: string | null;
-  /** ISO LocalDateTime (sem timezone), ex.: "2026-12-31T00:00:00". null quando não informado. */
   dataVencimento?: string | null;
 }
 
@@ -16,12 +16,22 @@ export interface PerPartResponse {
   name: string;
   quantity: number;
   responsavel: string | null;
-  /** UUID do Proprietário (FK). null quando o acessório não tem proprietário. */
   proprietaryId: string | null;
-  /** Nome do Proprietário resolvido pelo back. null quando o acessório não tem proprietário. */
   proprietaryName: string | null;
-  /** ISO LocalDateTime, ex.: "2026-12-31T00:00:00". null quando não informado. */
   dataVencimento: string | null;
-  originalTotalQuantity: number;
   active: boolean;
+  originalTotalQuantity: number;
+}
+
+export interface PerPartSearchFilters {
+  nome?: string | null;
+  responsavel?: string | null;
+  status?: PerPartAvailabilityStatus;
+}
+
+export interface PageResponse<T> {
+  content: T[];
+  totalElements: number;
+  number: number;
+  size: number;
 }

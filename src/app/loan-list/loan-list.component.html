@@ -20,14 +20,14 @@
 
         <mat-form-field appearance="outline" subscriptSizing="dynamic" class="compact-filter"
           style="flex: 1; min-width: 150px;">
-          <mat-label>Categoria</mat-label>
-          <input matInput [(ngModel)]="filtros.categoria" (keyup.enter)="aplicarFiltros()">
+          <mat-label>Nome</mat-label>
+          <input matInput [(ngModel)]="filtros.nome" (keyup.enter)="aplicarFiltros()">
         </mat-form-field>
 
         <mat-form-field appearance="outline" subscriptSizing="dynamic" class="compact-filter"
           style="flex: 1; min-width: 150px;">
-          <mat-label>Nome</mat-label>
-          <input matInput [(ngModel)]="filtros.nome" (keyup.enter)="aplicarFiltros()">
+          <mat-label>Categoria</mat-label>
+          <input matInput [(ngModel)]="filtros.categoria" (keyup.enter)="aplicarFiltros()">
         </mat-form-field>
 
         <mat-form-field appearance="outline" subscriptSizing="dynamic" class="compact-filter"
@@ -149,19 +149,14 @@
                 <button mat-menu-item
                   *ngIf="element.status !== 'DEVOLVIDO' && element.status !== 'CANCELADO' && element.status !== 'EM_DEVOLUCAO'"
                   (click)="openPreparationScreen(element)">
-                  <mat-icon color="primary">edit</mat-icon>
-                  <span>{{ element.status === 'DISPONIVEL' ? 'Novo Empréstimo' : 'Editar Status de Empréstimo' }}</span>
-                </button>
-
-                <button mat-menu-item *ngIf="podeDevolver(element.status)" (click)="openSupportReturn(element)">
-                  <mat-icon color="primary">assignment_return</mat-icon>
-                  <span>Registrar Devolução (Suporte)</span>
+                  <mat-icon color="primary">{{ element.status === 'EM_USO' ? 'assignment_return' : 'edit' }}</mat-icon>
+                  <span>{{ element.status === 'DISPONIVEL' ? 'Novo Empréstimo' : (element.status === 'EM_USO' ? 'Iniciar Devolução' : 'Editar Status de Empréstimo') }}</span>
                 </button>
 
                 <button mat-menu-item *ngIf="podeFinalizarDevolucao(element.status)"
                   (click)="openAdminFinalizeReturn(element)">
-                  <mat-icon color="primary">how_to_reg</mat-icon>
-                  <span>Finalizar e Liberar Equipamento</span>
+                  <mat-icon color="primary">picture_as_pdf</mat-icon>
+                  <span>Finalizar Devolução</span>
                 </button>
               </mat-menu>
             </td>
