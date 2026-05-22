@@ -27,15 +27,23 @@
         <mat-form-field appearance="outline" subscriptSizing="dynamic" class="compact-filter"
           style="flex: 1; min-width: 150px;">
           <mat-label>Categoria</mat-label>
-          <input matInput [(ngModel)]="filtros.categoria" (keyup.enter)="aplicarFiltros()">
+          <mat-select [(ngModel)]="filtros.categoria" (selectionChange)="aplicarFiltros()">
+            <mat-option *ngFor="let opt of categoriaFilterOptions" [value]="opt.value">
+              {{ opt.label }}
+            </mat-option>
+          </mat-select>
         </mat-form-field>
 
         <mat-form-field appearance="outline" subscriptSizing="dynamic" class="compact-filter"
           style="flex: 1; min-width: 140px;">
           <mat-label>Status</mat-label>
-          <mat-select [(ngModel)]="filtros.status" (selectionChange)="aplicarFiltros()">
-            <mat-option value="">Todos</mat-option>
-            <mat-option *ngFor="let opt of statusFilterOptions" [value]="opt.value">{{ opt.label }}</mat-option>
+          <mat-select [(ngModel)]="filtros.statuses" multiple (selectionChange)="aplicarFiltros()">
+            <mat-select-trigger>
+              {{ getStatusSelectLabel() }}
+            </mat-select-trigger>
+            <mat-option *ngFor="let opt of statusFilterOptions" [value]="opt.value">
+              {{ opt.label }}
+            </mat-option>
           </mat-select>
         </mat-form-field>
 

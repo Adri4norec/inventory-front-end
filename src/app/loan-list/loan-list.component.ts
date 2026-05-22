@@ -24,8 +24,23 @@ import { LoanRefreshService } from '../services/loan/loan-refresh.service';
 import { EquipamentService } from '../services/equipament/equipment.service';
 import { LoanListResponse } from '../models/loans/loans.model';
 import { LayoutService } from '../services/layout/layout.service';
-import { formatStatusLabel, normalizeStatusType, STATUS_TYPE_OPTIONS, StatusType, statusColorClass } from '../models/status/status-type';
+import { formatStatusLabel, normalizeStatusType, StatusType, statusColorClass } from '../models/status/status-type';
 import { ToolbarUserActionsComponent } from '../shared/toolbar-user-actions/toolbar-user-actions.component';
+
+const CATEGORIA_OPTIONS = [
+  { value: 'NOTEBOOK', label: 'Notebook' },
+  { value: 'MONITOR', label: 'Monitor' },
+  { value: 'ACESSORIO', label: 'Acessórios' },
+  { value: 'DESKTOP', label: 'Desktop' },
+  { value: 'CELULAR', label: 'Celular' }
+];
+
+const STATUS_OPTIONS = [
+  { value: 'EM_PREPARACAO', label: 'Em preparação' },
+  { value: 'EM_MANUTENCAO', label: 'Em manutenção' },
+  { value: 'EM_USO', label: 'Em uso' },
+  { value: 'EM_DEVOLUCAO', label: 'Em devolução' }
+];
 
 @Component({
   selector: 'app-loan-list',
@@ -49,7 +64,13 @@ export class LoanListComponent implements OnInit, OnDestroy {
   pageSize = 10;
   pageIndex = 0;
 
-  filtros = { codigo: '', categoria: '', nome: '', caracteristicas: '', status: '' };
+  filtros = {
+    codigo: '',
+    categoria: '',
+    nome: '',
+    caracteristicas: '',
+    statuses: [] as string[]
+  };
   /** Controle de empréstimo: só fluxo ativo — equipamento disponível não entra nesta lista. */
   private readonly allowedStatuses: StatusType[] = [
     StatusType.EM_PREPARACAO,
@@ -58,8 +79,9 @@ export class LoanListComponent implements OnInit, OnDestroy {
     StatusType.EM_DEVOLUCAO
   ];
 
-  statusFilterOptions = STATUS_TYPE_OPTIONS.filter((o) => this.allowedStatuses.includes(o.value));
-  private requestedStatusFilter: StatusType | null = null;
+  categoriaFilterOptions = CATEGORIA_OPTIONS;
+  statusFilterOptions = STATUS_OPTIONS;
+  private requestedStatusFilters: StatusType[] = [];
   private readonly maxBootstrapFetchSize = 200;
 
   private readonly subs = new Subscription();
@@ -109,12 +131,20 @@ export class LoanListComponent implements OnInit, OnDestroy {
 
   carregarDados(page = this.pageIndex, size = this.pageSize): void {
     this.isLoading = true;
-    this.requestedStatusFilter = normalizeStatusType(this.filtros.status);
+    this.requestedStatusFilters = this.filtros.statuses
+      .map((s) => normalizeStatusType(s))
+      .filter((s): s is StatusType => !!s && this.allowedStatuses.includes(s));
 
-    const filtrosParaApi = { ...this.filtros };
-    filtrosParaApi.status = '';
+    this.fetchAndBuildPage(this.buildFiltrosParaApi(), page, size, 0);
+  }
 
-    this.fetchAndBuildPage(filtrosParaApi, page, size, 0);
+  private buildFiltrosParaApi(): Record<string, string> {
+    return {
+      codigo: this.filtros.codigo,
+      categoria: this.filtros.categoria,
+      nome: this.filtros.nome,
+      caracteristicas: this.filtros.caracteristicas
+    };
   }
 
   private fetchAndBuildPage(filtrosParaApi: any, desiredPage: number, desiredSize: number, attempt: number): void {
@@ -276,8 +306,20 @@ export class LoanListComponent implements OnInit, OnDestroy {
   }
 
   private applyRequestedStatusFilter(list: LoanListResponse[]): LoanListResponse[] {
-    if (!this.requestedStatusFilter) return list;
-    return list.filter(it => normalizeStatusType(it.status) === this.requestedStatusFilter);
+    if (!this.requestedStatusFilters.length) return list;
+    return list.filter((it) => {
+      const st = normalizeStatusType(it.status);
+      return !!st && this.requestedStatusFilters.includes(st);
+    });
+  }
+
+  getStatusSelectLabel(): string {
+    if (!this.filtros.statuses.length) {
+      return '';
+    }
+    return this.filtros.statuses
+      .map((value) => this.statusFilterOptions.find((opt) => opt.value === value)?.label ?? value)
+      .join(', ');
   }
 
   isExtinto(status: unknown): boolean {
@@ -321,7 +363,13 @@ export class LoanListComponent implements OnInit, OnDestroy {
   }
 
   limparFiltros(): void {
-    this.filtros = { codigo: '', categoria: '', nome: '', caracteristicas: '', status: '' };
+    this.filtros = {
+      codigo: '',
+      categoria: '',
+      nome: '',
+      caracteristicas: '',
+      statuses: []
+    };
     this.aplicarFiltros();
   }
 

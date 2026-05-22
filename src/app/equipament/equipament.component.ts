@@ -36,8 +36,26 @@ import { EquipamentService } from '../services/equipament/equipment.service';
 import { LoanRefreshService } from '../services/loan/loan-refresh.service';
 import { AuthService } from '../services/auth/auth.service';
 import { LayoutService } from '../services/layout/layout.service';
-import { STATUS_TYPE_LABEL, STATUS_TYPE_OPTIONS, StatusType, normalizeStatusType, statusColorClass } from '../models/status/status-type';
+import { STATUS_TYPE_LABEL, StatusType, normalizeStatusType, statusColorClass } from '../models/status/status-type';
 import { ToolbarUserActionsComponent } from '../shared/toolbar-user-actions/toolbar-user-actions.component';
+
+const CATEGORIA_OPTIONS = [
+  { value: 'NOTEBOOK', label: 'Notebook' },
+  { value: 'MONITOR', label: 'Monitor' },
+  { value: 'ACESSORIO', label: 'Acessórios' },
+  { value: 'DESKTOP', label: 'Desktop' },
+  { value: 'CELULAR', label: 'Celular' }
+];
+
+const STATUS_OPTIONS = [
+  { value: 'DISPONIVEL', label: 'Disponível' },
+  { value: 'EM_USO', label: 'Em uso' },
+  { value: 'EM_MANUTENCAO', label: 'Em manutenção' },
+  { value: 'INDISPONIVEL', label: 'Indisponível' },
+  { value: 'EM_PREPARACAO', label: 'Em preparação' },
+  //{ value: 'AGUARDANDO_ASSINATURA', label: 'Aguardando assinatura' },
+  { value: 'EM_DEVOLUCAO', label: 'Em devolução' }
+];
 
 @Component({
   selector: 'app-equipament',
@@ -87,10 +105,11 @@ export class EquipamentComponent implements OnInit, OnDestroy {
     caracteristicas: '',
     dataInicio: null as Date | null,
     dataFim: null as Date | null,
-    status: ''
+    statuses: [] as string[]
   };
 
-  statusFilterOptions = STATUS_TYPE_OPTIONS;
+  categoriaFilterOptions = CATEGORIA_OPTIONS;
+  statusFilterOptions = STATUS_OPTIONS;
 
   displayedColumns: string[] = [
     'name',
@@ -178,9 +197,18 @@ export class EquipamentComponent implements OnInit, OnDestroy {
       caracteristicas: '',
       dataInicio: null,
       dataFim: null,
-      status: ''
+      statuses: []
     };
     this.aplicarFiltros();
+  }
+
+  getStatusSelectLabel(): string {
+    if (!this.filtros.statuses.length) {
+      return '';
+    }
+    return this.filtros.statuses
+      .map((value) => this.statusFilterOptions.find((opt) => opt.value === value)?.label ?? value)
+      .join(', ');
   }
 
   carregarDados(page = this.pageIndex, size = this.pageSize): void {

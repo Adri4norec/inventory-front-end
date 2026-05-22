@@ -53,7 +53,7 @@ export class LoanService {
   }
 
   advancedSearch(
-    filtros: Record<string, string | undefined>,
+    filtros: Record<string, string | string[] | undefined>,
     page: number,
     size: number
   ): Observable<PageResponse<LoanListResponse>> {
@@ -67,20 +67,26 @@ export class LoanService {
       codigo: 'tombo',
       categoria: 'categoria',
       nome: 'nome',
-      caracteristicas: 'caracteristicas',
-      status: 'status'
+      caracteristicas: 'caracteristicas'
     };
 
     Object.keys(mapeamento).forEach((key) => {
       const value = filtros[key];
-      if (value) {
-        let mapped = value;
-        if (key === 'status' && value === StatusType.EM_PREPARACAO) {
-          mapped = 'PREPARACAO';
-        }
-        params = params.set(mapeamento[key], mapped);
+      if (typeof value === 'string' && value) {
+        params = params.set(mapeamento[key], value);
       }
     });
+
+    const selectedStatuses = (filtros['statuses'] as string[] | undefined) ?? [];
+    if (selectedStatuses.length > 0) {
+      selectedStatuses.forEach((statusValue: string) => {
+        let mapped = statusValue;
+        if (statusValue === StatusType.EM_PREPARACAO) {
+          mapped = 'PREPARACAO';
+        }
+        params = params.append('status', mapped);
+      });
+    }
 
     return this.http.get<PageResponse<LoanListResponse>>(`${this.apiUrl}/advanced-search`, { ...options, params });
   }

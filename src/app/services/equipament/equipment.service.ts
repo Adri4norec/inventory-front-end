@@ -59,7 +59,13 @@ export class EquipamentService {
     if (filtros.categoria) params = params.set('categoria', filtros.categoria);
     if (filtros.tombo) params = params.set('tombo', filtros.tombo);
     if (filtros.caracteristicas) params = params.set('caracteristicas', filtros.caracteristicas);
-    if (filtros.status) params = params.set('status', filtros.status);
+
+    const selectedStatuses: string[] = filtros.statuses ?? [];
+    if (selectedStatuses.length > 0) {
+      selectedStatuses.forEach((statusValue: string) => {
+        params = params.append('status', statusValue);
+      });
+    }
 
     if (filtros.dataInicio) {
       const dataInicioFormatada = new Date(filtros.dataInicio).toISOString().split('T')[0];
