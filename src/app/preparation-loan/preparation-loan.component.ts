@@ -2,7 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { of, EMPTY, Observable } from 'rxjs';
+import { of, EMPTY, Observable, forkJoin } from 'rxjs';
 import { debounceTime, distinctUntilChanged, switchMap, concatMap, finalize, catchError, tap, startWith, map } from 'rxjs/operators';
 
 import { MatCardModule } from '@angular/material/card';
@@ -22,6 +22,7 @@ import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
 import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 
 import { EquipamentService } from '../services/equipament/equipment.service';
 import { LoanService } from '../services/loan/loan.service';
@@ -39,6 +40,8 @@ import { LoanRefreshService } from '../services/loan/loan-refresh.service';
 import { LayoutService } from '../services/layout/layout.service';
 import { formatStatusLabel, STATUS_TYPE_LABEL, STATUS_TYPE_OPTIONS, StatusType, normalizeStatusType, statusColorClass } from '../models/status/status-type';
 import { ToolbarUserActionsComponent } from '../shared/toolbar-user-actions/toolbar-user-actions.component';
+import { ImageLightboxComponent } from '../shared/components/image-lightbox/image-lightbox.component';
+import { environment } from '../../environments/environment';
 
 @Component({
   selector: 'app-preparation-loan',
@@ -64,6 +67,7 @@ import { ToolbarUserActionsComponent } from '../shared/toolbar-user-actions/tool
     MatDatepickerModule,
     MatNativeDateModule,
     MatCheckboxModule,
+    MatDialogModule,
     ToolbarUserActionsComponent
   ],
   templateUrl: './preparation-loan.component.html',
@@ -90,6 +94,11 @@ export class PreparationLoanComponent implements OnInit {
   selectedFiles: File[] = [];
   previsualizacoes: string[] = [];
   pdfFile: File | null = null;
+
+  private readonly apiBase = environment.apiUrl;
+  imagensSalvas: Array<{ id: string; url: string }> = [];
+  imagensMantidasIds: string[] = [];
+  imagensExcluidasIds: string[] = [];
   writeOffPdfFile: File | null = null;
   filteredUsers: UserSearchResponse[] = [];
   currentLoanId?: string;
@@ -116,7 +125,8 @@ export class PreparationLoanComponent implements OnInit {
     private fb: FormBuilder,
     private snackBar: MatSnackBar,
     private loanRefreshService: LoanRefreshService,
-    public layout: LayoutService
+    public layout: LayoutService,
+    private dialog: MatDialog
   ) {
     this.initForm();
   }
@@ -508,8 +518,6 @@ export class PreparationLoanComponent implements OnInit {
     this.isAssinaturaBaixaFlow = true;
     this.isTermoEnabled = true;
     this.isFotosEnabled = false;
-    this.selectedFiles = [];
-    this.previsualizacoes = [];
   }
 
   private setupReturnFromUsoFlow(): void {
@@ -532,6 +540,9 @@ export class PreparationLoanComponent implements OnInit {
     this.equipamentService.findById(this.equipamentId).subscribe({
       next: (res) => {
         this.equipamento = res;
+        if (res.imageUrls?.length) {
+          this.inicializarGaleria(res.imageUrls);
+        }
         this.configurarOpcoesEmprestimo();
         if (loan) {
           this.patchLoanFormFromLoan(loan as any);
@@ -563,7 +574,7 @@ export class PreparationLoanComponent implements OnInit {
           this.carregarEquipamento(loan as any, statusOnly);
         } else {
           this.equipamento = {
-            id: loan.id,
+            loanId: loan.id,
             topo: (loan as any).codigo,
             categoria: (loan as any).categoria,
             name: (loan as any).name,
@@ -573,6 +584,14 @@ export class PreparationLoanComponent implements OnInit {
             usageType: (loan as any).usageType,
             dateHour: (loan as any).dateHour
           };
+
+          this.tryLoadEquipmentImages(loan as any);
+
+          const imageUrls = (loan as any).imageUrls;
+          if (imageUrls?.length) {
+            this.inicializarGaleria(imageUrls);
+          }
+
           this.configurarOpcoesEmprestimo();
           this.patchLoanFormFromLoan(loan as any);
           this.applyScreenModeRules(loan.status);
@@ -647,6 +666,42 @@ export class PreparationLoanComponent implements OnInit {
     if (!this.isFotosEnabled) return;
     this.selectedFiles.splice(index, 1);
     this.previsualizacoes.splice(index, 1);
+  }
+
+  inicializarGaleria(imagensDaApi: string[]): void {
+    this.imagensSalvas = (imagensDaApi ?? []).map((url, i) => {
+      const fullUrl = (url.startsWith('http') || url.startsWith('data:'))
+        ? url
+        : `${this.apiBase}/uploads/${url}`;
+      return { id: url, url: fullUrl };
+    });
+    this.imagensMantidasIds = this.imagensSalvas.map(img => img.id);
+    this.imagensExcluidasIds = [];
+  }
+
+  removerFotoSalva(id: string): void {
+    if (!this.isFotosEnabled) return;
+    this.imagensMantidasIds = this.imagensMantidasIds.filter(mid => mid !== id);
+    if (!this.imagensExcluidasIds.includes(id)) {
+      this.imagensExcluidasIds.push(id);
+    }
+    this.imagensSalvas = this.imagensSalvas.filter(img => img.id !== id);
+  }
+
+  abrirLightbox(imageUrl: string): void {
+    this.dialog.open(ImageLightboxComponent, {
+      data: { imageUrl },
+      panelClass: 'lightbox-dialog-panel',
+      backdropClass: 'lightbox-dialog-backdrop',
+      maxWidth: '100vw',
+      maxHeight: '100vh',
+      width: '100vw',
+      height: '100vh',
+    });
+  }
+
+  get totalFotos(): number {
+    return this.imagensSalvas.length + this.previsualizacoes.length;
   }
 
   onAccessorySelected(accessory: PerPartResponse): void {
@@ -834,10 +889,6 @@ export class PreparationLoanComponent implements OnInit {
 
     if (this.isStatusUpdateMode) {
       if (this.loanForm.invalid) return false;
-      if (this.isAssinaturaBaixaFlow && !this.pdfFile) {
-        this.snackBar.open('Anexe o Termo de Responsabilidade (PDF) para concluir.', 'OK', { duration: 3500 });
-        return false;
-      }
       return true;
     }
 
@@ -848,14 +899,12 @@ export class PreparationLoanComponent implements OnInit {
 
   private handleSupportReturn(isUsoFlow: boolean) {
     const loanId = this.currentLoanId as string;
-    const equipmentId = this.loanDetails?.equipmentId ?? this.equipamento?.id ?? '';
+    const equipmentId = this.equipamentId || this.loanDetails?.equipmentId || '';
     const request$ = this.loanService.registerSupportReturn(loanId, this.selectedFiles).pipe(
       concatMap(() => (isUsoFlow && this.pdfFile) ? this.loanService.uploadDocuments(loanId, [this.pdfFile]) : of([])),
+      concatMap(() => this.buildImageSync$(equipmentId)),
       concatMap(() => equipmentId ? this.equipamentService.syncEquipmentPhotos(equipmentId).pipe(
-        catchError((err) => {
-          console.error('Erro ao sincronizar fotos do equipamento:', err);
-          return of(null);
-        })
+        catchError(() => of(null))
       ) : of(null))
     );
 
@@ -894,10 +943,26 @@ export class PreparationLoanComponent implements OnInit {
 
   private handleStatusUpdate() {
     const loanId = this.currentLoanId as string;
+    const equipmentId = this.equipamentId || this.loanDetails?.equipmentId || '';
+
+    console.log('[handleStatusUpdate] loanId:', loanId, 'equipmentId:', equipmentId,
+      'isAssinaturaBaixaFlow:', this.isAssinaturaBaixaFlow, 'pdfFile:', !!this.pdfFile);
 
     if (this.isAssinaturaBaixaFlow) {
-      const pdf = this.pdfFile as File;
-      return this.loanService.uploadDocuments(loanId, [pdf]).pipe(
+      const syncImages$ = this.buildImageSync$(equipmentId);
+
+      if (!this.pdfFile) {
+        return syncImages$.pipe(
+          tap(() => this.finalizeSuccess('Fotos atualizadas com sucesso!', '/loans')),
+          catchError((err) => {
+            this.showError(err, 'Erro ao atualizar fotos.');
+            return EMPTY;
+          })
+        );
+      }
+
+      return this.loanService.uploadDocuments(loanId, [this.pdfFile]).pipe(
+        concatMap(() => syncImages$),
         concatMap(() => this.loanService.updateLoanStatus(loanId, StatusType.EM_USO)),
         tap(() => this.finalizeSuccess('Termo anexado. Status atualizado para EM_USO.', '/loans')),
         catchError((err) => {
@@ -916,7 +981,11 @@ export class PreparationLoanComponent implements OnInit {
       );
       return EMPTY;
     }
-    return this.loanService.updateLoanStatus(loanId, statusParaEnviar).pipe(
+
+    const syncImages$ = this.buildImageSync$(equipmentId);
+
+    return syncImages$.pipe(
+      concatMap(() => this.loanService.updateLoanStatus(loanId, statusParaEnviar)),
       tap(() => this.finalizeSuccess('Status atualizado com sucesso!', '/loans')),
       catchError((err) => {
         this.showError(err, 'Erro ao atualizar status.');
@@ -925,33 +994,43 @@ export class PreparationLoanComponent implements OnInit {
     );
   }
 
+  private buildImageSync$(equipmentId?: string): Observable<unknown> {
+    const hasDeltas = this.imagensExcluidasIds.length > 0 || this.selectedFiles.length > 0;
+    console.log('[buildImageSync$] equipmentId:', equipmentId);
+    console.log('[buildImageSync$] imagensExcluidasIds:', this.imagensExcluidasIds);
+    console.log('[buildImageSync$] selectedFiles.length:', this.selectedFiles.length);
+    console.log('[buildImageSync$] imagensMantidasIds:', this.imagensMantidasIds);
+    console.log('[buildImageSync$] hasDeltas:', hasDeltas);
+    if (!hasDeltas || !equipmentId) {
+      console.warn('[buildImageSync$] SKIPPING sync — hasDeltas:', hasDeltas, 'equipmentId:', equipmentId);
+      return of(null);
+    }
+    return this.syncEquipmentImageDeltas(equipmentId).pipe(catchError(() => of(null)));
+  }
+
   private handleNewLoan() {
     const request = this.mapFormToRequest();
+    const equipmentId = this.equipamentId || '';
+    const hasNewPhotos = this.selectedFiles.length > 0;
+    const hasImageDeltas = this.imagensExcluidasIds.length > 0 || hasNewPhotos;
 
     return this.loanService.prepareLoan(request).pipe(
       concatMap((response: any) => {
         const loanId: string | undefined = response?.id || this.currentLoanId;
         const hasDocs = !!this.pdfFile;
 
-        if (!loanId) {
-          if (hasDocs) {
-            this.snackBar.open('Empréstimo salvo, mas não foi possível identificar o ID para enviar documentos.', 'Atenção', { duration: 4500 });
-          } else {
-            this.snackBar.open('Empréstimo preparado com sucesso!', 'Sucesso', { duration: 3000 });
-          }
-          this.router.navigate(['/equipaments']);
-          return of(null);
-        }
+        const uploadDocs$ = (hasDocs && loanId)
+          ? this.loanService.uploadDocuments(loanId, [this.pdfFile!]).pipe(catchError(() => of(null)))
+          : of(null);
 
-        if (!hasDocs) {
-          this.finalizeSuccess('Empréstimo preparado com sucesso!', '/equipaments');
-          return of(null);
-        }
+        const syncImages$ = (hasImageDeltas && equipmentId)
+          ? this.syncEquipmentImageDeltas(equipmentId).pipe(catchError(() => of(null)))
+          : of(null);
 
-        return this.loanService.uploadDocuments(loanId, [this.pdfFile!]).pipe(
-          tap(() => this.finalizeSuccess('Empréstimo preparado e documentos enviados!', '/equipaments')),
-          catchError((err) => {
-            this.showError(err, 'Empréstimo salvo, mas falha ao enviar documentos.');
+        return forkJoin([uploadDocs$, syncImages$]).pipe(
+          tap(() => this.finalizeSuccess('Empréstimo preparado com sucesso!', '/equipaments')),
+          catchError(() => {
+            this.snackBar.open('Empréstimo salvo, mas falha ao enviar documentos/imagens.', 'Atenção', { duration: 4500 });
             this.router.navigate(['/equipaments']);
             return of(null);
           })
@@ -960,6 +1039,41 @@ export class PreparationLoanComponent implements OnInit {
       catchError((err) => {
         this.showError(err, 'Erro ao salvar empréstimo.');
         return EMPTY;
+      })
+    );
+  }
+
+  private tryLoadEquipmentImages(loan: any): void {
+    const tombo = (loan?.codigo ?? loan?.topo ?? '').toString().trim();
+    if (!tombo) return;
+
+    this.equipamentService.advancedSearch({ tombo }, 0, 1).pipe(
+      catchError(() => of({ content: [] }))
+    ).subscribe((res: any) => {
+      const eq = res?.content?.[0];
+      if (eq) {
+        if (eq.id) this.equipamentId = eq.id;
+        if (eq.imageUrls?.length) this.inicializarGaleria(eq.imageUrls);
+      }
+    });
+  }
+
+  private syncEquipmentImageDeltas(equipmentId: string): Observable<string[]> {
+    console.log('[syncEquipmentImageDeltas] CHAMANDO manageImages com:');
+    console.log('  equipmentId:', equipmentId);
+    console.log('  keepUrls (imagensMantidasIds):', JSON.stringify(this.imagensMantidasIds));
+    console.log('  newFiles count:', this.selectedFiles.length);
+    this.selectedFiles.forEach((f, i) => console.log(`  file[${i}]:`, f.name, f.size, f.type));
+
+    return this.equipamentService.manageImages(
+      equipmentId,
+      this.imagensMantidasIds,
+      this.selectedFiles
+    ).pipe(
+      tap((result) => console.log('[syncEquipmentImageDeltas] RESULTADO do backend:', result)),
+      catchError((err) => {
+        console.error('[syncEquipmentImageDeltas] ERRO:', err);
+        return of([]);
       })
     );
   }

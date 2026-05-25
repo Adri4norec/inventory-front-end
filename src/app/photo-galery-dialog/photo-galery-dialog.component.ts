@@ -23,31 +23,32 @@ import { environment } from '../../environments/environment';
 })
 export class PhotoGaleryDialogComponent {
   private readonly API_BASE = environment.apiUrl;
+  resolvedUrls: string[] = [];
 
   constructor(
     public dialogRef: MatDialogRef<PhotoGaleryDialogComponent>,
     @Inject(MAT_DIALOG_DATA) public data: { urls: string[] }
-  ) {}
+  ) {
+    const cacheBuster = Date.now();
+    this.resolvedUrls = (data.urls ?? []).map(raw => this.buildUrl(raw, cacheBuster));
+  }
 
   onClose(): void {
     this.dialogRef.close();
   }
 
-  resolveImageUrl(raw: string): string {
+  private buildUrl(raw: string, t: number): string {
     if (!raw) return '';
     const url = String(raw).trim();
     if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) return url;
 
     const normalized = url.startsWith('/') ? url.slice(1) : url;
     const path = normalized.startsWith('uploads/') ? normalized : `uploads/${normalized}`;
-
-    // Cache-buster para garantir atualização imediata após REPLACE no backend
-    return `${this.API_BASE}/${path}?t=${Date.now()}`;
+    return `${this.API_BASE}/${path}?t=${t}`;
   }
 
   openImageFull(url: string) {
-    const resolved = this.resolveImageUrl(url);
-    if (!resolved) return;
-    window.open(resolved, '_blank');
+    if (!url) return;
+    window.open(url, '_blank');
   }
 }

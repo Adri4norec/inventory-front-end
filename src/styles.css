@@ -36,3 +36,18 @@ body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
   padding: 20px;
   background-color: #f1f5f9;
 }
+
+.lightbox-dialog-panel {
+  background: transparent !important;
+  box-shadow: none !important;
+  max-width: 100vw !important;
+  max-height: 100vh !important;
+}
+.lightbox-dialog-panel .mat-mdc-dialog-container {
+  background: transparent !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+}
+.lightbox-dialog-backdrop {
+  background: rgba(0, 0, 0, 0.85) !important;
+}

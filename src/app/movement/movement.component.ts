@@ -24,11 +24,13 @@ import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { EquipamentService } from '../services/equipament/equipment.service';
 import { MovementService } from '../services/movement/movement.service';
 import { PhotoGaleryDialogComponent } from '../photo-galery-dialog/photo-galery-dialog.component';
+import { ImageLightboxComponent } from '../shared/components/image-lightbox/image-lightbox.component';
 import { MovementRequest, MovementResponse, MovementType } from '../models/movement/movement.model';
 import { UserSearchResponse } from '../models/loans/loans.model';
 import { LayoutService } from '../services/layout/layout.service';
 import { formatStatusLabel, statusColorClass } from '../models/status/status-type';
 import { ToolbarUserActionsComponent } from '../shared/toolbar-user-actions/toolbar-user-actions.component';
+import { environment } from '../../environments/environment';
 
 @Component({
   selector: 'app-movement',
@@ -54,6 +56,11 @@ export class MovementComponent implements OnInit {
   isViewMode = false;
   viewedMovement: MovementResponse | null = null;
   filteredUsers: UserSearchResponse[] = [];
+
+  private readonly apiBase = environment.apiUrl;
+  imagensSalvas: Array<{ id: string; url: string }> = [];
+  imagensMantidasIds: string[] = [];
+  imagensExcluidasIds: string[] = [];
 
   displayedColumns: string[] = ['dataHora', 'movementType', 'responsavel', 'projeto', 'local', 'observacao', 'actions'];
 
@@ -164,6 +171,9 @@ export class MovementComponent implements OnInit {
     this.equipamentService.findById(this.equipamentId).subscribe({
       next: (res) => {
         this.equipamento = res;
+        if (res.imageUrls?.length) {
+          this.inicializarGaleria(res.imageUrls);
+        }
         if (!this.isViewMode) {
           this.configurarOpcoesMovimentacao(this.equipamento?.statusName || '');
         }
@@ -207,6 +217,41 @@ export class MovementComponent implements OnInit {
     this.previsualizacoes.splice(index, 1);
   }
 
+  inicializarGaleria(imagensDaApi: string[]): void {
+    this.imagensSalvas = (imagensDaApi ?? []).map(url => {
+      const fullUrl = (url.startsWith('http') || url.startsWith('data:'))
+        ? url
+        : `${this.apiBase}/uploads/${url}`;
+      return { id: url, url: fullUrl };
+    });
+    this.imagensMantidasIds = this.imagensSalvas.map(img => img.id);
+    this.imagensExcluidasIds = [];
+  }
+
+  removerFotoSalva(id: string): void {
+    this.imagensMantidasIds = this.imagensMantidasIds.filter(mid => mid !== id);
+    if (!this.imagensExcluidasIds.includes(id)) {
+      this.imagensExcluidasIds.push(id);
+    }
+    this.imagensSalvas = this.imagensSalvas.filter(img => img.id !== id);
+  }
+
+  abrirLightbox(imageUrl: string): void {
+    this.dialog.open(ImageLightboxComponent, {
+      data: { imageUrl },
+      panelClass: 'lightbox-dialog-panel',
+      backdropClass: 'lightbox-dialog-backdrop',
+      maxWidth: '100vw',
+      maxHeight: '100vh',
+      width: '100vw',
+      height: '100vh',
+    });
+  }
+
+  get totalFotos(): number {
+    return this.imagensSalvas.length + this.previsualizacoes.length;
+  }
+
   onSubmit(): void {
     if (this.movementForm.invalid) return;
 
@@ -217,26 +262,27 @@ export class MovementComponent implements OnInit {
 
     this.movementService.save(dados).subscribe({
       next: (response) => {
-        // Se houver arquivos, faz o upload. Se não, apenas finaliza.
-        if (this.selectedFiles.length > 0) {
-          const refresh$ = this.equipamentId
-            ? this.equipamentService.syncEquipmentPhotos(this.equipamentId).pipe(
-                catchError((err) => {
-                  console.error('Erro ao sincronizar fotos do equipamento:', err);
-                  return of(null);
-                })
-              )
-            : of(null);
+        const hasNewPhotos = this.selectedFiles.length > 0;
+        const hasChanges = this.imagensExcluidasIds.length > 0 || hasNewPhotos;
 
-          this.movementService.uploadImages(response.id, this.selectedFiles).pipe(
-            concatMap(() => refresh$)
-          ).subscribe({
-            next: () => this.finalizarSalvamento(),
-            error: () => this.finalizarSalvamento()
-          });
-        } else {
-          this.finalizarSalvamento();
-        }
+        const uploadMovement$ = hasNewPhotos
+          ? this.movementService.uploadImages(response.id, this.selectedFiles).pipe(catchError(() => of(null)))
+          : of(null);
+
+        const syncEquipment$ = (hasChanges && this.equipamentId)
+          ? this.equipamentService.manageImages(
+              this.equipamentId,
+              this.imagensMantidasIds,
+              this.selectedFiles
+            ).pipe(catchError(() => of(null)))
+          : of(null);
+
+        uploadMovement$.pipe(
+          concatMap(() => syncEquipment$)
+        ).subscribe({
+          next: () => this.finalizarSalvamento(),
+          error: () => this.finalizarSalvamento()
+        });
       }
     });
   }
@@ -250,6 +296,7 @@ export class MovementComponent implements OnInit {
   private resetForm(): void {
     this.selectedFiles = [];
     this.previsualizacoes = [];
+    this.imagensExcluidasIds = [];
     this.movementForm.reset();
     if (this.equipamento) this.configurarOpcoesMovimentacao(this.equipamento.statusName || '');
   }

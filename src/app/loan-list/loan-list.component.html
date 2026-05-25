@@ -158,13 +158,13 @@
                   *ngIf="element.status !== 'DEVOLVIDO' && element.status !== 'CANCELADO' && element.status !== 'EM_DEVOLUCAO'"
                   (click)="openPreparationScreen(element)">
                   <mat-icon color="primary">{{ element.status === 'EM_USO' ? 'assignment_return' : 'edit' }}</mat-icon>
-                  <span>{{ element.status === 'DISPONIVEL' ? 'Novo Empréstimo' : (element.status === 'EM_USO' ? 'Iniciar Devolução' : 'Editar Status de Empréstimo') }}</span>
+                  <span>{{ element.status === 'DISPONIVEL' ? 'Novo Empréstimo' : (element.status === 'EM_USO' ? 'Registrar Devolução' : (element.status === 'EM_PREPARACAO' ? 'Registrar Empréstimo' : 'Editar Status de Empréstimo')) }}</span>
                 </button>
 
                 <button mat-menu-item *ngIf="podeFinalizarDevolucao(element.status)"
                   (click)="openAdminFinalizeReturn(element)">
                   <mat-icon color="primary">picture_as_pdf</mat-icon>
-                  <span>Finalizar Devolução</span>
+                  <span>Finalizar Empréstimo</span>
                 </button>
               </mat-menu>
             </td>

@@ -192,11 +192,6 @@
                     <span>Visualizar Detalhes</span>
                   </button>
 
-                  <button mat-menu-item *ngIf="element.imageUrls?.length" (click)="verFotos(element)">
-                    <mat-icon color="accent">photo_library</mat-icon>
-                    <span>Ver Fotos</span>
-                  </button>
-
                   <button mat-menu-item
                     *ngIf="!isColaborador && element.usageType === 'COLABORADOR' && element.statusName === 'DISPONIVEL'"
                     (click)="iniciarEmprestimo(element)">

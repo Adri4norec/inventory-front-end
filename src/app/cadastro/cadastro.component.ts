@@ -16,6 +16,7 @@ import { MatListModule } from "@angular/material/list";
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { forkJoin, of } from "rxjs";
 import { catchError, filter, map, switchMap, tap } from "rxjs/operators";
 
@@ -27,6 +28,7 @@ import { LayoutService } from "../services/layout/layout.service";
 import { environment } from "../../environments/environment";
 import { ToolbarUserActionsComponent } from "../shared/toolbar-user-actions/toolbar-user-actions.component";
 import { AutocompleteCreateComponent } from "../shared/components/autocomplete-create/autocomplete-create.component";
+import { ImageLightboxComponent } from "../shared/components/image-lightbox/image-lightbox.component";
 
 @Component({
   selector: 'app-cadastro',
@@ -48,11 +50,12 @@ import { AutocompleteCreateComponent } from "../shared/components/autocomplete-c
     MatSnackBarModule,
     MatDatepickerModule,
     MatNativeDateModule,
+    MatDialogModule,
     ToolbarUserActionsComponent,
     AutocompleteCreateComponent
   ],
   templateUrl: './cadastro.component.html',
-  styleUrls: ['./cadastro.component.scss']
+  styleUrls: ['./cadastro.component.css']
 })
 export class CadastroComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
@@ -62,6 +65,7 @@ export class CadastroComponent implements OnInit {
   private readonly equipmentService = inject(EquipamentService);
   private readonly proprietaryService = inject(ProprietaryService);
   public readonly layout = inject(LayoutService);
+  private readonly dialog = inject(MatDialog);
 
   private readonly apiBase = environment.apiUrl;
   
@@ -70,6 +74,10 @@ export class CadastroComponent implements OnInit {
   selectedFiles: File[] = [];
   previsualizacoes: string[] = [];
   
+  imagensSalvas: Array<{ id: string; url: string }> = [];
+  imagensMantidasIds: string[] = [];
+  imagensExcluidasIds: string[] = [];
+
   isEdicao = false;
   isVisualizacao = false;
   equipamentoId: string | null = null;
@@ -136,16 +144,34 @@ export class CadastroComponent implements OnInit {
     input.value = '';
   }
 
-  removerArquivo(index: number): void {
-    const removido = this.previsualizacoes[index];
+  removerNovaFoto(index: number): void {
+    this.selectedFiles.splice(index, 1);
     this.previsualizacoes.splice(index, 1);
+  }
 
-    if (removido.startsWith('data:')) {
-      this.selectedFiles.splice(index, 1);
-    } else {
-      const currentUrls = this.equipamentoForm.get('imageUrls')?.value as string[];
-      this.equipamentoForm.get('imageUrls')?.setValue(currentUrls.filter(url => !removido.endsWith(url)));
+  removerFotoSalva(id: string): void {
+    this.imagensMantidasIds = this.imagensMantidasIds.filter(mid => mid !== id);
+    if (!this.imagensExcluidasIds.includes(id)) {
+      this.imagensExcluidasIds.push(id);
     }
+    this.imagensSalvas = this.imagensSalvas.filter(img => img.id !== id);
+    this.equipamentoForm.get('imageUrls')?.setValue(this.imagensMantidasIds);
+  }
+
+  abrirLightbox(imageUrl: string): void {
+    this.dialog.open(ImageLightboxComponent, {
+      data: { imageUrl },
+      panelClass: 'lightbox-dialog-panel',
+      backdropClass: 'lightbox-dialog-backdrop',
+      maxWidth: '100vw',
+      maxHeight: '100vh',
+      width: '100vw',
+      height: '100vh',
+    });
+  }
+
+  get totalFotos(): number {
+    return this.imagensSalvas.length + this.previsualizacoes.length;
   }
 
   adicionarPeca(name = '', serialNumber = ''): void {
@@ -165,11 +191,16 @@ export class CadastroComponent implements OnInit {
       ...equipamento,
       dueDate: this.toDatePickerValue(equipamento.dueDate)
     });
-    
-    if (equipamento.imageUrls) {
-      this.previsualizacoes = equipamento.imageUrls.map(url => 
-        (url.startsWith('http') || url.startsWith('data:')) ? url : `${this.apiBase}/uploads/${url}`
-      );
+
+    if (equipamento.imageUrls?.length) {
+      this.imagensSalvas = equipamento.imageUrls.map(url => {
+        const fullUrl = (url.startsWith('http') || url.startsWith('data:'))
+          ? url
+          : `${this.apiBase}/uploads/${url}`;
+        return { id: url, url: fullUrl };
+      });
+      this.imagensMantidasIds = equipamento.imageUrls.slice();
+      this.imagensExcluidasIds = [];
     }
 
     this.perParts.clear();
@@ -190,7 +221,7 @@ export class CadastroComponent implements OnInit {
       return;
     }
 
-    if (!this.selectedFiles.length && !this.equipamentoForm.get('imageUrls')?.value?.length) {
+    if (!this.selectedFiles.length && this.imagensSalvas.length === 0) {
       this.showMessage('Anexe pelo menos uma imagem.');
       return;
     }
@@ -206,10 +237,13 @@ export class CadastroComponent implements OnInit {
       ? this.equipmentService.update(this.equipamentoId, payload)
       : this.equipmentService.save(payload);
 
+    const hasImages = this.selectedFiles.length > 0 || this.imagensSalvas.length > 0;
+
     action$.pipe(
-      switchMap(res => this.selectedFiles.length 
-        ? this.equipmentService.uploadImages(res.id, this.selectedFiles).pipe(
-            catchError(() => {
+      switchMap(res => hasImages
+        ? this.equipmentService.manageImages(res.id, this.imagensMantidasIds, this.selectedFiles).pipe(
+            catchError((err) => {
+              console.error('Erro ao gerenciar imagens:', err);
               this.showMessage('Erro ao carregar imagens, mas dados salvos.');
               return of(null);
             })

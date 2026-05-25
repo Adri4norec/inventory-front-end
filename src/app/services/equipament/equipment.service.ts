@@ -112,6 +112,16 @@ export class EquipamentService {
     return this.http.post<EquipmentResponse>(`${this.API}/${id}/images`, formData);
   }
 
+  manageImages(id: string, keepUrls: string[], newFiles: File[]): Observable<string[]> {
+    console.log('[EquipamentService.manageImages] URL:', `${this.API}/${id}/images`);
+    console.log('[EquipamentService.manageImages] keepUrls:', JSON.stringify(keepUrls));
+    console.log('[EquipamentService.manageImages] newFiles:', newFiles.length);
+    const formData = new FormData();
+    formData.append('keepUrls', new Blob([JSON.stringify(keepUrls)], { type: 'application/json' }));
+    newFiles.forEach(file => formData.append('files', file));
+    return this.http.put<string[]>(`${this.API}/${id}/images`, formData);
+  }
+
   search(
     term: string,
     page: number,

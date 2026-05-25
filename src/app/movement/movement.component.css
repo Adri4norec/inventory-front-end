@@ -256,3 +256,104 @@
   margin-bottom: 15px;
   font-size: 1.1rem;
 }
+
+/* ─── Galeria de Fotos ──────────────────────────── */
+.gallery-count {
+  font-weight: 400;
+  font-size: 0.85rem;
+  color: #999;
+  margin-left: 4px;
+}
+
+.gallery-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.gallery-thumb {
+  position: relative;
+  width: 128px;
+  height: 128px;
+  border-radius: 10px;
+  overflow: visible;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  background: #fff;
+  cursor: pointer;
+  transition: box-shadow 0.2s ease;
+}
+
+.gallery-thumb:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+}
+
+.gallery-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 10px;
+  display: block;
+}
+
+.gallery-remove-btn {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  min-width: 28px !important;
+  width: 28px !important;
+  height: 28px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  z-index: 2;
+}
+
+.gallery-remove-btn .mat-icon {
+  font-size: 16px;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.gallery-thumb-new {
+  border: 2px dashed #3f51b5;
+  border-color: rgba(63, 81, 181, 0.4);
+}
+
+.gallery-new-badge {
+  position: absolute;
+  bottom: 4px;
+  left: 4px;
+  background: #3f51b5;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  pointer-events: none;
+}
+
+.gallery-empty {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #999;
+  font-size: 13px;
+  margin-top: 12px;
+  padding: 16px;
+  border: 1px dashed #ddd;
+  border-radius: 8px;
+  background: #fafafa;
+}
+
+.gallery-empty .mat-icon {
+  color: #ccc;
+  font-size: 24px;
+  width: 24px;
+  height: 24px;
+}

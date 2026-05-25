@@ -7,14 +7,14 @@
   <mat-divider></mat-divider>
 
   <mat-dialog-content class="gallery-content">
-    <div class="photo-grid" *ngIf="data.urls && data.urls.length > 0; else noPhotos">
-      <div class="photo-item" *ngFor="let url of data.urls">
+    <div class="photo-grid" *ngIf="resolvedUrls.length > 0; else noPhotos">
+      <div class="photo-item" *ngFor="let url of resolvedUrls; let i = index">
         <div class="image-wrapper">
-          <img [src]="resolveImageUrl(url)"
-               [alt]="url"
+          <img [src]="url"
+               [alt]="data.urls[i]"
                (click)="openImageFull(url)">
         </div>
-        <span class="file-name" [matTooltip]="url">{{ url }}</span>
+        <span class="file-name" [matTooltip]="data.urls[i]">{{ data.urls[i] }}</span>
       </div>
     </div>
 

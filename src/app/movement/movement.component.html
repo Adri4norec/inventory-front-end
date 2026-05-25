@@ -126,26 +126,52 @@
           <div class="field-full upload-section">
             <h3 class="section-subtitle">
               <mat-icon>photo_camera</mat-icon>
-              Fotos
+              Fotos do Equipamento
+              <span class="gallery-count" *ngIf="totalFotos > 0">({{ totalFotos }})</span>
             </h3>
             <div class="upload-row">
               <button type="button" mat-stroked-button color="primary" (click)="fileInput.click()">
-                <mat-icon>attach_file</mat-icon>
-                Selecionar Imagens
+                <mat-icon>add_photo_alternate</mat-icon>
+                Adicionar Fotos
               </button>
               <input #fileInput type="file" (change)="onFileSelected($event)" multiple accept="image/*"
                 style="display: none;" />
               <span *ngIf="selectedFiles.length > 0" class="selected-count">
-                {{ selectedFiles.length }} arquivo(s) selecionado(s)
+                {{ selectedFiles.length }} novo(s) arquivo(s)
               </span>
             </div>
-            <div *ngIf="previsualizacoes.length > 0" class="preview-list">
-              <div *ngFor="let img of previsualizacoes; let i = index" class="preview-item">
-                <img [src]="img" alt="Prévia" />
-                <button mat-mini-fab color="warn" type="button" (click)="removerArquivo(i)">
+
+            <div class="gallery-grid"
+              *ngIf="imagensSalvas.length > 0 || previsualizacoes.length > 0">
+              <div *ngFor="let img of imagensSalvas" class="gallery-thumb">
+                <img [src]="img.url" alt="Foto do equipamento"
+                  (click)="abrirLightbox(img.url)" />
+                <button mat-mini-fab color="warn" type="button"
+                  class="gallery-remove-btn"
+                  (click)="removerFotoSalva(img.id)"
+                  matTooltip="Remover foto">
                   <mat-icon>close</mat-icon>
                 </button>
               </div>
+
+              <div *ngFor="let preview of previsualizacoes; let i = index"
+                class="gallery-thumb gallery-thumb-new">
+                <img [src]="preview" alt="Nova foto"
+                  (click)="abrirLightbox(preview)" />
+                <span class="gallery-new-badge">Nova</span>
+                <button mat-mini-fab color="warn" type="button"
+                  class="gallery-remove-btn"
+                  (click)="removerArquivo(i)"
+                  matTooltip="Remover foto">
+                  <mat-icon>close</mat-icon>
+                </button>
+              </div>
+            </div>
+
+            <div *ngIf="imagensSalvas.length === 0 && previsualizacoes.length === 0"
+              class="gallery-empty">
+              <mat-icon>photo_library</mat-icon>
+              <span>Nenhuma foto associada</span>
             </div>
           </div>
         </form>
