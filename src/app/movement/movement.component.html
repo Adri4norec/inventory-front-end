@@ -47,6 +47,12 @@
             <span>{{ formatarData(equipamento?.dateHour) }}</span>
           </div>
         </div>
+        <div class="details-row" *ngIf="equipamento?.description" style="margin-top: 16px;">
+          <div class="detail-item" style="flex: 1 1 100%;">
+            <label>Características Técnicas</label>
+            <span>{{ equipamento?.description }}</span>
+          </div>
+        </div>
       </mat-card-content>
     </mat-card>
 
@@ -86,24 +92,13 @@
             </mat-select>
           </mat-form-field>
 
-          <mat-form-field appearance="outline"
-            [ngClass]="movementForm.get('movementType')?.value === 'DESCARTE' ? 'field-third' : 'field-half'">
-            <mat-label>Responsável</mat-label>
-            <mat-icon matPrefix>person</mat-icon>
-            <input
-              type="text"
-              matInput
-              formControlName="responsavel"
-              [matAutocomplete]="auto"
-              autocomplete="off"
-              placeholder="Digite pelo menos 3 letras..." />
-
-            <mat-autocomplete #auto="matAutocomplete" [displayWith]="displayUserName">
-              <mat-option *ngFor="let user of filteredUsers" [value]="user.fullName">
-                {{ user.fullName }}
-              </mat-option>
-            </mat-autocomplete>
-          </mat-form-field>
+          <app-autocomplete-create
+            [ngClass]="movementForm.get('movementType')?.value === 'DESCARTE' ? 'field-third' : 'field-half'"
+            label="Responsável" placeholder="Digite para buscar responsável..." icon="person"
+            [options]="filteredUsers" bindLabel="fullName" bindValue="fullName"
+            formControlName="responsavel" requiredError="Responsável é obrigatório"
+            [showCreateButton]="false" (search)="onSearchResponsavel($event)">
+          </app-autocomplete-create>
 
           <mat-form-field appearance="outline" class="field-half">
             <mat-label>Projeto</mat-label>

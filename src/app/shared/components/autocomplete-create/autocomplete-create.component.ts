@@ -57,6 +57,7 @@ export class AutocompleteCreateComponent<T = Record<string, unknown>>
   @Input({ required: true }) bindLabel!: string;
   @Input({ required: true }) bindValue!: string;
   @Input() requiredError = '';
+  @Input() showCreateButton = true;
 
   @Output() search = new EventEmitter<string>();
   @Output() createNew = new EventEmitter<string>();

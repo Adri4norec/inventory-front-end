@@ -1,0 +1,205 @@
+/* Alinhado ao padrão de Lista de Acessórios / Equipamentos */
+:host {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+}
+
+.page-wrapper {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  max-height: 100%;
+  background: #f0f4f8;
+}
+
+.manager-area-content {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 28px 32px;
+  max-width: 1280px;
+  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.page-toolbar {
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  z-index: 998;
+  width: 100%;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  margin-bottom: 24px;
+  padding: 0 24px 0 65px !important;
+}
+
+.toolbar-title {
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+
+.filter-card,
+.table-card {
+  flex-shrink: 0;
+  z-index: 997;
+}
+
+.manager-area-content .filter-card {
+  margin: 0 0 16px 0;
+}
+
+.manager-area-content .table-card {
+  margin: 0 0 16px 0;
+}
+
+.filter-row {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  flex-wrap: wrap;
+}
+
+.filter-field-id {
+  flex: 1;
+  min-width: 140px;
+}
+
+.filter-field-nome {
+  flex: 1;
+  min-width: 160px;
+}
+
+.filter-field-date {
+  flex: 1;
+  min-width: 170px;
+}
+
+.filter-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.table-card mat-card-header,
+.table-card-header-row {
+  padding: 16px 24px 8px;
+}
+
+.table-card-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.table-card-header-text {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.btn-alterar-custodia-geral {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.table-card-header-text mat-card-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.table-card-content {
+  padding: 0 16px 16px;
+}
+
+.table-scroll {
+  overflow-x: auto;
+}
+
+.full-width-table {
+  width: 100%;
+}
+
+.acoes-header,
+.acoes-cell {
+  text-align: right;
+  white-space: nowrap;
+  width: 60px;
+}
+
+.loading-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 40px 0;
+}
+
+.loading-text {
+  margin-top: 16px;
+  color: #5f6368;
+  font-size: 14px;
+}
+
+.empty-state {
+  padding: 18px 16px;
+  border: 1px dashed #d1d5db;
+  border-radius: 8px;
+  background: #fff;
+  margin-bottom: 12px;
+}
+
+.empty-title {
+  margin: 0 0 6px 0;
+  font-weight: 600;
+  color: #374151;
+}
+
+.empty-subtitle {
+  margin: 0;
+  color: #6b7280;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+/* AC3 — destaque sutil para custódias vencidas */
+.vencido-highlight {
+  background: #fff7ed;
+}
+
+.vencido-highlight td {
+  background: inherit;
+}
+
+.mat-mdc-header-row {
+  background: #f8fafc !important;
+}
+
+::ng-deep .compact-filter .mat-mdc-form-field-subscript-wrapper {
+  display: none;
+}
+
+/* Dialog: remove padding padrão do mat-dialog */
+::ng-deep .change-custody-dialog-panel .mat-mdc-dialog-surface {
+  padding: 0 !important;
+  border-radius: 18px !important;
+}
+
+::ng-deep .change-custody-dialog-panel .mat-mdc-dialog-content {
+  padding: 0 !important;
+}
+
+
+@media (max-width: 680px) {
+  .manager-area-content {
+    padding: 16px;
+  }
+}

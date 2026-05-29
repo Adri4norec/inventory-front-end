@@ -94,6 +94,12 @@ export class AuthService {
     }
 
     localStorage.setItem('user', response.username);
+    const id = String(response.id ?? '').trim();
+    if (this.isUuid(id)) {
+      localStorage.setItem('userId', id);
+    } else {
+      localStorage.removeItem('userId');
+    }
     if (response.fullName) {
       localStorage.setItem('fullName', response.fullName);
     } else {
@@ -113,6 +119,10 @@ export class AuthService {
       localStorage.removeItem('userRole');
     }
     this.updateUserRole();
+  }
+
+  private isUuid(value: string): boolean {
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
   }
 
   private normalizeRole(value: unknown): UserRole | null {
@@ -260,6 +270,7 @@ export class AuthService {
     localStorage.removeItem('access_token');
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    localStorage.removeItem('userId');
     localStorage.removeItem('fullName');
     localStorage.removeItem('userRole');
     localStorage.removeItem('roleName');

@@ -1,0 +1,127 @@
+<div class="dialog-shell">
+  <div class="dialog-header">
+    <div class="dialog-title">
+      <mat-icon class="dialog-title-icon">published_with_changes</mat-icon>
+      <span>Alterar Custódia</span>
+    </div>
+    <button mat-icon-button type="button" (click)="close()" aria-label="Fechar">
+      <mat-icon>close</mat-icon>
+    </button>
+  </div>
+
+  <div class="dialog-body" [formGroup]="form">
+    <div class="field-block">
+      <mat-form-field
+        *ngIf="isGeneralMode"
+        appearance="outline"
+        class="full-width"
+        subscriptSizing="dynamic"
+      >
+        <mat-label>ID / Tombo</mat-label>
+        <mat-icon matPrefix>inventory_2</mat-icon>
+        <mat-select formControlName="equipmentIdsMulti" multiple>
+          <mat-select-trigger>
+            {{ getEquipmentIdsSelectLabel() || 'Selecione um ou mais IDs / Tombos' }}
+          </mat-select-trigger>
+          <mat-option *ngFor="let id of data.availableEquipmentIds" [value]="id">
+            {{ id }}
+          </mat-option>
+        </mat-select>
+        <mat-error *ngIf="form.get('equipmentIdsMulti')?.touched && form.get('equipmentIdsMulti')?.hasError('required')">
+          Informe ao menos um ID / Tombo
+        </mat-error>
+      </mat-form-field>
+
+      <app-autocomplete-create
+        *ngIf="isRowMode"
+        class="full-width"
+        label="ID / Tombo"
+        placeholder="ID / Tombo do item selecionado"
+        icon="inventory_2"
+        [options]="filteredEquipmentOptions"
+        bindLabel="id"
+        bindValue="id"
+        formControlName="equipmentIdSingle"
+        requiredError="Informe o ID / Tombo"
+        [showCreateButton]="false"
+        (search)="onSearchEquipment($event)"
+      >
+      </app-autocomplete-create>
+
+      <div class="helper-text" *ngIf="isRowMode && data.custodianteNome">
+        Custodiante atual: {{ data.custodianteNome }}
+      </div>
+      <div class="helper-text" *ngIf="isGeneralMode">
+        Selecione um ou mais itens da listagem; os IDs aparecem separados por vírgula.
+      </div>
+    </div>
+
+    <div class="field-block">
+      <app-autocomplete-create
+        class="full-width"
+        label="Novo custodiante"
+        placeholder="Digite para buscar responsável..."
+        icon="person"
+        [options]="filteredUsers"
+        bindLabel="fullName"
+        bindValue="id"
+        formControlName="collaboratorId"
+        requiredError="Responsável é obrigatório"
+        [showCreateButton]="false"
+        (search)="onSearchCollaborator($event)"
+      >
+      </app-autocomplete-create>
+    </div>
+
+    <div class="field-block">
+      <div class="field-label">Data/Hora de início da nova custódia:</div>
+      <mat-form-field appearance="outline" class="full-width" subscriptSizing="dynamic">
+        <mat-icon matPrefix>event</mat-icon>
+        <input
+          matInput
+          formControlName="startAt"
+          placeholder="DD/MM/AAAA"
+          maxlength="10"
+          inputmode="numeric"
+          autocomplete="off"
+          (input)="onDateInput($event, 'startAt')"
+        />
+        <mat-hint>Horário da movimentação: {{ movementTimeLabel }}</mat-hint>
+        <mat-error *ngIf="form.get('startAt')?.touched && form.get('startAt')?.hasError('required')">
+          Obrigatório
+        </mat-error>
+        <mat-error *ngIf="form.get('startAt')?.touched && form.get('startAt')?.hasError('invalidDate')">
+          Data inválida. Use DD/MM/AAAA
+        </mat-error>
+      </mat-form-field>
+    </div>
+
+    <div class="field-block">
+      <div class="field-label">Data/Hora de fim previsto (opcional):</div>
+      <mat-form-field appearance="outline" class="full-width" subscriptSizing="dynamic">
+        <mat-icon matPrefix>event</mat-icon>
+        <input
+          matInput
+          formControlName="endAt"
+          placeholder="DD/MM/AAAA"
+          maxlength="10"
+          inputmode="numeric"
+          autocomplete="off"
+          (input)="onDateInput($event, 'endAt')"
+        />
+        <mat-hint>Deixe em branco se não houver fim. Horário: {{ movementTimeLabel }}</mat-hint>
+        <mat-error *ngIf="form.get('endAt')?.touched && form.get('endAt')?.hasError('invalidDate')">
+          Data inválida. Use DD/MM/AAAA
+        </mat-error>
+      </mat-form-field>
+      <div class="helper-text">
+        * Se o fim não for informado, será marcado como “(Em aberto)”.
+      </div>
+    </div>
+  </div>
+
+  <div class="dialog-actions">
+    <button mat-stroked-button type="button" (click)="close()">Cancelar</button>
+    <button mat-flat-button color="primary" type="button" (click)="submit()">Confirmar Alteração</button>
+  </div>
+</div>

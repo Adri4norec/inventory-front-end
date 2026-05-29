@@ -13,6 +13,8 @@ import { LoanPreparationComponent } from './loan-preparation/loan-preparation.co
 import { PreparationLoanComponent } from './preparation-loan/preparation-loan.component';
 import { PerPartListComponent } from './per-part-list/per-part-list.component';
 import { PerPartComponent } from './per-part/per-part.component';
+import { ManagerAreaComponent } from './manager-area/manager-area.component';
+import { AssetDetailsComponent } from './asset-details/asset-details.component';
 
 export const routes: Routes = [
   { path: '', component: LoginComponent },
@@ -88,6 +90,12 @@ export const routes: Routes = [
     canActivate: [authGuard, adminGuard],
     data: { title: 'Movimentação' }
   },
+  {
+    path: 'equipaments/:id/detalhes',
+    component: AssetDetailsComponent,
+    canActivate: [authGuard, adminGuard],
+    data: { title: 'Detalhes do Ativo' }
+  },
   { 
     path: 'movimentacao/visualizar/:movementId', 
     component: MovementComponent, 
@@ -118,6 +126,13 @@ export const routes: Routes = [
     component: PerPartListComponent,
     canActivate: [authGuard, adminGuard],
     data: { title: 'Acessórios' }
+  },
+
+  {
+    path: 'area-gerente',
+    component: ManagerAreaComponent,
+    canActivate: [authGuard, adminGuard],
+    data: { title: 'Área do gerente' }
   },
 
   { path: '**', redirectTo: '' }

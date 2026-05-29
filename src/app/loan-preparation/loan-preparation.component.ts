@@ -17,8 +17,9 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSelectModule } from '@angular/material/select';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatChipsModule } from '@angular/material/chips';
-import { MatDatepickerModule } from '@angular/material/datepicker'; 
+import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
+import { MatRadioModule } from '@angular/material/radio';
 
 import { EquipamentService } from '../services/equipament/equipment.service';
 import { LoanService } from '../services/loan/loan.service';
@@ -28,7 +29,7 @@ import { UserService } from '../services/user/user.service';
 import { EquipmentLoanResponse } from '../models/loans/loans.model';
 import { PerPartResponse } from '../models/per-part/per-part.model';
 import { UserResponse } from '../models/users/UserResponse';
-import { LoanRequest } from '../models/loans/loans.model';
+import { LoanRequest, LoanType } from '../models/loans/loans.model';
 import { LayoutService } from '../services/layout/layout.service';
 import { ToolbarUserActionsComponent } from '../shared/toolbar-user-actions/toolbar-user-actions.component';
 
@@ -50,8 +51,9 @@ import { ToolbarUserActionsComponent } from '../shared/toolbar-user-actions/tool
     MatSelectModule,
     MatAutocompleteModule,
     MatChipsModule,
-    MatDatepickerModule, 
+    MatDatepickerModule,
     MatNativeDateModule,
+    MatRadioModule,
     ToolbarUserActionsComponent
   ],
   templateUrl: './loan-preparation.component.html',
@@ -91,7 +93,8 @@ export class LoanPreparationComponent implements OnInit {
       tomboSearch: ['', [Validators.required]],
       equipmentId: ['', [Validators.required]],
       colaboradorId: ['', [Validators.required]],
-      loanDate: [new Date().toISOString().substring(0, 16), [Validators.required]]
+      loanDate: [new Date().toISOString().substring(0, 16), [Validators.required]],
+      loanType: ['', Validators.required]
     });
   }
 
@@ -250,6 +253,7 @@ export class LoanPreparationComponent implements OnInit {
     const request: LoanRequest = {
       equipmentId: this.loanForm.value.equipmentId,
       colaboradorId: this.loanForm.value.colaboradorId,
+      loanType: this.loanForm.value.loanType as LoanType,
       loanDate: loanDateIso,
       returnDate: null,
       helpdeskTicket: 'N/A',

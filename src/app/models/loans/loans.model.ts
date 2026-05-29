@@ -34,9 +34,12 @@ export interface LoanAcessorioRequest {
 /** @deprecated Use LoanAcessorioRequest */
 export type AcessorioLoanInput = LoanAcessorioRequest;
 
+export type LoanType = 'PERSONAL' | 'PROJECT';
+
 export interface LoanRequest {
   equipmentId: string;
   colaboradorId: string;
+  loanType: LoanType;
   helpdeskTicket: string;
   loanDate: string;
   returnDate: string | null;
@@ -59,6 +62,7 @@ export type LoanAccessoryResponse = LoanAcessorioResponse;
 export interface LoanDetailResponse {
   id: string;
   equipmentId?: string;
+  loanType?: LoanType;
   status?: string;
   loanDate?: string;
   expectedReturnDate?: string;
@@ -92,6 +96,30 @@ export interface UserSearchResponse {
   fullName: string;
 }
 
+export interface CustodyChangeRequest {
+  equipmentIds: string[];
+  collaboratorId: string;
+  inicioPeriodo: string;
+  fimPeriodo?: string | null;
+}
+
 export type LoanStatusPatch =
   | 'CANCELADO'
   | 'EMPRESTIMO_FINALIZADO';
+
+export interface CustodiaResponse {
+  id: string;
+  equipmentId: string;
+  custodianteNome: string;
+  inicioPeriodo: string;
+  fimPeriodo: string | null;
+  loanType?: LoanType;
+}
+
+export interface ManagerCustodySearchFilters {
+  equipmentId?: string;
+  nome?: string;
+  dataInicio?: string;
+  dataFim?: string;
+  loanType?: LoanType;
+}

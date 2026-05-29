@@ -59,6 +59,14 @@ export class SidebarComponent implements OnInit, OnDestroy {
       children: [
         { label: 'Lista de Empréstimos', route: '/loans', allowedRoles: ['ADMIN'] }
       ]
+    },
+    {
+      label: 'Área do gerente',
+      allowedRoles: ['ADMIN'],
+      expanded: false,
+      children: [
+        { label: 'Custódia', route: '/area-gerente', allowedRoles: ['ADMIN'] }
+      ]
     }
   ];
 

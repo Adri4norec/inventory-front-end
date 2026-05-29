@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { of } from 'rxjs';
-import { debounceTime, distinctUntilChanged, switchMap, concatMap, catchError } from 'rxjs/operators';
+import { catchError } from 'rxjs/operators';
 
 import { MatCardModule } from '@angular/material/card';
 import { MatTableModule } from '@angular/material/table';
@@ -25,6 +25,7 @@ import { EquipamentService } from '../services/equipament/equipment.service';
 import { MovementService } from '../services/movement/movement.service';
 import { PhotoGaleryDialogComponent } from '../photo-galery-dialog/photo-galery-dialog.component';
 import { ImageLightboxComponent } from '../shared/components/image-lightbox/image-lightbox.component';
+import { AutocompleteCreateComponent } from '../shared/components/autocomplete-create/autocomplete-create.component';
 import { MovementRequest, MovementResponse, MovementType } from '../models/movement/movement.model';
 import { UserSearchResponse } from '../models/loans/loans.model';
 import { LayoutService } from '../services/layout/layout.service';
@@ -40,7 +41,7 @@ import { environment } from '../../environments/environment';
     MatButtonModule, MatIconModule, MatDividerModule, MatMenuModule, MatToolbarModule,
     MatTooltipModule, MatDialogModule, MatChipsModule, MatFormFieldModule, MatInputModule,
     MatSelectModule, MatSnackBarModule, MatAutocompleteModule,
-    ToolbarUserActionsComponent
+    ToolbarUserActionsComponent, AutocompleteCreateComponent
   ],
   templateUrl: './movement.component.html',
   styleUrls: ['./movement.component.css']
@@ -112,30 +113,7 @@ export class MovementComponent implements OnInit {
       obsControl?.updateValueAndValidity();
     });
 
-    this.movementForm.get('responsavel')?.valueChanges.pipe(
-      debounceTime(300),
-      distinctUntilChanged(),
-      switchMap(value => {
-        const search = typeof value === 'string' ? value : '';
-        if (search.length >= 3) {
-          return this.movementService.searchUsers(search).pipe(
-            catchError((err) => {
-              console.error('Erro ao buscar usuários (movimentação):', err);
-              return of([]);
-            })
-          );
-        }
-        return of([]);
-      })
-    ).subscribe(users => {
-      const normalized = (users as any[]).map((u) => {
-        const fullName = String(u?.fullName ?? u?.full_name ?? u?.nome ?? u?.name ?? '').trim();
-        const id = String(u?.id ?? '').trim();
-        return { id, fullName } as UserSearchResponse;
-      }).filter((u) => !!u.fullName);
-
-      this.filteredUsers = normalized;
-    });
+    this.onSearchResponsavel('');
   }
 
   private initForm(): void {
@@ -149,10 +127,25 @@ export class MovementComponent implements OnInit {
     });
   }
 
-  displayUserName(user: UserSearchResponse | string | null): string {
-    if (!user) return '';
-    if (typeof user === 'string') return user;
-    return user.fullName || '';
+  onSearchResponsavel(term: string): void {
+    const search = term?.trim() ?? '';
+    if (search.length < 1) {
+      this.movementService.searchUsers('').pipe(
+        catchError(() => of([]))
+      ).subscribe(users => this.filteredUsers = this.normalizeUsers(users));
+      return;
+    }
+    this.movementService.searchUsers(search).pipe(
+      catchError(() => of([]))
+    ).subscribe(users => this.filteredUsers = this.normalizeUsers(users));
+  }
+
+  private normalizeUsers(users: any[]): UserSearchResponse[] {
+    return (users ?? []).map((u) => {
+      const fullName = String(u?.fullName ?? u?.full_name ?? u?.nome ?? u?.name ?? '').trim();
+      const id = String(u?.id ?? '').trim();
+      return { id, fullName } as UserSearchResponse;
+    }).filter((u) => !!u.fullName);
   }
 
   private loadMovementDetails(movementId: string): void {
@@ -186,15 +179,20 @@ export class MovementComponent implements OnInit {
   }
 
   configurarOpcoesMovimentacao(status: string): void {
-    const s = status.trim().toLowerCase();
-    if (s === 'em manutenção' || s === 'em manutencao') {
-      this.movementTypes = [MovementType.ENTRADA, MovementType.DESCARTE];
-    } else if (s === 'disponível' || s === 'disponivel') {
-      this.movementTypes = [MovementType.SAIDA, MovementType.MANUTENCAO, MovementType.DESCARTE];
-    } else if (s === 'em uso') {
-      this.movementTypes = [MovementType.ENTRADA, MovementType.MANUTENCAO];
-    } else {
-      this.movementTypes = Object.values(MovementType);
+    const s = (status ?? '').trim().toUpperCase().replace(/\s+/g, '_');
+    switch (s) {
+      case 'DISPONIVEL':
+        this.movementTypes = [MovementType.MANUTENCAO, MovementType.DESCARTE];
+        break;
+      case 'EM_MANUTENCAO':
+        this.movementTypes = [MovementType.ENTRADA, MovementType.DESCARTE];
+        break;
+      case 'EM_USO':
+        this.movementTypes = [MovementType.ENTRADA, MovementType.MANUTENCAO];
+        break;
+      default:
+        this.movementTypes = Object.values(MovementType);
+        break;
     }
   }
 
@@ -260,29 +258,24 @@ export class MovementComponent implements OnInit {
       ...this.movementForm.getRawValue()
     };
 
+    const equipmentId = this.equipamentId;
+    const keepUrls = [...this.imagensMantidasIds];
+    const newFiles = [...this.selectedFiles];
+    const hasImageChanges = this.imagensExcluidasIds.length > 0 || newFiles.length > 0;
+
     this.movementService.save(dados).subscribe({
-      next: (response) => {
-        const hasNewPhotos = this.selectedFiles.length > 0;
-        const hasChanges = this.imagensExcluidasIds.length > 0 || hasNewPhotos;
-
-        const uploadMovement$ = hasNewPhotos
-          ? this.movementService.uploadImages(response.id, this.selectedFiles).pipe(catchError(() => of(null)))
-          : of(null);
-
-        const syncEquipment$ = (hasChanges && this.equipamentId)
-          ? this.equipamentService.manageImages(
-              this.equipamentId,
-              this.imagensMantidasIds,
-              this.selectedFiles
-            ).pipe(catchError(() => of(null)))
-          : of(null);
-
-        uploadMovement$.pipe(
-          concatMap(() => syncEquipment$)
-        ).subscribe({
-          next: () => this.finalizarSalvamento(),
-          error: () => this.finalizarSalvamento()
-        });
+      next: () => {
+        if ((hasImageChanges) && equipmentId) {
+          this.equipamentService.manageImages(equipmentId, keepUrls, newFiles).pipe(
+            catchError((err) => {
+              console.error('[movement] manageImages ERRO:', err);
+              this.snackBar.open('Movimentação salva, mas erro ao atualizar fotos.', 'Atenção', { duration: 4000 });
+              return of(null);
+            })
+          ).subscribe(() => this.finalizarSalvamento());
+        } else {
+          this.finalizarSalvamento();
+        }
       }
     });
   }

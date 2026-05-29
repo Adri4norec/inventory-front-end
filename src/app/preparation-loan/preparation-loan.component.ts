@@ -22,6 +22,7 @@ import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
 import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatRadioModule } from '@angular/material/radio';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 
 import { EquipamentService } from '../services/equipament/equipment.service';
@@ -34,6 +35,7 @@ import {
   LoanDetailResponse,
   LoanListResponse,
   LoanRequest,
+  LoanType,
   UserSearchResponse
 } from '../models/loans/loans.model';
 import { LoanRefreshService } from '../services/loan/loan-refresh.service';
@@ -41,6 +43,7 @@ import { LayoutService } from '../services/layout/layout.service';
 import { formatStatusLabel, STATUS_TYPE_LABEL, STATUS_TYPE_OPTIONS, StatusType, normalizeStatusType, statusColorClass } from '../models/status/status-type';
 import { ToolbarUserActionsComponent } from '../shared/toolbar-user-actions/toolbar-user-actions.component';
 import { ImageLightboxComponent } from '../shared/components/image-lightbox/image-lightbox.component';
+import { AutocompleteCreateComponent } from '../shared/components/autocomplete-create/autocomplete-create.component';
 import { environment } from '../../environments/environment';
 
 @Component({
@@ -67,8 +70,10 @@ import { environment } from '../../environments/environment';
     MatDatepickerModule,
     MatNativeDateModule,
     MatCheckboxModule,
+    MatRadioModule,
     MatDialogModule,
-    ToolbarUserActionsComponent
+    ToolbarUserActionsComponent,
+    AutocompleteCreateComponent
   ],
   templateUrl: './preparation-loan.component.html',
   styleUrls: ['./preparation-loan.component.css']
@@ -147,21 +152,7 @@ export class PreparationLoanComponent implements OnInit {
       this.carregarEquipamento();
     }
 
-    this.loanForm.get('responsavel')?.valueChanges.pipe(
-      debounceTime(300),
-      distinctUntilChanged(),
-      switchMap(value => {
-        const search = typeof value === 'string' ? value : '';
-        if (search.length >= 3) {
-          return this.loanService.buscarColaboradores(search).pipe(
-            catchError(() => of([]))
-          );
-        }
-        return of([]);
-      })
-    ).subscribe(users => {
-      this.filteredUsers = users;
-    });
+    this.onSearchResponsavel('');
 
     this.loanForm.get('enviadoSedex')?.valueChanges.subscribe(enviado => {
       const dataSedexControl = this.loanForm.get('dataSedex');
@@ -177,7 +168,7 @@ export class PreparationLoanComponent implements OnInit {
     this.setupAccessoryFiltering();
     this.loadAvailablePerParts();
 
-    this.loanForm.get('loanType')?.valueChanges.subscribe((value) => {
+    this.loanForm.get('loanStatus')?.valueChanges.subscribe((value) => {
       this.applyAssinaturaToBaixaRules(value);
     });
   }
@@ -185,6 +176,7 @@ export class PreparationLoanComponent implements OnInit {
   private initForm(): void {
     this.loanForm = this.fb.group({
       loanType: ['', Validators.required],
+      loanStatus: ['', Validators.required],
       responsavel: ['', Validators.required],
       projeto: ['', Validators.required],
       loanDate: [new Date(), Validators.required],
@@ -309,22 +301,13 @@ export class PreparationLoanComponent implements OnInit {
 
   private patchLoanFormFromLoan(loan: Partial<LoanDetailResponse & LoanListResponse>): void {
     if (!loan) return;
-    const responsavel =
-      this.coerceResponsavel((loan as any).responsavel) ??
-      this.coerceResponsavel((loan as any).fullName) ??
-      this.coerceResponsavel((loan as any).colaboradorName) ??
-      this.coerceResponsavel((loan as any).collaboratorName) ??
-      this.coerceResponsavel((loan as any).colaborador) ??
-      null;
 
-    const responsavelControlValue: any =
-      this.isStatusUpdateMode
-        ? (responsavel?.fullName ?? (typeof (loan as any).responsavel === 'string' ? (loan as any).responsavel : '') ?? '')
-        : responsavel;
+    const colaboradorId = this.extractColaboradorId(loan as any);
 
     this.loanForm.patchValue({
-      loanType: (loan as any).status ?? this.loanForm.get('loanType')?.value,
-      responsavel: responsavelControlValue,
+      loanType: (loan as any).loanType ?? this.loanForm.get('loanType')?.value ?? '',
+      loanStatus: (loan as any).status ?? this.loanForm.get('loanStatus')?.value,
+      responsavel: colaboradorId || '',
       projeto: (loan as any).helpdeskTicket ??
         (loan as any).helpdesk_ticket ??
         (loan as any).helpDeskTicket ??
@@ -338,9 +321,7 @@ export class PreparationLoanComponent implements OnInit {
       dataSedex: this.coerceApiDate((loan as any).dataSedex) ?? null
     });
 
-    const colaboradorId = this.extractColaboradorId(loan as any);
-    const alreadyHasName = !!(responsavel && responsavel.fullName);
-    if (!alreadyHasName && colaboradorId) {
+    if (colaboradorId) {
       this.loadResponsavelById(colaboradorId);
     }
 
@@ -368,11 +349,10 @@ export class PreparationLoanComponent implements OnInit {
       next: (u: any) => {
         const fullName = String(u?.fullName ?? '').trim();
         if (!fullName) return;
-        const value: any = this.isStatusUpdateMode ? fullName : { id: colaboradorId, fullName };
-        this.loanForm.patchValue({ responsavel: value }, { emitEvent: false });
+        this.filteredUsers = [{ id: colaboradorId, fullName } as UserSearchResponse, ...this.filteredUsers.filter(x => x.id !== colaboradorId)];
+        this.loanForm.patchValue({ responsavel: colaboradorId }, { emitEvent: false });
       },
       error: () => {
-        // Silencioso: não bloqueia tela se não achar.
       }
     });
   }
@@ -396,7 +376,7 @@ export class PreparationLoanComponent implements OnInit {
     if (this.isReturnSupportMode || this.isReturnAdminMode || this.isReturnFromUsoFlow) return;
 
     const equipmentStatus = this.equipamento?.statusName as unknown;
-    const formStatus = this.loanForm?.get('loanType')?.value as unknown;
+    const formStatus = this.loanForm?.get('loanStatus')?.value as unknown;
     const inPreparation =
       this.isPreparationStatus(currentLoanStatus) ||
       this.isPreparationStatus(formStatus) ||
@@ -405,7 +385,7 @@ export class PreparationLoanComponent implements OnInit {
       this.isPreparationDefaultStep = false;
       this.isTermoEnabled = true;
       if (!this.isStatusUpdateMode) {
-        this.loanForm.get('loanType')?.enable();
+        this.loanForm.get('loanStatus')?.enable();
       }
       return;
     }
@@ -413,12 +393,13 @@ export class PreparationLoanComponent implements OnInit {
     this.isPreparationDefaultStep = true;
 
     if (this.isStatusUpdateMode) {
-      this.loanForm.get('loanType')?.disable();
+      this.loanForm.get('loanStatus')?.disable();
     }
     this.isTermoEnabled = false;
 
     if (!this.isStatusUpdateMode) {
       const controlsToEnable = [
+        'loanType',
         'responsavel',
         'projeto',
         'loanDate',
@@ -437,6 +418,15 @@ export class PreparationLoanComponent implements OnInit {
     return user.fullName || '';
   }
 
+  onSearchResponsavel(term: string): void {
+    const search = term?.trim() ?? '';
+    this.loanService.buscarColaboradores(search || '').pipe(
+      catchError(() => of([]))
+    ).subscribe(users => {
+      this.filteredUsers = users;
+    });
+  }
+
   displayAccessoryFn(item: PerPartResponse | string | null): string {
     if (!item) return '';
     return typeof item === 'string' ? item : item.name || '';
@@ -445,7 +435,7 @@ export class PreparationLoanComponent implements OnInit {
   get shouldShowLoanDetailsFields(): boolean {
     if (!this.isReturnSupportMode && !this.isReturnFromUsoFlow) return true;
 
-    const st = normalizeStatusType(this.loanForm?.get('loanType')?.value);
+    const st = normalizeStatusType(this.loanForm?.get('loanStatus')?.value);
     return st === StatusType.EM_DEVOLUCAO || st === StatusType.EM_USO;
   }
 
@@ -507,7 +497,7 @@ export class PreparationLoanComponent implements OnInit {
     if (!this.isStatusUpdateMode) return;
     if (this.isReturnSupportMode || this.isReturnAdminMode || this.isReturnFromUsoFlow) return;
 
-    const effective = normalizeStatusType(this.loanForm.get('loanType')?.value ?? currentStatus);
+    const effective = normalizeStatusType(this.loanForm.get('loanStatus')?.value ?? currentStatus);
     if (!this.isPreparationStatus(effective)) {
       this.isAssinaturaBaixaFlow = false;
       this.isTermoEnabled = true;
@@ -616,6 +606,7 @@ export class PreparationLoanComponent implements OnInit {
 
   bloquearCamposExcetoStatus(): void {
     const controlsToDisable = [
+      'loanType',
       'responsavel',
       'projeto',
       'loanDate',
@@ -627,7 +618,7 @@ export class PreparationLoanComponent implements OnInit {
     controlsToDisable.forEach(controlName => {
       this.loanForm.get(controlName)?.disable();
     });
-    this.loanForm.get('loanType')?.enable();
+    this.loanForm.get('loanStatus')?.enable();
   }
 
   configurarOpcoesEmprestimo(): void {
@@ -638,7 +629,7 @@ export class PreparationLoanComponent implements OnInit {
     } else {
       const initial = this.statusOptions.find((o) => o.value === StatusType.EM_PREPARACAO) ?? this.statusOptions[0];
       this.loanTypes = [initial];
-      this.loanForm.patchValue({ loanType: initial.value });
+      this.loanForm.patchValue({ loanStatus: initial.value });
     }
 
     this.applyPreparationDefaultStepRules();
@@ -888,12 +879,18 @@ export class PreparationLoanComponent implements OnInit {
     }
 
     if (this.isStatusUpdateMode) {
-      if (this.loanForm.invalid) return false;
+      if (this.loanForm.invalid) {
+        this.loanForm.markAllAsTouched();
+        return false;
+      }
       return true;
     }
 
     // Novo empréstimo (fluxo padrão)
-    if (this.loanForm.invalid) return false;
+    if (this.loanForm.invalid) {
+      this.loanForm.markAllAsTouched();
+      return false;
+    }
     return true;
   }
 
@@ -910,7 +907,7 @@ export class PreparationLoanComponent implements OnInit {
 
     return request$.pipe(
       tap(() => {
-        this.loanForm.patchValue({ loanType: StatusType.EM_DEVOLUCAO });
+        this.loanForm.patchValue({ loanStatus: StatusType.EM_DEVOLUCAO });
         this.loanRefreshService.notifyRefresh();
         this.loadAvailablePerParts();
         const msg = isUsoFlow
@@ -972,7 +969,7 @@ export class PreparationLoanComponent implements OnInit {
       );
     }
 
-    const statusParaEnviar = this.loanForm.get('loanType')?.value;
+    const statusParaEnviar = this.loanForm.get('loanStatus')?.value;
     if (LoanService.PATCH_FORBIDDEN_STATUSES.has(String(statusParaEnviar))) {
       this.snackBar.open(
         'Os status Em Devolução e Devolvido só podem ser definidos pelo fluxo de devolução (fotos + termo PDF).',
@@ -1080,13 +1077,11 @@ export class PreparationLoanComponent implements OnInit {
 
   private mapFormToRequest(): LoanRequest {
     const formValue = this.loanForm.getRawValue();
-    const colaboradorId =
-      typeof formValue.responsavel === 'object' && formValue.responsavel?.id
-        ? String(formValue.responsavel.id)
-        : '';
+    const colaboradorId = formValue.responsavel ? String(formValue.responsavel) : '';
     return {
       equipmentId: this.equipamentId,
       colaboradorId,
+      loanType: formValue.loanType as LoanType,
       helpdeskTicket: formValue.projeto ?? '',
       loanDate: formValue.loanDate ? new Date(formValue.loanDate).toISOString() : new Date().toISOString(),
       returnDate: formValue.returnDate ? new Date(formValue.returnDate).toISOString() : null,
@@ -1159,6 +1154,26 @@ export class PreparationLoanComponent implements OnInit {
     } catch {
       return data;
     }
+  }
+
+  copiarDadosEquipamento(): void {
+    if (!this.equipamento) return;
+
+    const nome = this.equipamento.name ?? '';
+    const codigo = this.equipmentCodeLabel;
+    const caracteristicas = this.equipamento.description ?? '';
+
+    const acessoriosTexto = (this.addedAccessories ?? [])
+      .map(a => `${a.name} (${a.quantity}x)`)
+      .join(', ');
+
+    const partes = [nome, codigo, caracteristicas, acessoriosTexto].filter(p => !!p);
+    const textoFormatado = partes.join(', ');
+
+    navigator.clipboard.writeText(textoFormatado).then(
+      () => this.snackBar.open('Dados copiados para a área de transferência!', 'OK', { duration: 3000 }),
+      () => this.snackBar.open('Não foi possível copiar os dados.', 'Erro', { duration: 3000 })
+    );
   }
 
   get equipmentCodeLabel(): string {

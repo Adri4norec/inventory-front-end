@@ -1,0 +1,166 @@
+<div class="page-wrapper">
+  <mat-toolbar color="primary" class="page-toolbar">
+    <button mat-icon-button (click)="layout.toggleMenu()" aria-label="Abrir/fechar menu">
+      <mat-icon>menu</mat-icon>
+    </button>
+    <span class="toolbar-title">Área do Gerente — Itens sob Custódia</span>
+    <span style="flex: 1 1 auto;"></span>
+    <app-toolbar-user-actions></app-toolbar-user-actions>
+  </mat-toolbar>
+
+  <div class="content manager-area-content">
+
+    <mat-card appearance="outlined" class="filter-card">
+      <div class="filter-row">
+        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="compact-filter filter-field-id">
+          <mat-label>ID / Tombo</mat-label>
+          <input matInput [(ngModel)]="filtros.equipmentId" (keyup.enter)="aplicarFiltros()" placeholder="Busca parcial">
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="compact-filter filter-field-nome">
+          <mat-label>Nome</mat-label>
+          <input matInput [(ngModel)]="filtros.nome" (keyup.enter)="aplicarFiltros()" placeholder="Custodiante">
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="compact-filter filter-field-date">
+          <mat-label>Data início</mat-label>
+          <input
+            matInput
+            [matDatepicker]="pickerInicio"
+            [(ngModel)]="filtros.dataInicio"
+            (keyup.enter)="aplicarFiltros()"
+            placeholder="DD/MM/AAAA"
+          />
+          <mat-datepicker-toggle matSuffix [for]="pickerInicio"></mat-datepicker-toggle>
+          <mat-datepicker #pickerInicio></mat-datepicker>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="compact-filter filter-field-date">
+          <mat-label>Data fim</mat-label>
+          <input
+            matInput
+            [matDatepicker]="pickerFim"
+            [(ngModel)]="filtros.dataFim"
+            (keyup.enter)="aplicarFiltros()"
+            placeholder="DD/MM/AAAA"
+          />
+          <mat-datepicker-toggle matSuffix [for]="pickerFim"></mat-datepicker-toggle>
+          <mat-datepicker #pickerFim></mat-datepicker>
+        </mat-form-field>
+      </div>
+
+      <div class="filter-actions">
+        <button mat-stroked-button type="button" (click)="limparFiltros()">
+          <mat-icon>close</mat-icon> Limpar
+        </button>
+        <button mat-flat-button color="primary" type="button" (click)="aplicarFiltros()">
+          <mat-icon>search</mat-icon> Buscar
+        </button>
+      </div>
+    </mat-card>
+
+    <div *ngIf="isLoading" class="loading-wrap">
+      <mat-progress-bar mode="indeterminate" color="primary"></mat-progress-bar>
+      <p class="loading-text">Buscando itens sob custódia...</p>
+    </div>
+
+    <mat-card *ngIf="!isLoading" appearance="outlined" class="table-card">
+      <mat-card-header class="table-card-header-row">
+        <div class="table-card-header-text">
+          <mat-card-title>Itens Sob Custódia (Geral)</mat-card-title>
+          <mat-card-subtitle>{{ totalElements }} registro(s)</mat-card-subtitle>
+        </div>
+        <button
+          mat-flat-button
+          color="primary"
+          type="button"
+          class="btn-alterar-custodia-geral"
+          [disabled]="totalElements === 0"
+          (click)="alterarCustodiaGeral()"
+        >
+          <mat-icon>published_with_changes</mat-icon>
+          Alterar custódia
+        </button>
+      </mat-card-header>
+
+      <mat-card-content class="table-card-content">
+        <div *ngIf="dataSource.length === 0" class="empty-state">
+          <p class="empty-title">Nenhum item sob custódia encontrado.</p>
+          <p class="empty-subtitle">
+            Verifique se existe custódia ativa para seu usuário ou ajuste os filtros.
+          </p>
+        </div>
+
+        <div class="table-scroll" *ngIf="dataSource.length > 0">
+          <table mat-table [dataSource]="dataSource" class="full-width-table mat-elevation-z0">
+
+            <ng-container matColumnDef="equipmentId">
+              <th mat-header-cell *matHeaderCellDef> ID / Tombo </th>
+              <td mat-cell *matCellDef="let element">
+                <span [matTooltip]="element.equipmentId || ''">{{ element.equipmentId || '-' }}</span>
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="custodianteNome">
+              <th mat-header-cell *matHeaderCellDef> Nome </th>
+              <td mat-cell *matCellDef="let element">
+                <span [matTooltip]="getCustodianteLabel(element)">{{ getCustodianteLabel(element) }}</span>
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="inicioPeriodo">
+              <th mat-header-cell *matHeaderCellDef> Início </th>
+              <td mat-cell *matCellDef="let element">
+                <span>{{ element.inicioPeriodo ? (element.inicioPeriodo | date:'dd/MM/yyyy HH:mm') : '-' }}</span>
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="fimPeriodo">
+              <th mat-header-cell *matHeaderCellDef> Fim Previsto </th>
+              <td mat-cell *matCellDef="let element">
+                <span>{{ element.fimPeriodo ? (element.fimPeriodo | date:'dd/MM/yyyy HH:mm') : '(Em aberto)' }}</span>
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="acoes">
+              <th mat-header-cell *matHeaderCellDef class="acoes-header"> Ações </th>
+              <td mat-cell *matCellDef="let element" class="acoes-cell">
+                <button mat-icon-button [matMenuTriggerFor]="menu" aria-label="Ações de custódia">
+                  <mat-icon>more_vert</mat-icon>
+                </button>
+
+                <mat-menu #menu="matMenu">
+                  <button mat-menu-item (click)="verDetalhes(element)">
+                    <mat-icon color="primary">visibility</mat-icon>
+                    <span>Ver detalhes</span>
+                  </button>
+                  <button mat-menu-item (click)="alterarCustodia(element)">
+                    <mat-icon color="primary">published_with_changes</mat-icon>
+                    <span>Alterar custódia</span>
+                  </button>
+                </mat-menu>
+              </td>
+            </ng-container>
+
+            <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+            <tr mat-row *matRowDef="let row; columns: displayedColumns;"
+              [ngClass]="{'vencido-highlight': isVencido(row.fimPeriodo)}"
+              [matTooltip]="isVencido(row.fimPeriodo) ? 'Atenção: Custódia Expirada!' : ''">
+            </tr>
+          </table>
+        </div>
+
+        <mat-paginator
+          *ngIf="totalElements > 0"
+          [length]="totalElements"
+          [pageSize]="pageSize"
+          [pageIndex]="pageIndex"
+          [pageSizeOptions]="[5, 10, 20, 50]"
+          (page)="handlePageEvent($event)"
+          showFirstLastButtons
+          aria-label="Selecionar página">
+        </mat-paginator>
+      </mat-card-content>
+    </mat-card>
+  </div>
+</div>

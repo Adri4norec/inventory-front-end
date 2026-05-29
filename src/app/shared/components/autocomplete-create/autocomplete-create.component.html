@@ -37,7 +37,7 @@
       {{ getLabel(option) }}
     </mat-option>
     <mat-option
-      *ngIf="showCreateOption"
+      *ngIf="showCreateButton && showCreateOption"
       class="create-new-option"
       [value]="createNewSentinel"
       (mousedown)="onCreateNewMousedown($event)">

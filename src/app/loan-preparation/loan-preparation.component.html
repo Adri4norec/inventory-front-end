@@ -45,6 +45,17 @@
               <mat-datepicker-toggle matSuffix [for]="picker"></mat-datepicker-toggle>
               <mat-datepicker #picker></mat-datepicker>
             </mat-form-field>
+
+            <div class="loan-type-container">
+              <label class="loan-type-label">Tipo de Empréstimo *</label>
+              <mat-radio-group formControlName="loanType" color="primary" class="loan-type-radio-group">
+                <mat-radio-button value="PERSONAL">Pessoal</mat-radio-button>
+                <mat-radio-button value="PROJECT">Projeto</mat-radio-button>
+              </mat-radio-group>
+              <mat-error *ngIf="loanForm.get('loanType')?.touched && loanForm.get('loanType')?.hasError('required')" class="loan-type-error">
+                Seleção obrigatória
+              </mat-error>
+            </div>
           </div>
 
           <div *ngIf="equipmentInfo" class="equipment-info-banner">

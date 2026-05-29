@@ -1,6 +1,6 @@
 import { Injectable, Inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
-import { HttpClient, HttpParams, HttpHeaders } from '@angular/common/http';
+import { HttpClient, HttpParams, HttpHeaders, HttpErrorResponse } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import {
   EquipmentLoanResponse,
@@ -8,6 +8,9 @@ import {
   LoanListResponse,
   LoanRequest,
   LoanStatusPatch,
+  CustodiaResponse,
+  CustodyChangeRequest,
+  ManagerCustodySearchFilters,
   PageResponse,
   UserSearchResponse
 } from '../../models/loans/loans.model';
@@ -91,6 +94,56 @@ export class LoanService {
     return this.http.get<PageResponse<LoanListResponse>>(`${this.apiUrl}/advanced-search`, { ...options, params });
   }
 
+  getManagerCustody(managerId: string, page: number, size: number): Observable<PageResponse<CustodiaResponse>> {
+    const options = this.getOptions();
+    const params = new HttpParams()
+      .set('managerId', managerId)
+      .set('page', page.toString())
+      .set('size', size.toString());
+    return this.http.get<PageResponse<CustodiaResponse>>(`${this.apiUrl}/manager-custody`, { ...options, params });
+  }
+
+  managerCustodyAdvancedSearch(
+    managerId: string,
+    filtros: ManagerCustodySearchFilters,
+    page: number,
+    size: number
+  ): Observable<PageResponse<CustodiaResponse>> {
+    const options = this.getOptions();
+    let params = new HttpParams()
+      .set('managerId', managerId)
+      .set('page', page.toString())
+      .set('size', size.toString());
+
+    const equipmentId = filtros.equipmentId?.trim();
+    const nome = filtros.nome?.trim();
+    if (equipmentId) params = params.set('equipmentId', equipmentId);
+    if (nome) params = params.set('nome', nome);
+    if (filtros.dataInicio) params = params.set('dataInicio', filtros.dataInicio);
+    if (filtros.dataFim) params = params.set('dataFim', filtros.dataFim);
+    if (filtros.loanType) params = params.set('loanType', filtros.loanType);
+
+    return this.http.get<PageResponse<CustodiaResponse>>(
+      `${this.apiUrl}/manager-custody/advanced-search`,
+      { ...options, params }
+    );
+  }
+
+  isManagerCustodyAdvancedSearchUnavailable(err: unknown): boolean {
+    if (!(err instanceof HttpErrorResponse)) return false;
+    if (err.status === 404) return true;
+    if (err.status !== 500) return false;
+
+    const body = err.error as { message?: string; exception?: string } | null;
+    const message = String(body?.message ?? '');
+    const exception = String(body?.exception ?? '');
+    return (
+      message.includes('No static resource') ||
+      message.includes('manager-custody/advanced-search') ||
+      exception.includes('NoResourceFoundException')
+    );
+  }
+
   findByCodeToLoan(topo: string): Observable<EquipmentLoanResponse> {
     return this.http.get<EquipmentLoanResponse>(`${this.apiUrl}/loan/check/${topo}`, this.getOptions());
   }
@@ -132,6 +185,10 @@ export class LoanService {
     const options = this.getOptions();
     const params = new HttpParams().set('nome', nome);
     return this.http.get<UserSearchResponse[]>(`${this.apiUrl}/search-users`, { ...options, params });
+  }
+
+  changeCustodyInBatch(request: CustodyChangeRequest): Observable<void> {
+    return this.http.post<void>(`${this.apiUrl}/change-custody`, request, this.getOptions());
   }
 
   uploadDocuments(loanId: string, files: File[]): Observable<string[]> {

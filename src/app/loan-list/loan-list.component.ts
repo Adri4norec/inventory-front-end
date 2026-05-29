@@ -23,6 +23,7 @@ import { LoanService } from '../services/loan/loan.service';
 import { LoanRefreshService } from '../services/loan/loan-refresh.service';
 import { EquipamentService } from '../services/equipament/equipment.service';
 import { LoanListResponse } from '../models/loans/loans.model';
+import { EquipmentResponse, PageResponse } from '../models/equipaments/equipament.model';
 import { LayoutService } from '../services/layout/layout.service';
 import { formatStatusLabel, normalizeStatusType, StatusType, statusColorClass } from '../models/status/status-type';
 import { ToolbarUserActionsComponent } from '../shared/toolbar-user-actions/toolbar-user-actions.component';
@@ -42,6 +43,17 @@ const STATUS_OPTIONS = [
   { value: 'EM_DEVOLUCAO', label: 'Em devolução' }
 ];
 
+interface GroupedTask {
+  equipmentId?: string;
+  tombo?: string;
+  loanIds: Set<string>;
+}
+
+interface EquipmentStatusResult {
+  loanIds: string[];
+  statusName: StatusType | null;
+}
+
 @Component({
   selector: 'app-loan-list',
   standalone: true,
@@ -57,7 +69,7 @@ const STATUS_OPTIONS = [
 })
 export class LoanListComponent implements OnInit, OnDestroy {
 
-  displayedColumns: string[] = ['codigo', 'name', 'categoria', 'description', 'status', 'loanDate', 'returnDate', 'acoes'];
+  displayedColumns: string[] = ['codigo', 'name', 'description', 'status', 'categoria', 'loanDate', 'returnDate', 'acoes'];
   dataSource: LoanListResponse[] = [];
   isLoading = true;
   totalElements = 0;
@@ -138,13 +150,17 @@ export class LoanListComponent implements OnInit, OnDestroy {
     this.fetchAndBuildPage(this.buildFiltrosParaApi(), page, size, 0);
   }
 
-  private buildFiltrosParaApi(): Record<string, string> {
-    return {
+  private buildFiltrosParaApi(): Record<string, string | string[]> {
+    const payload: Record<string, string | string[]> = {
       codigo: this.filtros.codigo,
       categoria: this.filtros.categoria,
       nome: this.filtros.nome,
       caracteristicas: this.filtros.caracteristicas
     };
+    if (this.filtros.statuses.length) {
+      payload['statuses'] = this.filtros.statuses;
+    }
+    return payload;
   }
 
   private fetchAndBuildPage(filtrosParaApi: any, desiredPage: number, desiredSize: number, attempt: number): void {
@@ -191,13 +207,14 @@ export class LoanListComponent implements OnInit, OnDestroy {
   ): void {
     const requests = this.buildDistinctEquipmentStatusRequests(baseList);
     if (requests.length === 0) {
-      this.finalizeDataSource(baseList, desiredPage, desiredSize, filtrosParaApi, attempt, bootstrapSize, rawResponse);
+      const deduped = this.dedupeActiveLoanPerEquipment(baseList);
+      this.finalizeDataSource(deduped, desiredPage, desiredSize, filtrosParaApi, attempt, bootstrapSize, rawResponse);
       return;
     }
 
     forkJoin(requests).subscribe({
       next: (results) => {
-        const statusByLoanId = new Map<string, unknown>();
+        const statusByLoanId = new Map<string, StatusType | null>();
         for (const r of results) {
           for (const loanId of r.loanIds) {
             statusByLoanId.set(loanId, r.statusName);
@@ -213,54 +230,61 @@ export class LoanListComponent implements OnInit, OnDestroy {
           return item;
         });
 
-        this.finalizeDataSource(reconciled, desiredPage, desiredSize, filtrosParaApi, attempt, bootstrapSize, rawResponse);
+        const deduped = this.dedupeActiveLoanPerEquipment(reconciled);
+        this.finalizeDataSource(deduped, desiredPage, desiredSize, filtrosParaApi, attempt, bootstrapSize, rawResponse);
       },
-      error: () =>
-        this.finalizeDataSource(baseList, desiredPage, desiredSize, filtrosParaApi, attempt, bootstrapSize, rawResponse)
+      error: () => {
+        const deduped = this.dedupeActiveLoanPerEquipment(baseList);
+        this.finalizeDataSource(deduped, desiredPage, desiredSize, filtrosParaApi, attempt, bootstrapSize, rawResponse);
+      }
     });
   }
 
   private buildDistinctEquipmentStatusRequests(
     baseList: LoanListResponse[]
-  ): Observable<{ loanIds: string[]; statusName: unknown }>[] {
-    const byKey = new Map<string, { equipmentId?: string; tombo?: string; loanIds: Set<string> }>();
+  ): Observable<EquipmentStatusResult>[] {
+    const groupedTasks = this.groupLoansByEquipment(baseList);
+    return groupedTasks.map((task) => this.fetchStatusForTask(task));
+  }
+
+  private groupLoansByEquipment(baseList: LoanListResponse[]): GroupedTask[] {
+    const byKey = new Map<string, GroupedTask>();
 
     for (const item of baseList) {
-      const loanId = item.id;
-      const equipmentId = (item.equipmentId ?? '').trim() || null;
-      const tombo = (item.codigo ?? '').trim() || null;
+      const equipmentId = item.equipmentId?.trim() || null;
+      const tombo = item.codigo?.trim() || null;
 
       if (equipmentId) {
         const key = `id:${equipmentId}`;
-        if (!byKey.has(key)) {
-          byKey.set(key, { equipmentId, loanIds: new Set() });
-        }
-        byKey.get(key)!.loanIds.add(loanId);
+        if (!byKey.has(key)) byKey.set(key, { equipmentId, loanIds: new Set() });
+        byKey.get(key)!.loanIds.add(item.id);
       } else if (tombo) {
         const key = `tombo:${tombo}`;
-        if (!byKey.has(key)) {
-          byKey.set(key, { tombo, loanIds: new Set() });
-        }
-        byKey.get(key)!.loanIds.add(loanId);
+        if (!byKey.has(key)) byKey.set(key, { tombo, loanIds: new Set() });
+        byKey.get(key)!.loanIds.add(item.id);
       }
     }
 
-    return [...byKey.values()].map((task) => {
-      const loanIds = [...task.loanIds];
-      if (task.equipmentId) {
-        return this.equipamentService.findById(task.equipmentId).pipe(
-          map((eq: { statusName?: unknown }) => ({ loanIds, statusName: eq?.statusName ?? null })),
-          catchError(() => of({ loanIds, statusName: null }))
-        );
-      }
-      return this.equipamentService.advancedSearch({ tombo: task.tombo }, 0, 1).pipe(
-        map((res: { content?: { statusName?: unknown }[] }) => ({
-          loanIds,
-          statusName: res?.content?.[0]?.statusName ?? null
-        })),
+    return [...byKey.values()];
+  }
+
+  private fetchStatusForTask(task: GroupedTask): Observable<EquipmentStatusResult> {
+    const loanIds = [...task.loanIds];
+
+    if (task.equipmentId) {
+      return this.equipamentService.findById(task.equipmentId).pipe(
+        map((eq: EquipmentResponse) => ({ loanIds, statusName: eq?.statusName ?? null })),
         catchError(() => of({ loanIds, statusName: null }))
       );
-    });
+    }
+
+    return this.equipamentService.advancedSearch({ tombo: task.tombo }, 0, 1).pipe(
+      map((res: PageResponse<EquipmentResponse>) => ({
+        loanIds,
+        statusName: res?.content?.[0]?.statusName ?? null
+      })),
+      catchError(() => of({ loanIds, statusName: null }))
+    );
   }
 
   private sanitizeLoanData(content: LoanListResponse[]): LoanListResponse[] {
@@ -271,6 +295,59 @@ export class LoanListComponent implements OnInit, OnDestroy {
         loanDate: this.coerceApiDate(item.loanDate) as any,
         returnDate: this.coerceApiDate(item.returnDate) as any
       }));
+  }
+
+  private dedupeActiveLoanPerEquipment(list: LoanListResponse[]): LoanListResponse[] {
+    const byKey = new Map<string, LoanListResponse>();
+
+    for (const item of list) {
+      const key = this.getLoanEquipmentKey(item);
+      const current = byKey.get(key);
+      if (!current || this.compareActiveLoanPriority(item, current) > 0) {
+        byKey.set(key, item);
+      }
+    }
+
+    return Array.from(byKey.values());
+  }
+
+  private getLoanEquipmentKey(item: LoanListResponse): string {
+    const equipmentId = String(item.equipmentId ?? '').trim();
+    if (equipmentId) return `eq:${equipmentId}`;
+
+    const tombo = String(item.codigo ?? '').trim();
+    if (tombo) return `tombo:${tombo}`;
+
+    return `loan:${item.id}`;
+  }
+
+  private compareActiveLoanPriority(a: LoanListResponse, b: LoanListResponse): number {
+    return this.activeLoanScore(a) - this.activeLoanScore(b);
+  }
+
+  private activeLoanScore(item: LoanListResponse): number {
+    let score = 0;
+    const status = normalizeStatusType(item.status);
+
+    if (status === StatusType.EM_MANUTENCAO) {
+      score += 50_000;
+    }
+
+    if (!item.returnDate) {
+      score += 10_000;
+    }
+
+    const statusRank: Partial<Record<StatusType, number>> = {
+      [StatusType.EM_DEVOLUCAO]: 400,
+      [StatusType.EM_USO]: 300,
+      [StatusType.EM_PREPARACAO]: 200
+    };
+    score += statusRank[status as StatusType] ?? 0;
+
+    const loanTime = this.coerceApiDate(item.loanDate)?.getTime() ?? 0;
+    score += loanTime / 1e12;
+
+    return score;
   }
 
   private finalizeDataSource(
