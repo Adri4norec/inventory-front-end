@@ -23,15 +23,19 @@ import { MatAutocompleteModule } from '@angular/material/autocomplete';
 
 import { EquipamentService } from '../services/equipament/equipment.service';
 import { MovementService } from '../services/movement/movement.service';
+import { LoanService } from '../services/loan/loan.service';
+import { UserService } from '../services/user/user.service';
 import { PhotoGaleryDialogComponent } from '../photo-galery-dialog/photo-galery-dialog.component';
 import { ImageLightboxComponent } from '../shared/components/image-lightbox/image-lightbox.component';
 import { AutocompleteCreateComponent } from '../shared/components/autocomplete-create/autocomplete-create.component';
 import { MovementRequest, MovementResponse, MovementType } from '../models/movement/movement.model';
-import { UserSearchResponse } from '../models/loans/loans.model';
+import { LoanDetailResponse, UserSearchResponse } from '../models/loans/loans.model';
+import { EquipmentResponse } from '../models/equipaments/equipament.model';
+import { extractLoanFormDefaults, extractLoanDefaultsFromEquipment, hasLoanFormDefaults, isMovementLoanPrefillStatus, readActiveLoanId, LoanFormDefaults } from '../core/loan-form.util';
+import { environment } from '../../environments/environment';
 import { LayoutService } from '../services/layout/layout.service';
 import { formatStatusLabel, statusColorClass } from '../models/status/status-type';
 import { ToolbarUserActionsComponent } from '../shared/toolbar-user-actions/toolbar-user-actions.component';
-import { environment } from '../../environments/environment';
 
 @Component({
   selector: 'app-movement',
@@ -62,6 +66,7 @@ export class MovementComponent implements OnInit {
   imagensSalvas: Array<{ id: string; url: string }> = [];
   imagensMantidasIds: string[] = [];
   imagensExcluidasIds: string[] = [];
+  private loanDefaultsApplied = false;
 
   displayedColumns: string[] = ['dataHora', 'movementType', 'responsavel', 'projeto', 'local', 'observacao', 'actions'];
 
@@ -69,6 +74,8 @@ export class MovementComponent implements OnInit {
     private route: ActivatedRoute,
     private equipamentService: EquipamentService,
     private movementService: MovementService,
+    private loanService: LoanService,
+    private userService: UserService,
     private router: Router,
     private dialog: MatDialog,
     private fb: FormBuilder,
@@ -84,6 +91,10 @@ export class MovementComponent implements OnInit {
 
   formatStatusLabel(raw: unknown): string {
     return formatStatusLabel(raw);
+  }
+
+  get isLoanFieldsLocked(): boolean {
+    return isMovementLoanPrefillStatus(this.equipamento?.statusName);
   }
 
   ngOnInit(): void {
@@ -169,6 +180,8 @@ export class MovementComponent implements OnInit {
         }
         if (!this.isViewMode) {
           this.configurarOpcoesMovimentacao(this.equipamento?.statusName || '');
+          this.applyLoanFieldsLock();
+          this.prefillFromActiveLoan(res);
         }
       }
     });
@@ -176,6 +189,110 @@ export class MovementComponent implements OnInit {
     this.movementService.findHistoryByEquipament(this.equipamentId, 0, 10).subscribe({
       next: (res: any) => this.historico = res.content || res
     });
+  }
+
+  /** Preenche responsável e projeto a partir do empréstimo ativo (equipamento Em Uso). */
+  private prefillFromActiveLoan(equipment: EquipmentResponse): void {
+    if (this.isViewMode || this.loanDefaultsApplied) return;
+    if (!isMovementLoanPrefillStatus(equipment.statusName)) return;
+
+    const embedded = extractLoanDefaultsFromEquipment(equipment);
+    if (hasLoanFormDefaults(embedded)) {
+      this.applyLoanFormDefaults(embedded);
+      return;
+    }
+
+    const loanId = readActiveLoanId(equipment);
+    const topo = String(equipment.topo ?? '').trim();
+    const codigo = String(equipment.codigo ?? '').trim();
+
+    this.loanService
+      .findActiveLoanByEquipment(equipment.id, topo || codigo, codigo, loanId || undefined)
+      .subscribe({
+        next: (loan) => {
+          if (!loan) {
+            if (!environment.production) {
+              console.warn(
+                '[movement] Empréstimo ativo não encontrado ou sem responsável/projeto no backend.',
+                { equipmentId: equipment.id, topo, codigo, loanId }
+              );
+            }
+            return;
+          }
+          this.applyLoanDefaultsToForm(loan);
+        }
+      });
+  }
+
+  private applyLoanDefaultsToForm(loan: LoanDetailResponse): void {
+    this.applyLoanFormDefaults(extractLoanFormDefaults(loan));
+  }
+
+  private applyLoanFormDefaults(defaults: LoanFormDefaults): void {
+    const patch: { responsavel?: string; projeto?: string } = {};
+
+    if (defaults.projeto && !this.movementForm.get('projeto')?.value) {
+      patch.projeto = defaults.projeto;
+    }
+
+    const needsResponsavel = !this.movementForm.get('responsavel')?.value;
+    if (needsResponsavel && defaults.responsavel) {
+      patch.responsavel = defaults.responsavel;
+      this.ensureUserInOptions(defaults.responsavel, defaults.colaboradorId);
+    }
+
+    if (Object.keys(patch).length > 0) {
+      queueMicrotask(() => {
+        this.movementForm.patchValue(patch, { emitEvent: false });
+      });
+    }
+
+    if (needsResponsavel && !defaults.responsavel && defaults.colaboradorId) {
+      this.resolveResponsavelName(defaults.colaboradorId);
+      return;
+    }
+
+    this.loanDefaultsApplied = true;
+  }
+
+  private resolveResponsavelName(colaboradorId: string): void {
+    this.userService.findById(colaboradorId).subscribe({
+      next: (user: any) => {
+        const fullName = String(user?.fullName ?? '').trim();
+        if (!fullName || this.movementForm.get('responsavel')?.value) return;
+        this.ensureUserInOptions(fullName, colaboradorId);
+        this.movementForm.patchValue({ responsavel: fullName }, { emitEvent: false });
+        this.loanDefaultsApplied = true;
+      },
+      error: () => {
+        this.loanDefaultsApplied = true;
+      }
+    });
+  }
+
+  private applyLoanFieldsLock(): void {
+    const responsavelControl = this.movementForm.get('responsavel');
+    const projetoControl = this.movementForm.get('projeto');
+    if (!responsavelControl || !projetoControl) return;
+
+    if (this.isLoanFieldsLocked) {
+      responsavelControl.disable({ emitEvent: false });
+      projetoControl.disable({ emitEvent: false });
+      return;
+    }
+
+    responsavelControl.enable({ emitEvent: false });
+    projetoControl.enable({ emitEvent: false });
+  }
+
+  private ensureUserInOptions(fullName: string, id?: string): void {
+    const normalizedId = (id ?? '').trim();
+    const exists = this.filteredUsers.some(
+      (u) => u.fullName === fullName || (!!normalizedId && u.id === normalizedId)
+    );
+    if (!exists) {
+      this.filteredUsers = [{ id: normalizedId, fullName }, ...this.filteredUsers];
+    }
   }
 
   configurarOpcoesMovimentacao(status: string): void {
@@ -290,8 +407,13 @@ export class MovementComponent implements OnInit {
     this.selectedFiles = [];
     this.previsualizacoes = [];
     this.imagensExcluidasIds = [];
+    this.loanDefaultsApplied = false;
     this.movementForm.reset();
-    if (this.equipamento) this.configurarOpcoesMovimentacao(this.equipamento.statusName || '');
+    if (this.equipamento) {
+      this.configurarOpcoesMovimentacao(this.equipamento.statusName || '');
+      this.applyLoanFieldsLock();
+      this.prefillFromActiveLoan(this.equipamento);
+    }
   }
 
   verFotos(e: any): void {

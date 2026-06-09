@@ -73,7 +73,7 @@
                 </mat-card-title>
                 <mat-card-subtitle>
                     <ng-container *ngIf="isReturnSupportMode">
-                        Registre a devolução anexando fotos (mínimo 1)
+                        Anexe fotos novas ou altere as existentes (remoção ou complemento)
                     </ng-container>
                     <ng-container *ngIf="isReturnAdminMode">
                         Revise os dados do empréstimo (somente leitura). Anexe o Termo de Baixa Assinado (PDF) para
@@ -94,40 +94,40 @@
             <mat-card-content>
                 <form [formGroup]="loanForm" class="form-grid">
 
-                    <app-autocomplete-create class="field-half" *ngIf="shouldShowLoanDetailsFields"
-                        label="Responsável" placeholder="Digite para buscar responsável..." icon="person"
-                        [options]="filteredUsers" bindLabel="fullName" bindValue="id"
-                        formControlName="responsavel" requiredError="Responsável é obrigatório"
-                        [showCreateButton]="false" (search)="onSearchResponsavel($event)">
+                    <app-autocomplete-create class="field-half" label="Responsável"
+                        placeholder="Digite para buscar responsável..." icon="person" [options]="filteredUsers"
+                        bindLabel="fullName" bindValue="id" formControlName="responsavel"
+                        requiredError="Responsável é obrigatório" [showCreateButton]="false"
+                        (search)="onSearchResponsavel($event)">
                     </app-autocomplete-create>
 
-                    <mat-form-field appearance="outline" class="field-half"
-                        *ngIf="!isReturnSupportMode && !isReturnAdminMode">
+                    <mat-form-field appearance="outline" class="field-half">
                         <mat-label>Projeto</mat-label>
                         <mat-icon matPrefix>work</mat-icon>
                         <input matInput formControlName="projeto" />
                     </mat-form-field>
 
-                    <mat-form-field appearance="outline" class="field-half" *ngIf="shouldShowLoanDetailsFields">
+                    <mat-form-field appearance="outline" class="field-half">
                         <mat-label>Data do Empréstimo</mat-label>
                         <input matInput [matDatepicker]="picker" formControlName="loanDate" (click)="picker.open()">
                         <mat-datepicker-toggle matSuffix [for]="picker"></mat-datepicker-toggle>
                         <mat-datepicker #picker></mat-datepicker>
                     </mat-form-field>
 
-                    <div class="loan-type-container field-half" *ngIf="shouldShowLoanDetailsFields && !isReturnSupportMode && !isReturnAdminMode">
+                    <div class="loan-type-container field-half">
                         <label class="loan-type-label">Tipo de Empréstimo *</label>
                         <mat-radio-group formControlName="loanType" color="primary" class="loan-type-radio-group">
                             <mat-radio-button value="PERSONAL">Pessoal</mat-radio-button>
                             <mat-radio-button value="PROJECT">Projeto</mat-radio-button>
                         </mat-radio-group>
-                        <mat-error *ngIf="loanForm.get('loanType')?.touched && loanForm.get('loanType')?.hasError('required')" class="loan-type-error">
+                        <mat-error
+                            *ngIf="loanForm.get('loanType')?.touched && loanForm.get('loanType')?.hasError('required')"
+                            class="loan-type-error">
                             Seleção obrigatória
                         </mat-error>
                     </div>
 
-                    <mat-form-field appearance="outline" class="field-half"
-                        *ngIf="!isReturnSupportMode && !isReturnAdminMode">
+                    <mat-form-field appearance="outline" class="field-half">
                         <mat-label>Data de Devolução (Opcional)</mat-label>
                         <input matInput [matDatepicker]="returnPicker" formControlName="returnDate"
                             (click)="returnPicker.open()">
@@ -135,15 +135,18 @@
                         <mat-datepicker #returnPicker></mat-datepicker>
                     </mat-form-field>
 
-                    <div class="field-full" *ngIf="!isStatusUpdateMode && !isReturnSupportMode && !isReturnAdminMode && !isReturnFromUsoFlow">
+                    <div class="field-full"
+                        *ngIf="!isStatusUpdateMode && !isReturnSupportMode && !isReturnAdminMode && !isReturnFromUsoFlow">
                         <div class="accessory-input-grid">
                             <mat-form-field appearance="outline" class="field-half">
                                 <mat-label>Buscar acessório</mat-label>
                                 <input matInput [formControl]="accessoryControl" [matAutocomplete]="accessoryAuto"
-                                    autocomplete="off" placeholder="Digite para buscar..." (focus)="onAccessoryInputFocus()">
+                                    autocomplete="off" placeholder="Digite para buscar..."
+                                    (focus)="onAccessoryInputFocus()">
                                 <mat-autocomplete #accessoryAuto="matAutocomplete" [displayWith]="displayAccessoryFn"
                                     (optionSelected)="onAccessorySelected($event.option.value)">
-                                    <mat-option *ngFor="let item of filteredPerParts | async" [value]="item" [disabled]="item.quantity === 0">
+                                    <mat-option *ngFor="let item of filteredPerParts | async" [value]="item"
+                                        [disabled]="item.quantity === 0">
                                         {{ getAccessoryOptionLabel(item) }}
                                     </mat-option>
                                 </mat-autocomplete>
@@ -151,11 +154,14 @@
 
                             <mat-form-field appearance="outline" class="field-quarter">
                                 <mat-label>Quantidade</mat-label>
-                                <input matInput type="number" [formControl]="accessoryQuantityControl" min="1" [attr.max]="selectedAccessory?.quantity || null" step="1">
+                                <input matInput type="number" [formControl]="accessoryQuantityControl" min="1"
+                                    [attr.max]="selectedAccessory?.quantity || null" step="1">
                             </mat-form-field>
 
                             <div class="accessory-add-button">
-                                <button type="button" class="custom-add-btn" [disabled]="accessoryQuantityControl.invalid || !selectedAccessory" (click)="addAccessoryToLoan()">
+                                <button type="button" class="custom-add-btn"
+                                    [disabled]="accessoryQuantityControl.invalid || !selectedAccessory"
+                                    (click)="addAccessoryToLoan()">
                                     <mat-icon>add</mat-icon>
                                     Adicionar item
                                 </button>
@@ -166,7 +172,8 @@
 
                         <div *ngIf="addedAccessories.length > 0" class="accessory-tags">
                             <div *ngFor="let item of addedAccessories; let i = index" class="accessory-tag">
-                                <span>{{ item.name }} — {{ item.quantity }} / {{ item.originalTotalQuantity || item.availableQuantity }}</span>
+                                <span>{{ item.name }} — {{ item.quantity }} / {{ item.originalTotalQuantity ||
+                                    item.availableQuantity }}</span>
                                 <button mat-icon-button color="warn" type="button" aria-label="Remover acessório"
                                     *ngIf="!isStatusUpdateMode && !isReturnSupportMode && !isReturnAdminMode && !isReturnFromUsoFlow"
                                     (click)="removeAccessory(i)">
@@ -176,20 +183,19 @@
                         </div>
                     </div>
 
-                    <mat-form-field appearance="outline" class="field-full" *ngIf="shouldShowLoanDetailsFields">
+                    <mat-form-field appearance="outline" class="field-full">
                         <mat-label>Observações</mat-label>
                         <mat-icon matPrefix>notes</mat-icon>
                         <textarea matInput formControlName="observacao" rows="4"></textarea>
                     </mat-form-field>
 
-                    <div class="field-full" style="margin-bottom: 20px;" *ngIf="shouldShowLoanDetailsFields">
+                    <div class="field-full" style="margin-bottom: 20px;">
                         <mat-checkbox formControlName="enviadoSedex" color="primary">
                             Enviado por Sedex
                         </mat-checkbox>
                     </div>
 
-                    <mat-form-field appearance="outline" class="field-half"
-                        *ngIf="shouldShowLoanDetailsFields && loanForm.get('enviadoSedex')?.value">
+                    <mat-form-field appearance="outline" class="field-half" *ngIf="isEnviadoSedexChecked">
                         <mat-label>Data do Envio (Sedex)</mat-label>
                         <input matInput [matDatepicker]="sedexPicker" formControlName="dataSedex"
                             (click)="sedexPicker.open()">
@@ -226,23 +232,19 @@
                                     <div *ngFor="let img of imagensSalvas" class="gallery-thumb">
                                         <img [src]="img.url" alt="Foto do equipamento"
                                             (click)="abrirLightbox(img.url)" />
-                                        <button mat-mini-fab color="warn" type="button"
-                                            class="gallery-remove-btn"
-                                            (click)="removerFotoSalva(img.id)"
-                                            [disabled]="!isFotosEnabled"
+                                        <button mat-mini-fab color="warn" type="button" class="gallery-remove-btn"
+                                            (click)="removerFotoSalva(img.id)" [disabled]="!isFotosEnabled"
                                             matTooltip="Remover foto">
                                             <mat-icon>close</mat-icon>
                                         </button>
                                     </div>
 
-                                    <div *ngFor="let preview of previsualizacoes; let i = index" class="gallery-thumb gallery-thumb-new">
-                                        <img [src]="preview" alt="Nova foto"
-                                            (click)="abrirLightbox(preview)" />
+                                    <div *ngFor="let preview of previsualizacoes; let i = index"
+                                        class="gallery-thumb gallery-thumb-new">
+                                        <img [src]="preview" alt="Nova foto" (click)="abrirLightbox(preview)" />
                                         <span class="gallery-new-badge">Nova</span>
-                                        <button mat-mini-fab color="warn" type="button"
-                                            class="gallery-remove-btn"
-                                            (click)="removerArquivo(i)"
-                                            [disabled]="!isFotosEnabled"
+                                        <button mat-mini-fab color="warn" type="button" class="gallery-remove-btn"
+                                            (click)="removerArquivo(i)" [disabled]="!isFotosEnabled"
                                             matTooltip="Remover foto">
                                             <mat-icon>close</mat-icon>
                                         </button>
@@ -288,21 +290,17 @@
 
                             <div class="attachment-col" *ngIf="isReturnAdminMode">
                                 <div class="download-original-term-block">
-                                    <button
-                                        mat-raised-button
-                                        color="primary"
-                                        type="button"
-                                        class="btn-download-original-term"
-                                        [disabled]="!loanDetails?.hasOriginalTerm"
+                                    <button mat-raised-button color="primary" type="button"
+                                        class="btn-download-original-term" [disabled]="!loanDetails?.hasOriginalTerm"
                                         (click)="onDownloadOriginalTermClick()">
                                         <mat-icon>file_download</mat-icon>
                                         Baixar termo de responsabilidade
                                     </button>
 
-                                    <div
-                                        *ngIf="loanDetails?.status === 'EM_DEVOLUCAO' && !loanDetails?.hasOriginalTerm"
+                                    <div *ngIf="loanDetails?.status === 'EM_DEVOLUCAO' && !loanDetails?.hasOriginalTerm"
                                         class="alert-warning">
-                                        <small style="color: #f44336;">⚠️ Documento original não encontrado no sistema.</small>
+                                        <small style="color: #f44336;">⚠️ Documento original não encontrado no
+                                            sistema.</small>
                                     </div>
                                 </div>
 
@@ -343,13 +341,13 @@
                     <mat-icon>close</mat-icon> Cancelar
                 </button>
                 <button mat-raised-button color="primary" type="submit" [disabled]="(isAssinaturaBaixaFlow && !pdfFile) 
-                    || (isReturnSupportMode && selectedFiles.length < 1) 
+                    || (isReturnSupportMode && selectedFiles.length < 1 && imagensExcluidasIds.length < 1) 
                     || (isReturnAdminMode && !writeOffPdfFile) 
                     || (isReturnFromUsoFlow && selectedFiles.length < 1) 
                     || (!isReturnSupportMode && !isReturnAdminMode && !isReturnFromUsoFlow && loanForm.invalid) 
                     || isSaving" (click)="onSubmit()" class="btn-salvar">
                     <mat-icon>check_circle</mat-icon>
-                    <span *ngIf="isReturnSupportMode">Registrar Devolução</span>
+                    <span *ngIf="isReturnSupportMode">Salvar Fotos de Devolução</span>
                     <span *ngIf="isReturnAdminMode">Finalizar e Liberar Equipamento</span>
                     <span *ngIf="isReturnFromUsoFlow">Iniciar Devolução</span>
                     <span *ngIf="!isReturnSupportMode && !isReturnAdminMode && !isReturnFromUsoFlow">Confirmar e

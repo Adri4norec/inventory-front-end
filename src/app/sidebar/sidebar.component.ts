@@ -28,6 +28,14 @@ export class SidebarComponent implements OnInit, OnDestroy {
       children: [
         { label: 'Lista de Equipamentos', route: '/equipaments', allowedRoles: ['COLABORADOR'] }
       ]
+    },
+    {
+      label: 'Custódia',
+      allowedRoles: ['COLABORADOR'],
+      expanded: false,
+      children: [
+        { label: 'Itens sob custódia', route: '/area-gerente', allowedRoles: ['COLABORADOR'] }
+      ]
     }
   ];
 

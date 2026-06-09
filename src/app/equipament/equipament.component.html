@@ -167,7 +167,7 @@
             <ng-container matColumnDef="usageType">
               <th mat-header-cell *matHeaderCellDef> Uso </th>
               <td mat-cell *matCellDef="let element">
-                <span [matTooltip]="element.usageType">{{ element.usageType || '-' }}</span>
+                <span [matTooltip]="element.usageType">{{ capitalize(element.usageType) }}</span>
               </td>
             </ng-container>
 

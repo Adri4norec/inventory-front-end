@@ -14,9 +14,20 @@
   <div class="content">
     <mat-card appearance="outlined" class="summary-card">
       <mat-card-header>
-        <mat-card-title>Equipamento / Item</mat-card-title>
-        <mat-card-subtitle>{{ assetId || '-' }}</mat-card-subtitle>
+        <mat-card-title>{{ equipamento?.name || 'Equipamento / Item' }}</mat-card-title>
       </mat-card-header>
+      <mat-card-content class="equipment-summary">
+        <div class="details-row">
+          <div class="detail-item">
+            <label>Código/ID</label>
+            <span><strong>{{ equipmentTombo }}</strong></span>
+          </div>
+          <div class="detail-item detail-item-wide">
+            <label>Características Técnicas</label>
+            <span>{{ equipmentDescription || '-' }}</span>
+          </div>
+        </div>
+      </mat-card-content>
     </mat-card>
 
     <div *ngIf="isLoading" class="loading-wrap">
@@ -63,14 +74,8 @@
           </table>
         </div>
 
-        <mat-paginator
-          *ngIf="totalElements > 0"
-          [length]="totalElements"
-          [pageSize]="pageSize"
-          [pageIndex]="pageIndex"
-          [pageSizeOptions]="[5, 10, 20, 50]"
-          (page)="handlePageEvent($event)"
-          showFirstLastButtons
+        <mat-paginator *ngIf="totalElements > 0" [length]="totalElements" [pageSize]="pageSize" [pageIndex]="pageIndex"
+          [pageSizeOptions]="[5, 10, 20, 50]" (page)="handlePageEvent($event)" showFirstLastButtons
           aria-label="Selecionar página do histórico de custódia">
         </mat-paginator>
       </mat-card-content>

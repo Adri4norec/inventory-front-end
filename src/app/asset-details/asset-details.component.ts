@@ -8,14 +8,20 @@ import { MatCardModule } from '@angular/material/card';
 import { MatTableModule } from '@angular/material/table';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
-import { Subscription } from 'rxjs';
-import { finalize } from 'rxjs/operators';
+import { Subscription, of } from 'rxjs';
+import { finalize, map, catchError } from 'rxjs/operators';
 
 import { LayoutService } from '../services/layout/layout.service';
 import { AuthService } from '../services/auth/auth.service';
 import { LoanService } from '../services/loan/loan.service';
+import { EquipamentService } from '../services/equipament/equipment.service';
+import { EquipmentResponse } from '../models/equipaments/equipament.model';
 import { CustodiaResponse } from '../models/loans/loans.model';
 import { ToolbarUserActionsComponent } from '../shared/toolbar-user-actions/toolbar-user-actions.component';
+import {
+  isLoggedUserCustodyOwner,
+  normalizePersonName
+} from '../core/custody-owner.util';
 
 @Component({
   selector: 'app-asset-details',
@@ -37,6 +43,7 @@ import { ToolbarUserActionsComponent } from '../shared/toolbar-user-actions/tool
 })
 export class AssetDetailsComponent implements OnInit, OnDestroy {
   assetId: string | null = null;
+  equipamento: EquipmentResponse | null = null;
   /** Histórico completo (usado na lógica de labels e paginação local). */
   custodyHistory: CustodiaResponse[] = [];
   /** Fatia exibida na tabela conforme paginação. */
@@ -55,23 +62,20 @@ export class AssetDetailsComponent implements OnInit, OnDestroy {
     private router: Router,
     public layout: LayoutService,
     private authService: AuthService,
-    private loanService: LoanService
+    private loanService: LoanService,
+    private equipamentService: EquipamentService
   ) {}
-
-  get custodianteAtualLabel(): string {
-    return this.authService.getFullName() || localStorage.getItem('user') || '-';
-  }
 
   ngOnInit(): void {
     this.assetId = this.route.snapshot.paramMap.get('id');
+    this.loadEquipment();
 
     const navState = this.router.getCurrentNavigation()?.extras?.state as { custodyHistory?: CustodiaResponse[] } | undefined;
     const historyState = (typeof history !== 'undefined' ? history.state : {}) as { custodyHistory?: CustodiaResponse[] };
     const fromState = navState?.custodyHistory ?? historyState?.custodyHistory;
 
     if (fromState?.length) {
-      this.custodyHistory = fromState.map((item) => ({ ...item }));
-      this.applyPageSlice(0);
+      this.setCustodyHistory(fromState.map((item) => ({ ...item })));
       return;
     }
 
@@ -82,20 +86,19 @@ export class AssetDetailsComponent implements OnInit, OnDestroy {
     this.subs.unsubscribe();
   }
 
-  /** Primeira movimentação do histórico → gerente; demais → colaborador daquela movimentação. */
-  getCustodianteLabel(element: CustodiaResponse): string {
-    const oldest = this.getOldestMovement();
-    if (this.custodyHistory.length <= 1 || element?.id === oldest?.id) {
-      return this.custodianteAtualLabel;
-    }
-
-    const nome = String(element?.custodianteNome ?? '').trim();
-    return nome || this.custodianteAtualLabel;
+  get equipmentTombo(): string {
+    const topo = String(this.equipamento?.topo ?? '').trim();
+    const codigo = String(this.equipamento?.codigo ?? '').trim();
+    return topo || codigo || String(this.assetId ?? '').trim() || '-';
   }
 
-  private getOldestMovement(): CustodiaResponse | null {
-    if (!this.custodyHistory.length) return null;
-    return [...this.custodyHistory].sort((a, b) => this.compareCustodyRecency(a, b))[0] ?? null;
+  get equipmentDescription(): string {
+    return String(this.equipamento?.description ?? '').trim();
+  }
+
+  getCustodianteLabel(element: CustodiaResponse): string {
+    const nome = String(element?.custodianteNome ?? '').trim();
+    return nome || '-';
   }
 
   voltar(): void {
@@ -114,13 +117,38 @@ export class AssetDetailsComponent implements OnInit, OnDestroy {
     this.dataSource = this.custodyHistory.slice(start, start + size);
   }
 
+  /** Ordem da tabela: custódia mais recente no topo (independente da ordem da API ou do router state). */
   private setCustodyHistory(history: CustodiaResponse[]): void {
-    this.custodyHistory = history;
+    this.custodyHistory = [...history].sort((a, b) => this.compareCustodyRecency(a, b));
     this.applyPageSlice(0);
   }
 
+  private loadEquipment(): void {
+    const equipmentKey = String(this.assetId ?? '').trim();
+    if (!equipmentKey) return;
+
+    const lookup$ = this.isUuid(equipmentKey)
+      ? this.equipamentService.findById(equipmentKey)
+      : this.equipamentService.advancedSearch({ tombo: equipmentKey }, 0, 1).pipe(
+          map((response: { content?: EquipmentResponse[] }) => response?.content?.[0] ?? null),
+          catchError(() => of(null))
+        );
+
+    this.subs.add(
+      lookup$.pipe(catchError(() => of(null))).subscribe({
+        next: (equipment) => {
+          this.equipamento = equipment;
+        }
+      })
+    );
+  }
+
+  private isUuid(value: string): boolean {
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+  }
+
   private loadCustodyHistoryFromApi(): void {
-    const managerId = localStorage.getItem('userId')?.trim();
+    const managerId = this.authService.getLoggedUserId();
     const equipmentKey = String(this.assetId ?? '').trim();
 
     if (!managerId || !equipmentKey) {
@@ -167,20 +195,69 @@ export class AssetDetailsComponent implements OnInit, OnDestroy {
   }
 
   private mapCustodyHistory(content: CustodiaResponse[], equipmentKey: string): CustodiaResponse[] {
-    return content
+    const equipmentMovements = content
       .filter((item) => String(item?.equipmentId ?? '').trim() === equipmentKey)
-      .map((item) => ({ ...item }))
-      .sort((a, b) => this.compareCustodyRecency(b, a));
-  }
+      .map((item) => ({ ...item }));
 
-  private compareCustodyRecency(a: CustodiaResponse, b: CustodiaResponse): number {
-    const aTime = new Date(a?.inicioPeriodo ?? '').getTime();
-    const bTime = new Date(b?.inicioPeriodo ?? '').getTime();
+    if (!equipmentMovements.length) return [];
 
-    if (!isNaN(aTime) && !isNaN(bTime) && aTime !== bTime) {
-      return aTime - bTime;
+    if (!isLoggedUserCustodyOwner(
+      equipmentMovements,
+      this.authService.getLoggedUserId(),
+      this.getLoggedPersonNames()
+    )) {
+      return [];
     }
 
-    return String(a?.id ?? '').localeCompare(String(b?.id ?? ''));
+    return equipmentMovements;
+  }
+
+  private getLoggedPersonNames(): Set<string> {
+    const names = new Set<string>();
+    const fullName = normalizePersonName(this.authService.getFullName());
+    const username = normalizePersonName(localStorage.getItem('user'));
+    if (fullName) names.add(fullName);
+    if (username) names.add(username);
+    return names;
+  }
+
+  private parseCustodyDate(value?: string | null): Date | null {
+    if (!value) return null;
+    const parsed = new Date(value);
+    return isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  /**
+   * Mesma regra da Área do Gerente (verDetalhes): início mais recente primeiro;
+   * empate por vigência (fim futuro/em aberto antes de encerrado).
+   */
+  private compareCustodyRecency(a: CustodiaResponse, b: CustodiaResponse): number {
+    const aTime = this.parseCustodyDate(a?.inicioPeriodo)?.getTime() ?? Number.NEGATIVE_INFINITY;
+    const bTime = this.parseCustodyDate(b?.inicioPeriodo)?.getTime() ?? Number.NEGATIVE_INFINITY;
+
+    if (aTime !== bTime) {
+      return bTime - aTime;
+    }
+
+    const aOpenEnded = !a?.fimPeriodo;
+    const bOpenEnded = !b?.fimPeriodo;
+    if (aOpenEnded !== bOpenEnded) {
+      return aOpenEnded ? -1 : 1;
+    }
+
+    if (!aOpenEnded && !bOpenEnded) {
+      const aEnd = this.parseCustodyDate(a?.fimPeriodo)?.getTime() ?? Number.NEGATIVE_INFINITY;
+      const bEnd = this.parseCustodyDate(b?.fimPeriodo)?.getTime() ?? Number.NEGATIVE_INFINITY;
+      if (aEnd !== bEnd) {
+        return bEnd - aEnd;
+      }
+    }
+
+    return String(b?.id ?? '').localeCompare(String(a?.id ?? ''));
+  }
+
+  private custodyEndScore(fimPeriodo?: string | null): number {
+    if (!fimPeriodo) return Number.POSITIVE_INFINITY;
+    return this.parseCustodyDate(fimPeriodo)?.getTime() ?? 0;
   }
 }

@@ -74,6 +74,43 @@ export class AuthService {
     return name && name.trim() ? name : null;
   }
 
+  /** UUID do usuário autenticado (localStorage ou claims do JWT). */
+  getLoggedUserId(): string | null {
+    if (!isPlatformBrowser(this.platformId)) {
+      return null;
+    }
+
+    const storedUserId = localStorage.getItem('userId')?.trim();
+    if (storedUserId && this.isUuid(storedUserId)) {
+      return storedUserId;
+    }
+
+    const token = this.getToken();
+    if (!token) return null;
+
+    const payload = this.decodeJwtPayload(token);
+    if (!payload) return null;
+
+    const candidates: string[] = [
+      payload['managerId'],
+      payload['manager_id'],
+      payload['logged_user_id'],
+      payload['loggedUserId'],
+      payload['user_id'],
+      payload['userId'],
+      payload['id'],
+      payload['sub']
+    ]
+      .map((v) => String(v ?? '').trim())
+      .filter(Boolean);
+
+    const uuid = candidates.find((v) => this.isUuid(v)) ?? null;
+    if (uuid) {
+      localStorage.setItem('userId', uuid);
+    }
+    return uuid;
+  }
+
   /**
    * Força recalcular role a partir do JWT e persistir em `userRole`.
    * Útil logo após o login.

@@ -69,7 +69,7 @@ export class PerPartListComponent implements OnInit {
     private dialog: MatDialog,
     private snackBar: MatSnackBar,
     public layout: LayoutService
-  ) {}
+  ) { }
 
   ngOnInit(): void {
     this.carregar(this.pageIndex, this.pageSize);

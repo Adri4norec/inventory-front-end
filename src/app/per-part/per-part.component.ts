@@ -71,7 +71,7 @@ export class PerPartComponent implements OnInit {
     private proprietaryService: ProprietaryService,
     private snackBar: MatSnackBar,
     public layout: LayoutService
-  ) {}
+  ) { }
 
   ngOnInit(): void {
     this.perPartId = this.route.snapshot.paramMap.get('id');

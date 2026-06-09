@@ -63,6 +63,8 @@ export interface LoanDetailResponse {
   id: string;
   equipmentId?: string;
   loanType?: LoanType;
+  /** Alias retornado por alguns endpoints da API */
+  tipoEmprestimo?: string;
   status?: string;
   loanDate?: string;
   expectedReturnDate?: string;
@@ -111,6 +113,10 @@ export interface CustodiaResponse {
   id: string;
   equipmentId: string;
   custodianteNome: string;
+  custodianteId?: string;
+  /** Dono estável da cadeia de custódia (não muda ao transferir). Preferir gerenteId/custodyOwnerId. */
+  gerenteId?: string;
+  custodyOwnerId?: string;
   inicioPeriodo: string;
   fimPeriodo: string | null;
   loanType?: LoanType;

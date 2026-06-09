@@ -10,7 +10,7 @@
     <mat-card class="auth-card" appearance="outlined">
       <mat-card-content>
         <h2 class="form-title">Entrar na conta</h2>
-        
+
         <form [formGroup]="loginForm" (ngSubmit)="onLogin()">
           <div class="auth-type-container" [class.ldap-on]="loginForm.get('useLdap')?.value">
             <mat-slide-toggle class="auth-type-flag" formControlName="useLdap" color="primary">
@@ -21,7 +21,7 @@
               Use sua senha de rede (Windows).
             </div>
           </div>
-          
+
           <mat-form-field appearance="outline" class="full-width">
             <mat-label>Usuário</mat-label>
             <input matInput formControlName="username" placeholder="Digite seu usuário">
@@ -42,16 +42,10 @@
             <span>{{ errorMessage }}</span>
           </div>
 
-          <button
-            mat-flat-button
-            color="primary"
-            class="btn-submit"
-            type="submit"
-            [disabled]="loginForm.invalid"
-          >
+          <button mat-flat-button color="primary" class="btn-submit" type="submit" [disabled]="loginForm.invalid">
             ACESSAR SISTEMA
           </button>
-          
+
         </form>
       </mat-card-content>
     </mat-card>

@@ -132,6 +132,12 @@ export class LoanListComponent implements OnInit, OnDestroy {
     });
   }
 
+  openAddReturnPhotos(item: LoanListResponse): void {
+    this.router.navigate(['/loans', item.id, 'preparation-loan'], {
+      queryParams: { mode: 'return-support' }
+    });
+  }
+
   openPreparationScreen(item: LoanListResponse): void {
     if (item.status === 'DISPONIVEL') {
       const equipmentId = item.equipmentId || item.id;

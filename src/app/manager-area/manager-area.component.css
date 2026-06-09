@@ -77,9 +77,9 @@
   min-width: 160px;
 }
 
-.filter-field-date {
-  flex: 1;
-  min-width: 170px;
+.filter-field-period {
+  flex: 1.5;
+  min-width: 200px;
 }
 
 .filter-actions {
@@ -172,7 +172,7 @@
 
 /* AC3 — destaque sutil para custódias vencidas */
 .vencido-highlight {
-  background: #fff7ed;
+  background: #ffe4cc;
 }
 
 .vencido-highlight td {

@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpParams, HttpErrorResponse } from '@angular/common/http';
 import { Observable, Subject } from 'rxjs';
 import { tap } from 'rxjs/operators';
 import { EquipmentLoanResponse, 
@@ -83,6 +83,61 @@ export class EquipamentService {
   
   deleteEquipment(id: string): Observable<void> {
     return this.http.delete<void>(`${this.API}/${id}`);
+  }
+
+  normalizeErrorDetails(err: unknown): { code?: string; message?: string; violations?: unknown } {
+    const payload = this.extractErrorPayload(err);
+    const error = payload ?? {};
+
+    return {
+      code: this.extractErrorCode(error),
+      message: this.extractErrorMessage(error),
+      violations: this.extractErrorViolations(error)
+    };
+  }
+
+  extractErrorMessage(err: unknown, fallback = 'Erro no servidor'): string {
+    const payload = this.extractErrorPayload(err);
+    const message = payload?.['message'] ?? (payload?.['error'] as { message?: string } | undefined)?.message;
+    return typeof message === 'string' && message.trim() ? message : fallback;
+  }
+
+  extractErrorCode(err: unknown): string | undefined {
+    const payload = this.extractErrorPayload(err);
+    const code = payload?.['code'] ?? (payload?.['error'] as { code?: string } | undefined)?.code;
+    return typeof code === 'string' && code.trim() ? code : undefined;
+  }
+
+  extractErrorViolations(err: unknown): unknown {
+    const payload = this.extractErrorPayload(err);
+    return payload?.['violations'] ?? (payload?.['error'] as { violations?: unknown } | undefined)?.violations;
+  }
+
+  private extractErrorPayload(err: unknown): Record<string, unknown> | null {
+    if (!err || typeof err !== 'object') {
+      return null;
+    }
+
+    const record = err as Record<string, unknown>;
+    const body = record['error'];
+
+    if (body && typeof body === 'object' && body !== null) {
+      return body as Record<string, unknown>;
+    }
+
+    if (body && typeof body === 'string') {
+      return { message: body };
+    }
+
+    if (record['message'] && typeof record['message'] === 'string') {
+      return { message: record['message'] };
+    }
+
+    if (err instanceof HttpErrorResponse) {
+      return { message: err.message };
+    }
+
+    return null;
   }
 
   /** @deprecated Use deleteEquipment */

@@ -230,6 +230,52 @@ export class EquipamentComponent implements OnInit, OnDestroy {
   private lidarComErro(mensagem: string, err: any): void {
     console.error(mensagem, err);
     this.isLoading = false;
+    this.exibirErroDoBackend(err, mensagem);
+  }
+
+  private exibirErroDoBackend(err: unknown, fallback: string): void {
+    const details = this.equipmentService.normalizeErrorDetails(err);
+    const message = details.message || fallback;
+    const code = details.code ? ` (${details.code})` : '';
+    const violations = this.formatViolations(details.violations);
+    const finalMessage = violations ? `${message}${code} — ${violations}` : `${message}${code}`;
+    this.snackBar.open(finalMessage, 'Fechar', { duration: 6000, panelClass: ['error-snackbar'] });
+  }
+
+  private formatViolations(violations: unknown): string | null {
+    if (!violations) return null;
+
+    if (Array.isArray(violations)) {
+      return violations
+        .map((violation) => {
+          if (!violation || typeof violation !== 'object') {
+            return String(violation ?? '').trim();
+          }
+
+          const record = violation as Record<string, unknown>;
+          const field = typeof record['field'] === 'string' ? record['field'] : typeof record['property'] === 'string' ? record['property'] : '';
+          const message = typeof record['message'] === 'string' ? record['message'] : typeof record['defaultMessage'] === 'string' ? record['defaultMessage'] : '';
+          return field && message ? `${field}: ${message}` : message || String(record).trim();
+        })
+        .filter(Boolean)
+        .join(' • ');
+    }
+
+    if (violations && typeof violations === 'object') {
+      const entries = Object.entries(violations as Record<string, unknown>);
+      return entries
+        .map(([field, value]) => {
+          const messages = Array.isArray(value) ? value : [value];
+          const text = messages
+            .map((entry) => String(entry ?? '').trim())
+            .filter(Boolean)
+            .join('; ');
+          return text ? `${field}: ${text}` : field;
+        })
+        .join(' • ');
+    }
+
+    return String(violations).trim();
   }
 
   handlePageEvent(e: PageEvent): void {
@@ -248,13 +294,7 @@ export class EquipamentComponent implements OnInit, OnDestroy {
   }
 
   podeMovimentar(status: unknown): boolean {
-    const st = normalizeStatusType(status);
-    if (!st) return false;
-    return [
-      StatusType.EM_USO,
-      StatusType.EM_MANUTENCAO,
-      StatusType.DISPONIVEL
-    ].includes(st);
+    return true;
   }
 
   editarEquipamento(equipamento: EquipmentResponse): void {
@@ -283,16 +323,10 @@ export class EquipamentComponent implements OnInit, OnDestroy {
         },
         error: (err) => {
           this.isLoading = false;
-          const msg = this.extractErrorMessage(err, 'Erro ao excluir equipamento.');
-          this.snackBar.open(msg, 'Fechar', { duration: 5000, panelClass: ['error-snackbar'] });
+          this.exibirErroDoBackend(err, 'Erro ao excluir equipamento.');
         }
       });
     });
-  }
-
-  private extractErrorMessage(err: unknown, fallback: string): string {
-    const e = err as { error?: { message?: string }; message?: string };
-    return e?.error?.message || e?.message || fallback;
   }
 
   visualizar(e: EquipmentResponse): void {
@@ -337,5 +371,10 @@ export class EquipamentComponent implements OnInit, OnDestroy {
     } catch {
       return data;
     }
+  }
+
+  capitalize(text: string | null | undefined): string {
+    if (!text) return '-';
+    return text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
   }
 }

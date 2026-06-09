@@ -14,7 +14,8 @@
       <div class="filter-row">
         <mat-form-field appearance="outline" subscriptSizing="dynamic" class="compact-filter filter-field-id">
           <mat-label>ID / Tombo</mat-label>
-          <input matInput [(ngModel)]="filtros.equipmentId" (keyup.enter)="aplicarFiltros()" placeholder="Busca parcial">
+          <input matInput [(ngModel)]="filtros.equipmentId" (keyup.enter)="aplicarFiltros()"
+            placeholder="Busca parcial">
         </mat-form-field>
 
         <mat-form-field appearance="outline" subscriptSizing="dynamic" class="compact-filter filter-field-nome">
@@ -22,30 +23,14 @@
           <input matInput [(ngModel)]="filtros.nome" (keyup.enter)="aplicarFiltros()" placeholder="Custodiante">
         </mat-form-field>
 
-        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="compact-filter filter-field-date">
-          <mat-label>Data início</mat-label>
-          <input
-            matInput
-            [matDatepicker]="pickerInicio"
-            [(ngModel)]="filtros.dataInicio"
-            (keyup.enter)="aplicarFiltros()"
-            placeholder="DD/MM/AAAA"
-          />
-          <mat-datepicker-toggle matSuffix [for]="pickerInicio"></mat-datepicker-toggle>
-          <mat-datepicker #pickerInicio></mat-datepicker>
-        </mat-form-field>
-
-        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="compact-filter filter-field-date">
-          <mat-label>Data fim</mat-label>
-          <input
-            matInput
-            [matDatepicker]="pickerFim"
-            [(ngModel)]="filtros.dataFim"
-            (keyup.enter)="aplicarFiltros()"
-            placeholder="DD/MM/AAAA"
-          />
-          <mat-datepicker-toggle matSuffix [for]="pickerFim"></mat-datepicker-toggle>
-          <mat-datepicker #pickerFim></mat-datepicker>
+        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="compact-filter filter-field-period">
+          <mat-label>Período de Custódia</mat-label>
+          <mat-date-range-input [rangePicker]="pickerPeriodo">
+            <input matStartDate placeholder="Início" [(ngModel)]="filtros.dataInicio">
+            <input matEndDate placeholder="Fim" [(ngModel)]="filtros.dataFim" (dateChange)="aplicarFiltros()">
+          </mat-date-range-input>
+          <mat-datepicker-toggle matIconSuffix [for]="pickerPeriodo"></mat-datepicker-toggle>
+          <mat-date-range-picker #pickerPeriodo></mat-date-range-picker>
         </mat-form-field>
       </div>
 
@@ -70,14 +55,8 @@
           <mat-card-title>Itens Sob Custódia (Geral)</mat-card-title>
           <mat-card-subtitle>{{ totalElements }} registro(s)</mat-card-subtitle>
         </div>
-        <button
-          mat-flat-button
-          color="primary"
-          type="button"
-          class="btn-alterar-custodia-geral"
-          [disabled]="totalElements === 0"
-          (click)="alterarCustodiaGeral()"
-        >
+        <button mat-flat-button color="primary" type="button" class="btn-alterar-custodia-geral"
+          [disabled]="totalElements === 0" (click)="alterarCustodiaGeral()">
           <mat-icon>published_with_changes</mat-icon>
           Alterar custódia
         </button>
@@ -150,14 +129,8 @@
           </table>
         </div>
 
-        <mat-paginator
-          *ngIf="totalElements > 0"
-          [length]="totalElements"
-          [pageSize]="pageSize"
-          [pageIndex]="pageIndex"
-          [pageSizeOptions]="[5, 10, 20, 50]"
-          (page)="handlePageEvent($event)"
-          showFirstLastButtons
+        <mat-paginator *ngIf="totalElements > 0" [length]="totalElements" [pageSize]="pageSize" [pageIndex]="pageIndex"
+          [pageSizeOptions]="[5, 10, 20, 50]" (page)="handlePageEvent($event)" showFirstLastButtons
           aria-label="Selecionar página">
         </mat-paginator>
       </mat-card-content>

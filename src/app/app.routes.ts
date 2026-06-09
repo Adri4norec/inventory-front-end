@@ -93,7 +93,7 @@ export const routes: Routes = [
   {
     path: 'equipaments/:id/detalhes',
     component: AssetDetailsComponent,
-    canActivate: [authGuard, adminGuard],
+    canActivate: [authGuard],
     data: { title: 'Detalhes do Ativo' }
   },
   { 
@@ -131,7 +131,7 @@ export const routes: Routes = [
   {
     path: 'area-gerente',
     component: ManagerAreaComponent,
-    canActivate: [authGuard, adminGuard],
+    canActivate: [authGuard],
     data: { title: 'Área do gerente' }
   },
 

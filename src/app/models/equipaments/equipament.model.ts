@@ -2,6 +2,14 @@ import { StatusType } from '../status/status-type';
 
 export type { LoanRequest } from '../loans/loans.model';
 
+export interface EquipmentActiveLoanSummary {
+  id?: string;
+  colaboradorId?: string;
+  fullName?: string;
+  helpdeskTicket?: string;
+  projeto?: string;
+}
+
 export interface EquipmentResponse {
   id: string;
   name: string;
@@ -18,6 +26,9 @@ export interface EquipmentResponse {
   perParts?: PerPartResponse[];
   imageUrls: string[];
   dueDate?: string;
+  /** Empréstimo vigente (campo opcional retornado pelo backend). */
+  activeLoanId?: string;
+  activeLoan?: EquipmentActiveLoanSummary;
 }
 
 export interface EquipmentRequest {

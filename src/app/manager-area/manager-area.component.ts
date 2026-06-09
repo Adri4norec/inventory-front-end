@@ -17,12 +17,14 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
-import { Subscription } from 'rxjs';
-import { finalize } from 'rxjs/operators';
+import { forkJoin, Observable, of, Subscription } from 'rxjs';
+import { catchError, finalize, map, switchMap } from 'rxjs/operators';
 
 import { LayoutService } from '../services/layout/layout.service';
 import { AuthService } from '../services/auth/auth.service';
 import { LoanService } from '../services/loan/loan.service';
+import { EquipamentService } from '../services/equipament/equipment.service';
+import { StatusType, normalizeStatusType } from '../models/status/status-type';
 import {
   CustodiaResponse,
   CustodyChangeRequest,
@@ -35,6 +37,12 @@ import {
   ChangeCustodyDialogComponent,
   ChangeCustodyDialogData
 } from './change-custody-dialog.component';
+import {
+  diagnoseCustodyScope,
+  filterMovementsForLoggedCustodyOwner,
+  normalizePersonName
+} from '../core/custody-owner.util';
+import { environment } from '../../environments/environment';
 
 @Component({
   selector: 'app-manager-area',
@@ -66,6 +74,8 @@ export class ManagerAreaComponent implements OnInit, OnDestroy {
 
   displayedColumns: string[] = ['equipmentId', 'custodianteNome', 'inicioPeriodo', 'fimPeriodo', 'acoes'];
   private allCustodyMovements: CustodiaResponse[] = [];
+  /** Lista completa após filtros (inclui exclusão de devolvidos), antes da paginação. */
+  private visibleCustodyItems: CustodiaResponse[] = [];
   dataSource: CustodiaResponse[] = [];
   filtros = {
     equipmentId: '',
@@ -79,9 +89,6 @@ export class ManagerAreaComponent implements OnInit, OnDestroy {
   pageIndex = 0;
 
   private static readonly CUSTODY_CLIENT_FETCH_SIZE = 5000;
-
-  /** Equipamentos que já tiveram alteração de custódia (histórico ou nesta sessão). */
-  private readonly changedEquipmentIds = new Set<string>();
 
   /** Datas informadas no popup enquanto a API não devolve fimPeriodo correto. */
   private readonly pendingCustodyByEquipment = new Map<
@@ -102,35 +109,16 @@ export class ManagerAreaComponent implements OnInit, OnDestroy {
     public layout: LayoutService,
     private authService: AuthService,
     private loanService: LoanService,
+    private equipamentService: EquipamentService,
     private userService: UserService,
     private dialog: MatDialog,
     private snackBar: MatSnackBar
   ) {}
 
-  get custodianteAtualLabel(): string {
-    return this.authService.getFullName() || localStorage.getItem('user') || '-';
-  }
-
-  /**
-   * Primeira movimentação → gerente logado (mesmo com responsável diferente no empréstimo).
-   * Após alteração de custódia → nome do custodiante da movimentação exibida.
-   */
+  /** Custodiante = responsável selecionado no empréstimo ou na alteração de custódia. */
   getCustodianteLabel(element: CustodiaResponse): string {
-    const key = String(element?.equipmentId ?? '').trim();
     const nome = String(element?.custodianteNome ?? '').trim();
-    const manager = this.custodianteAtualLabel;
-
-    if (!this.hadCustodyChangeForEquipment(key)) {
-      return manager;
-    }
-
-    return nome || manager;
-  }
-
-  private hadCustodyChangeForEquipment(equipmentKey: string): boolean {
-    if (!equipmentKey) return false;
-    if (this.changedEquipmentIds.has(equipmentKey)) return true;
-    return this.getMovementsForEquipment(equipmentKey).length > 1;
+    return nome || '-';
   }
 
   private getMovementsForEquipment(equipmentId: string): CustodiaResponse[] {
@@ -141,92 +129,13 @@ export class ManagerAreaComponent implements OnInit, OnDestroy {
     );
   }
 
-  private syncChangedEquipmentIdsFromHistory(items: CustodiaResponse[]): void {
-    const keys = new Set(
-      items.map((item) => String(item?.equipmentId ?? '').trim()).filter(Boolean)
-    );
-    keys.forEach((key) => {
-      if (this.getMovementsForEquipment(key).length > 1) {
-        this.changedEquipmentIds.add(key);
-      }
-    });
-  }
-
-  /**
-   * Área do Gerente: exibe custódias do gerente dono, não do responsável atribuído.
-   * Escopo exclusivo desta tela — não altera loan-list, empréstimos nem asset-details.
-   */
-  private filterMovementsOwnedByLoggedManager(movements: CustodiaResponse[]): CustodiaResponse[] {
-    const byEquipment = new Map<string, CustodiaResponse[]>();
-
-    for (const item of movements) {
-      const key = String(item?.equipmentId ?? '').trim();
-      if (!key) continue;
-      const group = byEquipment.get(key) ?? [];
-      group.push(item);
-      byEquipment.set(key, group);
-    }
-
-    const allowedKeys = new Set<string>();
-    byEquipment.forEach((group, key) => {
-      if (this.isEquipmentOwnedByLoggedManager(group)) {
-        allowedKeys.add(key);
-      }
-    });
-
-    return movements.filter((item) => {
-      const key = String(item?.equipmentId ?? '').trim();
-      return key && allowedKeys.has(key);
-    });
-  }
-
-  private isEquipmentOwnedByLoggedManager(group: CustodiaResponse[]): boolean {
-    const loggedId = this.getLoggedManagerId();
-    const ownerIds = group
-      .map((item) => this.readCustodyOwnerId(item))
-      .filter((id): id is string => !!id);
-
-    if (loggedId && ownerIds.length > 0) {
-      return ownerIds.some((id) => id === loggedId);
-    }
-
-    return !this.isLoggedUserAssignedCustodian(group);
-  }
-
-  private readCustodyOwnerId(item: CustodiaResponse): string | null {
-    const record = item as CustodiaResponse & { managerId?: string; gerenteId?: string };
-    const candidates = [record.managerId, record.gerenteId]
-      .map((value) => String(value ?? '').trim())
-      .filter((value) => this.isUuid(value));
-    return candidates[0] ?? null;
-  }
-
-  /** Responsável atribuído (ex.: Adriano) ≠ gerente dono da custódia (ex.: Victor). */
-  private isLoggedUserAssignedCustodian(group: CustodiaResponse[]): boolean {
-    const loggedNames = this.getLoggedPersonNames();
-    if (!loggedNames.size) return false;
-
-    const oldest = [...group].sort((a, b) => this.compareCustodyRecency(a, b))[0];
-    const oldestCustodiante = this.normalizePersonName(oldest?.custodianteNome);
-    return !!oldestCustodiante && loggedNames.has(oldestCustodiante);
-  }
-
   private getLoggedPersonNames(): Set<string> {
     const names = new Set<string>();
-    const fullName = this.normalizePersonName(this.authService.getFullName());
-    const username = this.normalizePersonName(localStorage.getItem('user'));
+    const fullName = normalizePersonName(this.authService.getFullName());
+    const username = normalizePersonName(localStorage.getItem('user'));
     if (fullName) names.add(fullName);
     if (username) names.add(username);
     return names;
-  }
-
-  private normalizePersonName(value?: string | null): string {
-    return String(value ?? '')
-      .trim()
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .replace(/\s+/g, ' ');
   }
 
   ngOnInit(): void {
@@ -263,49 +172,142 @@ export class ManagerAreaComponent implements OnInit, OnDestroy {
         );
 
     this.subs.add(
-      request$.pipe(finalize(() => (this.isLoading = false))).subscribe({
-        next: (response) => {
-          const content = (response?.content ?? []) as CustodiaResponse[];
-          this.applyListPipeline(content, page, size, filtersOnServer);
-        },
-        error: (err) => {
-          if (filtersOnServer && this.loanService.isManagerCustodyAdvancedSearchUnavailable(err)) {
-            this.advancedSearchAvailable = false;
-            this.carregarItensCustodia(page, size);
-            return;
+      request$
+        .pipe(
+          switchMap((response) => {
+            const content = (response?.content ?? []) as CustodiaResponse[];
+            const items = this.buildCustodyListItems(content, filtersOnServer);
+            return this.excludeReturnedAvailableEquipment(items);
+          }),
+          finalize(() => (this.isLoading = false))
+        )
+        .subscribe({
+          next: (items) => this.publishCustodyPage(items, page, size),
+          error: (err) => {
+            if (filtersOnServer && this.loanService.isManagerCustodyAdvancedSearchUnavailable(err)) {
+              this.advancedSearchAvailable = false;
+              this.carregarItensCustodia(page, size);
+              return;
+            }
+            this.lidarComErro('Erro ao carregar itens sob custódia', err);
           }
-          this.lidarComErro('Erro ao carregar itens sob custódia', err);
-        }
-      })
+        })
     );
   }
 
-  /**
-   * Um registro por equipamento (movimentação mais recente), depois filtros e paginação local.
-   */
-  private applyListPipeline(
+  private buildCustodyListItems(
     content: CustodiaResponse[],
-    page: number,
-    size: number,
     filtersOnServer: boolean
-  ): void {
+  ): CustodiaResponse[] {
     this.allCustodyMovements = content.map((item) => ({ ...item }));
-    this.syncChangedEquipmentIdsFromHistory(this.allCustodyMovements);
-    this.allCustodyMovements = this.filterMovementsOwnedByLoggedManager(this.allCustodyMovements);
+
+    if (!environment.production) {
+      const loggedId = this.getLoggedManagerId();
+      const loggedNames = this.getLoggedPersonNames();
+      console.group('[Custódia] Diagnóstico de escopo');
+      console.log('Usuário logado:', this.authService.getFullName() || localStorage.getItem('user'), loggedId);
+      console.log('Registros brutos da API:', content.length);
+      console.table(
+        diagnoseCustodyScope(content, loggedId, loggedNames).map((row) => ({
+          equipamento: row.equipmentId,
+          movimentacoes: row.movementCount,
+          donoResolvido: row.resolvedOwner,
+          custodianteVigente: row.currentCustodian,
+          exibirParaLogado: row.visibleToLoggedUser,
+          gerenteIdApi: row.stableOwnerIds.join(', ') || '(ausente)'
+        }))
+      );
+      if (!content.length) {
+        console.warn(
+          '[Custódia] API retornou lista vazia. Se o equipamento sumiu após transferência, ' +
+            'o backend provavelmente filtra pelo custodiante vigente em vez do dono da cadeia.'
+        );
+      }
+      console.groupEnd();
+    }
+
     this.allCustodyMovements = this.filterProjectLoanMovements(this.allCustodyMovements);
+    this.allCustodyMovements = filterMovementsForLoggedCustodyOwner(
+      this.allCustodyMovements,
+      this.getLoggedManagerId(),
+      this.getLoggedPersonNames()
+    );
 
     let items = this.dedupeLatestPerEquipment(this.allCustodyMovements);
     items = this.applyPendingCustodyOverrides(items);
     if (!filtersOnServer) {
       items = this.applyClientFilters(items);
     }
-    items = this.sortCustodiaList(items);
+    return this.sortCustodiaList(items);
+  }
 
+  private publishCustodyPage(items: CustodiaResponse[], page: number, size: number): void {
+    this.visibleCustodyItems = items;
     this.totalElements = items.length;
     const start = page * size;
     this.dataSource = items.slice(start, start + size);
     this.pageIndex = page;
     this.pageSize = size;
+  }
+
+  /**
+   * Equipamento devolvido (DISPONIVEL) não permanece sob custódia do gerente nesta listagem.
+   * Custódia vencida com equipamento ainda EM_USO continua visível (destaque laranja).
+   */
+  private excludeReturnedAvailableEquipment(items: CustodiaResponse[]): Observable<CustodiaResponse[]> {
+    const equipmentIds = [
+      ...new Set(
+        items
+          .map((item) => String(item?.equipmentId ?? '').trim())
+          .filter((id) => !!id)
+      )
+    ];
+
+    if (!equipmentIds.length) {
+      return of(items);
+    }
+
+    return forkJoin(
+      equipmentIds.map((equipmentKey) => this.fetchEquipmentStatusForCustodyKey(equipmentKey))
+    ).pipe(
+      map((rows) => {
+        const availableIds = new Set(
+          rows
+            .filter((row) => row.status === StatusType.DISPONIVEL)
+            .map((row) => row.equipmentId)
+        );
+        return items.filter((item) => !availableIds.has(String(item?.equipmentId ?? '').trim()));
+      }),
+      catchError(() => of(items))
+    );
+  }
+
+  private readEquipmentStatus(equipment: unknown): StatusType | null {
+    if (!equipment || typeof equipment !== 'object') return null;
+    const record = equipment as Record<string, unknown>;
+    return normalizeStatusType(record['statusName'] ?? record['status'] ?? record['statusEquipamento']);
+  }
+
+  /**
+   * Custódia pode trazer equipmentId como UUID ou como tombo/código (ex.: "1112").
+   * findById só aceita UUID — tombo usa advanced-search para não gerar BUSINESS_ERROR no interceptor.
+   */
+  private fetchEquipmentStatusForCustodyKey(
+    equipmentKey: string
+  ): Observable<{ equipmentId: string; status: StatusType | null }> {
+    const lookup$ = this.isUuid(equipmentKey)
+      ? this.equipamentService.findById(equipmentKey)
+      : this.equipamentService.advancedSearch({ tombo: equipmentKey }, 0, 1).pipe(
+          map((response: { content?: unknown[] }) => response?.content?.[0] ?? null)
+        );
+
+    return lookup$.pipe(
+      map((equipment) => ({
+        equipmentId: equipmentKey,
+        status: this.readEquipmentStatus(equipment)
+      })),
+      catchError(() => of({ equipmentId: equipmentKey, status: null as StatusType | null }))
+    );
   }
 
   aplicarFiltros(): void {
@@ -336,9 +338,7 @@ export class ManagerAreaComponent implements OnInit, OnDestroy {
 
   verDetalhes(element: CustodiaResponse): void {
     const equipmentKey = String(element?.equipmentId ?? '').trim();
-    const history = this.allCustodyMovements
-      .filter((item) => String(item?.equipmentId ?? '').trim() === equipmentKey)
-      .sort((a, b) => this.compareCustodyRecency(b, a));
+    const history = this.getMovementsForEquipment(equipmentKey);
 
     this.router.navigate(['/equipaments', element.equipmentId, 'detalhes'], {
       state: { custodyHistory: history }
@@ -358,17 +358,11 @@ export class ManagerAreaComponent implements OnInit, OnDestroy {
     });
   }
 
-  /** IDs exibidos na listagem (dedupe + filtros), alinhado ao que o usuário vê na tabela. */
   private getEquipmentIdsForGeneralDialog(): string[] {
-    if (!this.allCustodyMovements.length) {
-      return this.extractEquipmentIdsFromContent(this.dataSource);
+    if (this.visibleCustodyItems.length) {
+      return this.extractEquipmentIdsFromContent(this.visibleCustodyItems);
     }
-
-    let items = this.dedupeLatestPerEquipment(this.allCustodyMovements);
-    if (!this.advancedSearchAvailable) {
-      items = this.applyClientFilters(items);
-    }
-    return this.extractEquipmentIdsFromContent(items);
+    return this.extractEquipmentIdsFromContent(this.dataSource);
   }
 
   alterarCustodia(element: CustodiaResponse): void {
@@ -485,19 +479,21 @@ export class ManagerAreaComponent implements OnInit, OnDestroy {
         if (!custodiante.includes(nome) && !label.includes(nome)) return false;
       }
 
-      if (dataInicio) {
+      if (dataInicio || dataFim) {
         const inicio = new Date(item?.inicioPeriodo ?? '');
-        const min = new Date(dataInicio);
-        min.setHours(0, 0, 0, 0);
-        if (isNaN(inicio.getTime()) || inicio < min) return false;
-      }
+        if (isNaN(inicio.getTime())) return false;
 
-      if (dataFim) {
-        if (!item?.fimPeriodo) return false;
-        const fim = new Date(item.fimPeriodo);
-        const max = new Date(dataFim);
-        max.setHours(23, 59, 59, 999);
-        if (isNaN(fim.getTime()) || fim > max) return false;
+        if (dataInicio) {
+          const min = new Date(dataInicio);
+          min.setHours(0, 0, 0, 0);
+          if (inicio < min) return false;
+        }
+
+        if (dataFim) {
+          const max = new Date(dataFim);
+          max.setHours(23, 59, 59, 999);
+          if (inicio > max) return false;
+        }
       }
 
       return true;
@@ -598,7 +594,6 @@ export class ManagerAreaComponent implements OnInit, OnDestroy {
       const key = String(id ?? '').trim();
       if (!key) return;
 
-      this.changedEquipmentIds.add(key);
       this.pendingCustodyByEquipment.set(key, {
         inicioPeriodo: payload.inicioPeriodo,
         fimPeriodo: payload.fimPeriodo ?? null
@@ -642,23 +637,55 @@ export class ManagerAreaComponent implements OnInit, OnDestroy {
     this.subs.add(
       ref.afterClosed().subscribe((payload?: CustodyChangeRequest) => {
         if (!payload) return;
-
-        this.isLoading = true;
-        this.subs.add(
-          this.loanService
-            .changeCustodyInBatch(payload)
-            .pipe(finalize(() => (this.isLoading = false)))
-            .subscribe({
-              next: () => {
-                this.rememberPendingCustodyChange(payload);
-                this.snackBar.open('Custódia alterada com sucesso!', 'Fechar', { duration: 5000 });
-                this.carregarItensCustodia(this.pageIndex, this.pageSize);
-              },
-              error: (err) =>
-                this.lidarComErro('Não foi possível alterar a custódia. Verifique os IDs e tente novamente.', err)
-            })
-        );
+        this.applyBatchCustodyChange(payload);
       })
+    );
+  }
+
+  /**
+   * AC4 — processamento em massa: uma única chamada POST /change-custody com todos os IDs
+   * selecionados no diálogo geral (mesmo colaborador e período). Modo linha envia um ID no mesmo fluxo.
+   */
+  private applyBatchCustodyChange(payload: CustodyChangeRequest): void {
+    const equipmentIds = [
+      ...new Set((payload.equipmentIds ?? []).map((id) => String(id).trim()).filter(Boolean))
+    ];
+
+    if (!equipmentIds.length) {
+      this.lidarComErro('Nenhum equipamento selecionado para alteração de custódia.', null);
+      return;
+    }
+
+    const batchRequest: CustodyChangeRequest = {
+      collaboratorId: payload.collaboratorId,
+      inicioPeriodo: payload.inicioPeriodo,
+      fimPeriodo: payload.fimPeriodo ?? null,
+      equipmentIds
+    };
+
+    this.isLoading = true;
+    this.subs.add(
+      this.loanService
+        .changeCustodyInBatch(batchRequest)
+        .pipe(finalize(() => (this.isLoading = false)))
+        .subscribe({
+          next: () => {
+            this.rememberPendingCustodyChange({ ...batchRequest, equipmentIds });
+            const msg =
+              equipmentIds.length > 1
+                ? `Custódia alterada com sucesso para ${equipmentIds.length} equipamentos.`
+                : 'Custódia alterada com sucesso!';
+            this.snackBar.open(msg, 'Fechar', { duration: 5000 });
+            this.carregarItensCustodia(this.pageIndex, this.pageSize);
+          },
+          error: (err) =>
+            this.lidarComErro(
+              equipmentIds.length > 1
+                ? 'Não foi possível alterar a custódia em lote. Verifique os IDs e tente novamente.'
+                : 'Não foi possível alterar a custódia. Verifique os IDs e tente novamente.',
+              err
+            )
+        })
     );
   }
 
@@ -667,6 +694,7 @@ export class ManagerAreaComponent implements OnInit, OnDestroy {
     this.snackBar.open(mensagem, 'Fechar', { duration: 5000 });
     this.isLoading = false;
     this.dataSource = [];
+    this.visibleCustodyItems = [];
     this.totalElements = 0;
   }
 
@@ -714,54 +742,7 @@ export class ManagerAreaComponent implements OnInit, OnDestroy {
   }
 
   private getLoggedManagerId(): string | null {
-    const storedUserId = localStorage.getItem('userId')?.trim();
-    if (storedUserId && this.isUuid(storedUserId)) return storedUserId;
-
-    const token = localStorage.getItem('access_token') || localStorage.getItem('token');
-    if (!token) return null;
-
-    const payload = this.decodeJwtPayload(token);
-    if (!payload) return null;
-
-    const candidates: string[] = [
-      payload['managerId'],
-      payload['manager_id'],
-      payload['logged_user_id'],
-      payload['loggedUserId'],
-      payload['user_id'],
-      payload['userId'],
-      payload['id'],
-      payload['sub']
-    ]
-      .map((v) => String(v ?? '').trim())
-      .filter(Boolean);
-
-    const uuid = candidates.find((v) => this.isUuid(v)) ?? null;
-    if (uuid) {
-      localStorage.setItem('userId', uuid);
-    }
-    return uuid;
-  }
-
-  private decodeJwtPayload(token: string): Record<string, unknown> | null {
-    const parts = token.split('.');
-    if (parts.length < 2) return null;
-
-    const base64Url = parts[1];
-    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-    const padded = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), '=');
-
-    try {
-      const json = decodeURIComponent(
-        atob(padded)
-          .split('')
-          .map((c) => `%${('00' + c.charCodeAt(0).toString(16)).slice(-2)}`)
-          .join('')
-      );
-      return JSON.parse(json);
-    } catch {
-      return null;
-    }
+    return this.authService.getLoggedUserId();
   }
 
   private isUuid(value: string): boolean {

@@ -68,12 +68,12 @@ export class CadastroComponent implements OnInit {
   private readonly dialog = inject(MatDialog);
 
   private readonly apiBase = environment.apiUrl;
-  
+
   equipamentoForm!: FormGroup;
   proprietaries: ProprietaryResponse[] = [];
   selectedFiles: File[] = [];
   previsualizacoes: string[] = [];
-  
+
   imagensSalvas: Array<{ id: string; url: string }> = [];
   imagensMantidasIds: string[] = [];
   imagensExcluidasIds: string[] = [];
@@ -159,6 +159,7 @@ export class CadastroComponent implements OnInit {
   }
 
   abrirLightbox(imageUrl: string): void {
+    if (!imageUrl) return;
     this.dialog.open(ImageLightboxComponent, {
       data: { imageUrl },
       panelClass: 'lightbox-dialog-panel',
@@ -166,7 +167,7 @@ export class CadastroComponent implements OnInit {
       maxWidth: '100vw',
       maxHeight: '100vh',
       width: '100vw',
-      height: '100vh',
+      height: '100vh'
     });
   }
 
@@ -221,11 +222,6 @@ export class CadastroComponent implements OnInit {
       return;
     }
 
-    if (!this.selectedFiles.length && this.imagensSalvas.length === 0) {
-      this.showMessage('Anexe pelo menos uma imagem.');
-      return;
-    }
-
     const raw = this.equipamentoForm.getRawValue();
     const payload: EquipmentRequest & Record<string, unknown> = {
       ...raw,
@@ -242,17 +238,17 @@ export class CadastroComponent implements OnInit {
     action$.pipe(
       switchMap(res => hasImages
         ? this.equipmentService.manageImages(res.id, this.imagensMantidasIds, this.selectedFiles).pipe(
-            catchError((err) => {
-              console.error('Erro ao gerenciar imagens:', err);
-              this.showMessage('Erro ao carregar imagens, mas dados salvos.');
-              return of(null);
-            })
-          )
+          catchError((err) => {
+            console.error('Erro ao gerenciar imagens:', err);
+            this.showMessage('Erro ao carregar imagens, mas dados salvos.');
+            return of(null);
+          })
+        )
         : of(null)
       )
     ).subscribe({
       next: () => this.router.navigate(['/equipaments']),
-      error: (err) => this.showMessage(err.error?.message || 'Erro no servidor')
+      error: (err) => this.handleApiError(err, 'Erro ao salvar equipamento.')
     });
   }
 
@@ -311,8 +307,53 @@ export class CadastroComponent implements OnInit {
           verticalPosition: 'top',
         });
       },
-      error: (err) => this.showMessage(this.resolveApiErrorMessage(err, 'Erro ao criar proprietário.')),
+      error: (err) => this.handleApiError(err, 'Erro ao criar proprietário.'),
     });
+  }
+
+  private handleApiError(err: unknown, fallback: string): void {
+    const details = this.equipmentService.normalizeErrorDetails(err);
+    const code = details.code ? ` (${details.code})` : '';
+    const message = details.message || fallback;
+    const violations = this.formatViolations(details.violations);
+    const finalMessage = violations ? `${message}${code} — ${violations}` : `${message}${code}`;
+    this.showMessage(finalMessage);
+  }
+
+  private formatViolations(violations: unknown): string | null {
+    if (!violations) return null;
+
+    if (Array.isArray(violations)) {
+      return violations
+        .map((violation) => {
+          if (!violation || typeof violation !== 'object') {
+            return String(violation ?? '').trim();
+          }
+
+          const record = violation as Record<string, unknown>;
+          const field = typeof record['field'] === 'string' ? record['field'] : typeof record['property'] === 'string' ? record['property'] : '';
+          const message = typeof record['message'] === 'string' ? record['message'] : typeof record['defaultMessage'] === 'string' ? record['defaultMessage'] : '';
+          return field && message ? `${field}: ${message}` : message || String(record).trim();
+        })
+        .filter(Boolean)
+        .join(' • ');
+    }
+
+    if (violations && typeof violations === 'object') {
+      const entries = Object.entries(violations as Record<string, unknown>);
+      return entries
+        .map(([field, value]) => {
+          const messages = Array.isArray(value) ? value : [value];
+          const text = messages
+            .map((entry) => String(entry ?? '').trim())
+            .filter(Boolean)
+            .join('; ');
+          return text ? `${field}: ${text}` : field;
+        })
+        .join(' • ');
+    }
+
+    return String(violations).trim();
   }
 
   private mergeProprietary(

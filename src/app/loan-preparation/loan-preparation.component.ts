@@ -276,7 +276,7 @@ export class LoanPreparationComponent implements OnInit {
   }
 
   cancelar(): void {
-    this.router.navigate(['/loans']); 
+    this.router.navigate(['/loans']);
   }
 
   bloquearLetras(event: KeyboardEvent): void {

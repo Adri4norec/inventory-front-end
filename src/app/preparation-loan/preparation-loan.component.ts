@@ -45,10 +45,12 @@ import { ToolbarUserActionsComponent } from '../shared/toolbar-user-actions/tool
 import { ImageLightboxComponent } from '../shared/components/image-lightbox/image-lightbox.component';
 import { AutocompleteCreateComponent } from '../shared/components/autocomplete-create/autocomplete-create.component';
 import { environment } from '../../environments/environment';
+import { provideBrazilianDate } from '../core/provide-brazilian-date';
 
 @Component({
   selector: 'app-preparation-loan',
   standalone: true,
+  providers: [...provideBrazilianDate()],
   imports: [
     CommonModule,
     RouterModule,
@@ -163,6 +165,13 @@ export class PreparationLoanComponent implements OnInit {
         dataSedexControl?.setValue(null);
       }
       dataSedexControl?.updateValueAndValidity();
+    });
+
+    this.loanForm.get('loanType')?.valueChanges.subscribe((value) => {
+      if (!this.currentLoanId) return;
+      if (value === 'PROJECT' || value === 'PERSONAL') {
+        this.loanService.rememberLoanType(this.currentLoanId, value);
+      }
     });
 
     this.setupAccessoryFiltering();
@@ -299,13 +308,57 @@ export class PreparationLoanComponent implements OnInit {
     return nestedId;
   }
 
+  /** Normaliza tipo vindo da API (loanType, tipoEmprestimo, PROJETO/PESSOAL, etc.). */
+  private extractLoanType(loan: unknown): LoanType | null {
+    if (!loan || typeof loan !== 'object') return null;
+    const record = loan as Record<string, unknown>;
+    const raw =
+      record['loanType'] ??
+      record['tipoEmprestimo'] ??
+      record['tipo_emprestimo'] ??
+      record['loan_type'];
+    return this.normalizeLoanTypeValue(raw);
+  }
+
+  private normalizeLoanTypeValue(raw: unknown): LoanType | null {
+    if (raw == null) return null;
+    if (typeof raw === 'object') {
+      const obj = raw as Record<string, unknown>;
+      return this.normalizeLoanTypeValue(obj['name'] ?? obj['value'] ?? obj['code'] ?? obj['id']);
+    }
+    const normalized = String(raw).trim().toUpperCase();
+    if (!normalized) return null;
+    if (normalized === 'PROJECT' || normalized === 'PROJETO') return 'PROJECT';
+    if (normalized === 'PERSONAL' || normalized === 'PESSOAL') return 'PERSONAL';
+    return null;
+  }
+
+  /** Garante valor no radio mesmo quando o controle está desabilitado (devolução, em uso, etc.). */
+  private setLoanTypeControl(loanType: LoanType): void {
+    const control = this.loanForm.get('loanType');
+    if (!control) return;
+    if (control.disabled) {
+      control.enable({ emitEvent: false });
+      control.setValue(loanType, { emitEvent: false });
+      control.disable({ emitEvent: false });
+    } else {
+      control.setValue(loanType, { emitEvent: false });
+    }
+  }
+
+  private syncLoanTypeFromLoan(loan: Partial<LoanDetailResponse & LoanListResponse> | undefined): void {
+    const loanType = this.extractLoanType(loan) ?? this.extractLoanType(this.loanDetails);
+    if (loanType) {
+      this.setLoanTypeControl(loanType);
+    }
+  }
+
   private patchLoanFormFromLoan(loan: Partial<LoanDetailResponse & LoanListResponse>): void {
     if (!loan) return;
 
     const colaboradorId = this.extractColaboradorId(loan as any);
 
     this.loanForm.patchValue({
-      loanType: (loan as any).loanType ?? this.loanForm.get('loanType')?.value ?? '',
       loanStatus: (loan as any).status ?? this.loanForm.get('loanStatus')?.value,
       responsavel: colaboradorId || '',
       projeto: (loan as any).helpdeskTicket ??
@@ -328,6 +381,8 @@ export class PreparationLoanComponent implements OnInit {
     if (Array.isArray((loan as any).acessorios)) {
       this.setLoanAccessories((loan as any).acessorios as LoanAcessorioResponse[]);
     }
+
+    this.syncLoanTypeFromLoan(loan);
   }
 
   private setLoanAccessories(acessorios: LoanAcessorioResponse[]): void {
@@ -432,11 +487,9 @@ export class PreparationLoanComponent implements OnInit {
     return typeof item === 'string' ? item : item.name || '';
   }
 
-  get shouldShowLoanDetailsFields(): boolean {
-    if (!this.isReturnSupportMode && !this.isReturnFromUsoFlow) return true;
-
-    const st = normalizeStatusType(this.loanForm?.get('loanStatus')?.value);
-    return st === StatusType.EM_DEVOLUCAO || st === StatusType.EM_USO;
+  /** Sedex: em formulário desabilitado, .value do controle pode vir vazio — usa getRawValue/loanDetails. */
+  get isEnviadoSedexChecked(): boolean {
+    return !!this.loanForm.getRawValue().enviadoSedex || !!this.loanDetails?.enviadoSedex;
   }
 
   get pageTitle(): string {
@@ -458,8 +511,14 @@ export class PreparationLoanComponent implements OnInit {
     if (!this.currentLoanId) return;
 
     if (this.isReturnSupportMode) {
-      if (currentStatus !== StatusType.EM_USO) {
-        this.snackBar.open('Fluxo de devolução (suporte) disponível apenas quando o status está EM_USO.', 'OK', { duration: 4500 });
+      const statusOk =
+        currentStatus === StatusType.EM_USO || currentStatus === StatusType.EM_DEVOLUCAO;
+      if (!statusOk) {
+        this.snackBar.open(
+          'Fluxo de devolução (suporte) disponível apenas quando o status está EM_USO ou EM_DEVOLUCAO.',
+          'OK',
+          { duration: 4500 }
+        );
         this.router.navigate(['/loans']);
         return;
       }
@@ -551,6 +610,9 @@ export class PreparationLoanComponent implements OnInit {
 
         this.applyPreparationDefaultStepRules(loan?.status);
         this.applyAssinaturaToBaixaRules(loan?.status);
+        if (loan) {
+          this.syncLoanTypeFromLoan(loan as any);
+        }
       }
     });
   }
@@ -598,6 +660,7 @@ export class PreparationLoanComponent implements OnInit {
 
           this.applyPreparationDefaultStepRules(loan.status);
           this.applyAssinaturaToBaixaRules(loan.status);
+          this.syncLoanTypeFromLoan(loan as any);
         }
       },
       error: (err) => console.error(err)
@@ -863,8 +926,12 @@ export class PreparationLoanComponent implements OnInit {
     }
 
     if (this.isReturnSupportMode) {
-      if (this.selectedFiles.length < 1) {
-        this.snackBar.open('Selecione ao menos 1 foto para registrar a devolução.', 'OK', { duration: 3500 });
+      if (this.selectedFiles.length < 1 && this.imagensExcluidasIds.length < 1) {
+        this.snackBar.open(
+          'Selecione ao menos 1 foto nova ou altere as fotos existentes.',
+          'OK',
+          { duration: 3500 }
+        );
         return false;
       }
       return true;
@@ -897,22 +964,31 @@ export class PreparationLoanComponent implements OnInit {
   private handleSupportReturn(isUsoFlow: boolean) {
     const loanId = this.currentLoanId as string;
     const equipmentId = this.equipamentId || this.loanDetails?.equipmentId || '';
-    const request$ = this.loanService.registerSupportReturn(loanId, this.selectedFiles).pipe(
-      concatMap(() => (isUsoFlow && this.pdfFile) ? this.loanService.uploadDocuments(loanId, [this.pdfFile]) : of([])),
-      concatMap(() => this.buildImageSync$(equipmentId)),
-      concatMap(() => equipmentId ? this.equipamentService.syncEquipmentPhotos(equipmentId).pipe(
-        catchError(() => of(null))
-      ) : of(null))
-    );
+    const request$ = this.loanService
+      .registerSupportReturn(loanId, this.imagensMantidasIds, this.selectedFiles)
+      .pipe(
+        concatMap(() =>
+          isUsoFlow && this.pdfFile
+            ? this.loanService.uploadDocuments(loanId, [this.pdfFile])
+            : of([])
+        ),
+        concatMap(() =>
+          equipmentId
+            ? this.equipamentService.syncEquipmentPhotos(equipmentId).pipe(catchError(() => of(null)))
+            : of(null)
+        )
+      );
 
     return request$.pipe(
       tap(() => {
-        this.loanForm.patchValue({ loanStatus: StatusType.EM_DEVOLUCAO });
+        if (isUsoFlow) {
+          this.loanForm.patchValue({ loanStatus: StatusType.EM_DEVOLUCAO });
+        }
         this.loanRefreshService.notifyRefresh();
         this.loadAvailablePerParts();
         const msg = isUsoFlow
           ? 'Devolução iniciada! Status atualizado para EM_DEVOLUCAO.'
-          : 'Devolução registrada com sucesso!';
+          : 'Fotos de devolução registradas com sucesso!';
         this.finalizeSuccess(msg, '/loans');
       }),
       catchError((err) => {
@@ -1025,10 +1101,14 @@ export class PreparationLoanComponent implements OnInit {
           : of(null);
 
         return forkJoin([uploadDocs$, syncImages$]).pipe(
-          tap(() => this.finalizeSuccess('Empréstimo preparado com sucesso!', '/equipaments')),
+          tap(() => {
+            this.loanRefreshService.notifyRefresh();
+            this.finalizeSuccess('Empréstimo preparado com sucesso!', '/loans');
+          }),
           catchError(() => {
+            this.loanRefreshService.notifyRefresh();
             this.snackBar.open('Empréstimo salvo, mas falha ao enviar documentos/imagens.', 'Atenção', { duration: 4500 });
-            this.router.navigate(['/equipaments']);
+            this.router.navigate(['/loans']);
             return of(null);
           })
         );

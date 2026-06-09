@@ -19,11 +19,12 @@
 
       <mat-card-content>
         <form [formGroup]="loanForm" class="form-container">
-          
+
           <div class="row-inputs">
             <mat-form-field appearance="outline">
               <mat-label>Tombo / Identificador</mat-label>
-              <input matInput formControlName="tomboSearch" (keydown)="bloquearLetras($event)" (keyup.enter)="buscarEquipamento()">
+              <input matInput formControlName="tomboSearch" (keydown)="bloquearLetras($event)"
+                (keyup.enter)="buscarEquipamento()">
               <button mat-icon-button matSuffix (click)="buscarEquipamento()" type="button">
                 <mat-icon>search</mat-icon>
               </button>
@@ -41,7 +42,8 @@
 
             <mat-form-field appearance="outline">
               <mat-label>Data do Empréstimo</mat-label>
-              <input matInput [matDatepicker]="picker" formControlName="loanDate" placeholder="DD/MM/AAAA" (click)="picker.open()">
+              <input matInput [matDatepicker]="picker" formControlName="loanDate" placeholder="DD/MM/AAAA"
+                (click)="picker.open()">
               <mat-datepicker-toggle matSuffix [for]="picker"></mat-datepicker-toggle>
               <mat-datepicker #picker></mat-datepicker>
             </mat-form-field>
@@ -52,7 +54,8 @@
                 <mat-radio-button value="PERSONAL">Pessoal</mat-radio-button>
                 <mat-radio-button value="PROJECT">Projeto</mat-radio-button>
               </mat-radio-group>
-              <mat-error *ngIf="loanForm.get('loanType')?.touched && loanForm.get('loanType')?.hasError('required')" class="loan-type-error">
+              <mat-error *ngIf="loanForm.get('loanType')?.touched && loanForm.get('loanType')?.hasError('required')"
+                class="loan-type-error">
                 Seleção obrigatória
               </mat-error>
             </div>
@@ -82,8 +85,8 @@
             <div class="accessory-input-grid">
               <mat-form-field appearance="outline" class="field-half">
                 <mat-label>Buscar acessório</mat-label>
-                <input matInput [formControl]="accessoryControl" [matAutocomplete]="accessoryAuto"
-                  autocomplete="off" placeholder="Digite para buscar...">
+                <input matInput [formControl]="accessoryControl" [matAutocomplete]="accessoryAuto" autocomplete="off"
+                  placeholder="Digite para buscar...">
                 <mat-autocomplete #accessoryAuto="matAutocomplete" [displayWith]="displayAccessoryFn"
                   (optionSelected)="onAccessorySelected($event.option.value)">
                   <mat-option *ngFor="let item of filteredPerParts | async" [value]="item"
@@ -95,11 +98,13 @@
 
               <mat-form-field appearance="outline" class="field-quarter">
                 <mat-label>Quantidade</mat-label>
-                  <input matInput type="number" [formControl]="accessoryQuantityControl" min="1" [attr.max]="selectedAccessory?.quantity || null" step="1">
+                <input matInput type="number" [formControl]="accessoryQuantityControl" min="1"
+                  [attr.max]="selectedAccessory?.quantity || null" step="1">
               </mat-form-field>
 
               <div class="field-quarter accessory-add-button">
-                <button mat-raised-button color="primary" class="accessory-add-action" type="button" [disabled]="accessoryQuantityControl.invalid || !selectedAccessory" (click)="addAccessoryToLoan()">
+                <button mat-raised-button color="primary" class="accessory-add-action" type="button"
+                  [disabled]="accessoryQuantityControl.invalid || !selectedAccessory" (click)="addAccessoryToLoan()">
                   <mat-icon>add</mat-icon>
                   Adicionar
                 </button>
@@ -111,7 +116,8 @@
             <div *ngIf="addedAccessories.length > 0" class="accessory-tags">
               <div *ngFor="let item of addedAccessories; let i = index" class="accessory-tag">
                 <span>{{ item.name }} — {{ item.quantity }} / {{ item.originalTotalQuantity }}</span>
-                <button mat-icon-button color="warn" type="button" aria-label="Remover acessório" (click)="removeAccessory(i)">
+                <button mat-icon-button color="warn" type="button" aria-label="Remover acessório"
+                  (click)="removeAccessory(i)">
                   <mat-icon>close</mat-icon>
                 </button>
               </div>

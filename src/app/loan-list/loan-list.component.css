@@ -50,14 +50,20 @@
   flex-shrink: 0;
 }
 
+.table-scroll {
+  overflow-x: auto;
+}
+
 table {
   width: 100%;
+  min-width: 1160px; /* Garante que a tabela não encolha, criando scroll horizontal em telas pequenas */
   table-layout: fixed; /* Mantém colunas estáveis + evita quebra de linha */
 }
 
 /* Por padrão, nenhuma coluna “invade” a próxima: se não couber, mostra ... */
-td.mat-mdc-cell {
-  white-space: nowrap;
+td.mat-mdc-cell {  font-size: 14px;
+  color: #1f2937;
+  padding: 0 16px !important;  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -77,6 +83,12 @@ td.mat-mdc-cell > * {
   overflow: visible !important;
   text-overflow: clip !important;
   max-width: none !important;
+  padding: 0 16px !important;
+}
+
+/* Cabeçalho da coluna Codigo - sem quebra de linha */
+.mat-column-codigo.mat-mdc-header-cell {
+  white-space: nowrap !important;
 }
 
 /* O "..." costuma vir do label interno do MDC */
@@ -122,37 +134,38 @@ td.mat-mdc-cell > * {
   display: none;
 }
 
-.mat-column-codigo { width: 14%; min-width: 140px; }
-.mat-column-categoria { width: 15%; min-width: 120px; }
+.mat-column-codigo { width: 10%; min-width: 140px; }
 .mat-column-name { width: 12%; min-width: 110px; font-weight: 500; }
-.mat-column-description { width: 12%; min-width: 120px; }
-.mat-column-status { width: 12%; min-width: 120px; }
-.mat-column-loanDate { width: 10%; min-width: 100px; }
-.mat-column-returnDate { width: 10%; min-width: 100px; }
-.mat-column-acoes { width: 80px; text-align: center; padding-right: 8px !important; }
+.mat-column-categoria { width: 13%; min-width: 120px; }
+.mat-column-status { width: 13%; min-width: 145px; }
+.mat-column-description { width: 16%; min-width: 200px; }
+.mat-column-loanDate { width: 10%; min-width: 115px; }
+.mat-column-returnDate { width: 10%; min-width: 115px; }
+.mat-column-acoes { width: 80px; text-align: center; padding-right: 8px !important; flex-shrink: 0; }
 
-/* Fora de Características, tudo deve ficar em uma única linha (sem quebrar palavras). */
+/* Colunas com truncamento */
 .mat-column-codigo,
 .mat-column-categoria,
-.mat-column-name,
-.mat-column-status,
-.mat-column-loanDate,
-.mat-column-returnDate {
+.mat-column-name {
   white-space: nowrap;
   word-break: keep-all;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-/* Afastamento maior entre Características e Status (header + células) */
-th.mat-column-description,
-td.mat-column-description {
-  padding-right: 28px !important;
+/* Status - sem truncamento */
+.mat-column-status {
+  white-space: nowrap;
+  overflow: visible;
+  text-overflow: unset;
 }
 
-th.mat-column-status,
-td.mat-column-status {
-  padding-left: 28px !important;
+/* Datas - sem truncamento */
+.mat-column-loanDate,
+.mat-column-returnDate {
+  white-space: nowrap;
+  overflow: visible;
+  text-overflow: unset;
 }
 
 /* Apenas Características mantém truncamento com tooltip ( ... ) */

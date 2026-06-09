@@ -1,7 +1,7 @@
 <div class="page-wrapper">
   <mat-toolbar color="primary" class="page-toolbar">
-    <button mat-icon-button (click)="layout.toggleMenu()" aria-label="Abrir/fechar menu">
-      <mat-icon>menu</mat-icon>
+    <button mat-button (click)="layout.toggleMenu()" aria-label="Abrir/fechar menu">
+      Menu
     </button>
     <span class="toolbar-title">
       {{ isVisualizacao ? 'Detalhes do Equipamento' : (isEdicao ? 'Editar Equipamento' : 'Cadastro de Equipamento') }}
@@ -20,7 +20,6 @@
 
           <mat-form-field appearance="outline" class="field-half">
             <mat-label>Nome do Equipamento</mat-label>
-            <mat-icon matPrefix>memory</mat-icon>
             <input matInput formControlName="name" placeholder="Ex: Notebook Dell Latitude" [readonly]="isVisualizacao">
             <mat-error *ngIf="equipamentoForm.get('name')?.hasError('required')">
               Nome é obrigatório
@@ -29,7 +28,6 @@
 
           <mat-form-field appearance="outline" class="field-half">
             <mat-label>Categoria</mat-label>
-            <mat-icon matPrefix>inventory_2</mat-icon>
 
             <mat-select formControlName="categoria" [disabled]="isVisualizacao">
               <mat-option value="">Selecione uma categoria</mat-option>
@@ -62,7 +60,6 @@
 
           <mat-form-field appearance="outline" class="field-half field-topo">
             <mat-label>Tombo / Identificador (opcional)</mat-label>
-            <mat-icon matPrefix>tag</mat-icon>
             <input matInput type="text" inputmode="numeric" formControlName="topo" placeholder="Ex: 1234"
               (keydown)="bloquearLetras($event)" [readonly]="isVisualizacao" />
             <mat-error *ngIf="equipamentoForm.get('topo')?.hasError('pattern')">
@@ -71,14 +68,13 @@
           </mat-form-field>
 
           <app-autocomplete-create class="field-half" label="Proprietário"
-            placeholder="Digite para buscar proprietário..." icon="person" [options]="proprietaries" bindLabel="name"
-            bindValue="id" formControlName="proprietaryId" requiredError="Proprietário é obrigatório"
+            placeholder="Digite para buscar proprietário..." [options]="proprietaries" bindLabel="name" bindValue="id"
+            formControlName="proprietaryId" requiredError="Proprietário é obrigatório"
             (search)="onSearchProprietario($event)" (createNew)="onCreateNewProprietario($event)">
           </app-autocomplete-create>
 
           <mat-form-field appearance="outline" class="field-half">
             <mat-label>Tipo de Uso</mat-label>
-            <mat-icon matPrefix>category</mat-icon>
             <mat-select formControlName="usageType">
               <mat-option value="COLABORADOR">
                 <mat-icon>person_pin</mat-icon> Colaborador
@@ -94,7 +90,6 @@
 
           <mat-form-field appearance="outline" class="field-half">
             <mat-label>Data de Vencimento (opcional)</mat-label>
-            <mat-icon matPrefix>event</mat-icon>
             <input matInput [matDatepicker]="dueDatePicker" formControlName="dueDate"
               (click)="!isVisualizacao && dueDatePicker.open()" placeholder="DD/MM/AAAA"
               aria-label="Data de vencimento do equipamento" />
@@ -105,7 +100,6 @@
 
           <mat-form-field appearance="outline" class="field-full field-characteristics">
             <mat-label>Características (Marca, Modelo, Especificações)</mat-label>
-            <mat-icon matPrefix>description</mat-icon>
             <textarea matInput formControlName="description" rows="3" [readonly]="isVisualizacao"
               placeholder="Ex: Dell Latitude 5420, i5-11ª geração, 16GB RAM"></textarea>
             <mat-error *ngIf="equipamentoForm.get('description')?.hasError('required')">
@@ -115,14 +109,12 @@
 
           <div class="field-full upload-section">
             <h3 class="section-subtitle">
-              <mat-icon>photo_camera</mat-icon>
               Fotos do Equipamento
               <span class="gallery-count" *ngIf="totalFotos > 0">({{ totalFotos }})</span>
             </h3>
 
             <div class="upload-row" *ngIf="!isVisualizacao">
               <button type="button" mat-stroked-button color="primary" (click)="fileInput.click()">
-                <mat-icon>add_photo_alternate</mat-icon>
                 Adicionar Fotos
               </button>
               <input #fileInput type="file" (change)="onFileSelected($event)" multiple accept="image/*"
@@ -132,34 +124,26 @@
               </span>
             </div>
 
-            <div class="gallery-grid"
-              *ngIf="imagensSalvas.length > 0 || previsualizacoes.length > 0">
+            <div class="gallery-grid" *ngIf="imagensSalvas.length > 0 || previsualizacoes.length > 0">
               <div *ngFor="let img of imagensSalvas" class="gallery-thumb">
-                <img [src]="img.url" alt="Foto do equipamento"
-                  (click)="abrirLightbox(img.url)" />
-                <button type="button" mat-mini-fab color="warn"
-                  class="gallery-remove-btn"
+                <img [src]="img.url" alt="Foto do equipamento" (click)="abrirLightbox(img.url)" />
+                <button type="button" mat-mini-fab color="warn" class="gallery-remove-btn"
                   (click)="removerFotoSalva(img.id)" *ngIf="!isVisualizacao">
-                  <mat-icon>close</mat-icon>
+                  X
                 </button>
               </div>
 
-              <div *ngFor="let preview of previsualizacoes; let i = index"
-                class="gallery-thumb gallery-thumb-new">
-                <img [src]="preview" alt="Nova foto"
-                  (click)="abrirLightbox(preview)" />
+              <div *ngFor="let preview of previsualizacoes; let i = index" class="gallery-thumb gallery-thumb-new">
+                <img [src]="preview" alt="Nova foto" (click)="abrirLightbox(preview)" />
                 <span class="gallery-new-badge">Nova</span>
-                <button type="button" mat-mini-fab color="warn"
-                  class="gallery-remove-btn"
-                  (click)="removerNovaFoto(i)" *ngIf="!isVisualizacao">
-                  <mat-icon>close</mat-icon>
+                <button type="button" mat-mini-fab color="warn" class="gallery-remove-btn" (click)="removerNovaFoto(i)"
+                  *ngIf="!isVisualizacao">
+                  X
                 </button>
               </div>
             </div>
 
-            <div *ngIf="imagensSalvas.length === 0 && previsualizacoes.length === 0"
-              class="gallery-empty">
-              <mat-icon>photo_library</mat-icon>
+            <div *ngIf="imagensSalvas.length === 0 && previsualizacoes.length === 0" class="gallery-empty">
               <span>Nenhuma foto associada</span>
             </div>
           </div>
@@ -172,16 +156,13 @@
       <mat-card-actions align="end" class="form-actions">
         <button mat-raised-button style="background-color: #e0e0e0; color: rgba(0,0,0,.87);" type="button"
           *ngIf="isVisualizacao" (click)="cancelar()" class="btn-fechar">
-          <mat-icon>close</mat-icon>
           Fechar
         </button>
         <button mat-stroked-button type="button" *ngIf="!isVisualizacao" (click)="cancelar()" class="btn-cancelar">
-          <mat-icon>close</mat-icon>
           Cancelar
         </button>
         <button mat-raised-button color="primary" type="button" *ngIf="!isVisualizacao"
           [disabled]="equipamentoForm.invalid" (click)="salvar()" class="btn-salvar">
-          <mat-icon>save</mat-icon>
           {{ isEdicao ? 'Atualizar Equipamento' : 'Salvar Equipamento' }}
         </button>
       </mat-card-actions>

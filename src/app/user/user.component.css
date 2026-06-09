@@ -141,7 +141,7 @@
 .email-cell:hover {
   overflow: visible;
   white-space: normal;
-  cursor: help;
+  cursor: default;
 }
 
 /* ─── Perfil / Role Chips ────────────────────────── */

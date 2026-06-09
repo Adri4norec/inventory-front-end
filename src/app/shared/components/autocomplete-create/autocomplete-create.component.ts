@@ -280,6 +280,11 @@ export class AutocompleteCreateComponent<T = Record<string, unknown>>
     const match = this.findOptionByStoredValue();
     if (match) {
       this.displayControl.setValue(this.getLabel(match), { emitEvent: false });
+      return;
+    }
+
+    if (typeof this.storedValue === 'string') {
+      this.displayControl.setValue(this.storedValue, { emitEvent: false });
     }
   }
 
