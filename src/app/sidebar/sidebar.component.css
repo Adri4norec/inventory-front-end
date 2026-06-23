@@ -5,23 +5,42 @@
   min-height: 0;
   overflow-x: hidden;
   overflow-y: auto;
-  background-color: #283593;
-  color: #ffffff;
-  padding: 15px;
+  background: var(--irt-blue-primary);
+  color: var(--irt-white);
+  padding: calc(var(--page-toolbar-height, 64px) + 15px) 15px 15px;
   font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   display: flex;
   flex-direction: column;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--irt-blue-accent) 28%, transparent) transparent;
+}
+
+.sidebar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sidebar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sidebar::-webkit-scrollbar-thumb {
+  background-color: color-mix(in srgb, var(--irt-blue-accent) 28%, transparent);
+  border-radius: 999px;
+}
+
+.sidebar::-webkit-scrollbar-thumb:hover {
+  background-color: color-mix(in srgb, var(--irt-blue-accent) 42%, transparent);
 }
 
 .logo-area {
   padding-bottom: 20px;
   margin-bottom: 15px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  border-bottom: 1px solid var(--irt-border-subtle);
   text-align: center;
 }
 
 .logo-area h2 {
-  color: #ffffff;
+  color: var(--irt-white);
   margin: 0;
   font-size: 1.5rem;
   letter-spacing: 1px;
@@ -45,22 +64,22 @@
   border-radius: 6px;
   cursor: pointer;
   font-weight: 600;
-  color: #ffffff;
+  color: var(--irt-white);
   transition: all 0.2s ease;
 }
 
 .menu-header:hover {
-  background-color: #3949ab;
+  background-color: var(--irt-bg-hover);
 }
 
 .menu-header.active {
-  background-color: #303f9f;
-  box-shadow: inset 4px 0 0 #ff4081;
+  background-color: var(--irt-bg-active);
+  box-shadow: inset 4px 0 0 var(--irt-blue-accent);
 }
 
 .arrow {
   font-size: 0.8rem;
-  color: #c5cae9;
+  color: var(--irt-text-muted);
 }
 
 .submenu-list {
@@ -72,7 +91,7 @@
 .submenu-list a {
   display: block;
   padding: 10px 15px 10px 20px;
-  color: #e8eaf6;
+  color: var(--irt-text-muted);
   text-decoration: none;
   border-radius: 6px;
   transition: all 0.2s ease;
@@ -89,28 +108,28 @@
   width: 5px;
   height: 5px;
   border-radius: 50%;
-  background-color: #7986cb;
+  background-color: var(--irt-blue-accent);
   transition: all 0.2s ease;
 }
 
 .submenu-list a:hover {
-  background-color: rgba(255, 255, 255, 0.1);
-  color: #ffffff;
+  background-color: var(--irt-bg-hover);
+  color: var(--irt-white);
   padding-left: 25px;
 }
 
 .submenu-list a:hover::before {
-  background-color: #ff4081;
+  background-color: var(--irt-white);
 }
 
 .active-link {
-  background-color: rgba(255, 255, 255, 0.15) !important;
-  color: #ffffff !important;
+  background-color: var(--irt-bg-active) !important;
+  color: var(--irt-white) !important;
   font-weight: bold;
 }
 
 .active-link::before {
-  background-color: #ff4081 !important;
+  background-color: var(--irt-white) !important;
   height: 60% !important;
   border-radius: 2px !important;
 }

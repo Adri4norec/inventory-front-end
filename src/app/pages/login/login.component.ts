@@ -3,7 +3,6 @@ import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
 
-// Imports do Angular Material
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -12,6 +11,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 
 import { AuthService } from '../../services/auth/auth.service';
+import { PermissionService } from '../../services/auth/permission.service';
 import { AuthType, LoginRequest } from '../../models/auth/LoginRequest';
 import { mapLoginError } from './mapLoginError';
 
@@ -27,15 +27,16 @@ import { mapLoginError } from './mapLoginError';
     MatInputModule,
     MatButtonModule,
     MatIconModule,
-    MatSlideToggleModule
+    MatSlideToggleModule,
   ],
   templateUrl: './login.component.html',
-  styleUrl: './login.component.css'
+  styleUrls: ['./login.component.css']
 })
 export class LoginComponent {
   loginForm: FormGroup;
-  errorMessage: string = '';
-  hidePassword = true; // Controle para mostrar/esconder senha
+  errorMessage = '';
+  hidePassword = true;
+
   readonly AuthType = {
     LOCAL: 'LOCAL' as AuthType,
     LDAP: 'LDAP' as AuthType,
@@ -44,6 +45,7 @@ export class LoginComponent {
   constructor(
     private fb: FormBuilder,
     private authService: AuthService,
+    private permissionService: PermissionService,
     private router: Router
   ) {
     this.loginForm = this.fb.group({
@@ -53,7 +55,7 @@ export class LoginComponent {
     });
   }
 
-  onLogin() {
+  onLogin(): void {
     if (this.loginForm.invalid) return;
 
     this.errorMessage = '';
@@ -62,15 +64,23 @@ export class LoginComponent {
       username: string;
       password: string;
     };
+
     const authData: LoginRequest = {
-      username,
+      username: username.trim(),
       password,
-      authType: useLdap ? this.AuthType.LDAP : this.AuthType.LOCAL
+      authType: useLdap ? this.AuthType.LDAP : this.AuthType.LOCAL,
     };
 
     this.authService.login(authData).subscribe({
       next: () => {
-        void this.router.navigateByUrl('/equipaments');
+        this.permissionService.reload().subscribe({
+          next: () => {
+            void this.router.navigateByUrl('/inventario');
+          },
+          error: () => {
+            void this.router.navigateByUrl('/inventario');
+          }
+        });
       },
       error: (err) => {
         console.error('Objeto de erro completo:', err);

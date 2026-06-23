@@ -1,5 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { RouterModule, Router } from '@angular/router';
 
 import { MatTableModule } from '@angular/material/table';
@@ -13,18 +14,22 @@ import { MatMenuModule } from '@angular/material/menu';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
 
 import { UserResponse } from '../models/users/UserResponse';
 import { UserService } from '../services/user/user.service';
 import { ConfirmDialogComponent } from '../shared/components/confirm-dialog/confirm-dialog.component';
 import { LayoutService } from '../services/layout/layout.service';
 import { ToolbarUserActionsComponent } from '../shared/toolbar-user-actions/toolbar-user-actions.component';
+import { ToolbarLogoComponent } from '../shared/toolbar-logo/toolbar-logo.component';
 
 @Component({
   selector: 'app-user',
   standalone: true,
   imports: [
     CommonModule,
+    FormsModule,
     RouterModule,
     MatTableModule,
     MatButtonModule,
@@ -37,8 +42,11 @@ import { ToolbarUserActionsComponent } from '../shared/toolbar-user-actions/tool
     MatDividerModule,
     MatDialogModule,
     MatPaginatorModule,
+    MatFormFieldModule,
+    MatInputModule,
     ConfirmDialogComponent,
-    ToolbarUserActionsComponent
+    ToolbarUserActionsComponent,
+    ToolbarLogoComponent,
   ],
   templateUrl: './user.component.html',
   styleUrls: ['./user.component.css']
@@ -46,15 +54,22 @@ import { ToolbarUserActionsComponent } from '../shared/toolbar-user-actions/tool
 export class UserComponent implements OnInit {
   usuarios: UserResponse[] = [];
   isLoading = true;
+  isFilterCollapsed = false;
   totalElements = 0;
   pageSize = 10;
   pageIndex = 0;
+
+  filtros = {
+    nome: '',
+    email: '',
+    usuario: ''
+  };
 
   displayedColumns: string[] = [
     'fullName',
     'email',
     'username',
-    'roleName',
+    'profileName',
     'actions'
   ];
 
@@ -69,17 +84,36 @@ export class UserComponent implements OnInit {
     this.carregarDados();
   }
 
+  aplicarFiltros(): void {
+    this.pageIndex = 0;
+    this.carregarDados();
+  }
+
+  limparFiltros(): void {
+    this.filtros = {
+      nome: '',
+      email: '',
+      usuario: ''
+    };
+    this.aplicarFiltros();
+  }
+
+  toggleFilterPanel(): void {
+    this.isFilterCollapsed = !this.isFilterCollapsed;
+  }
+
   handlePageEvent(e: PageEvent): void {
     this.pageIndex = e.pageIndex;
     this.pageSize = e.pageSize;
     this.carregarDados(this.pageIndex, this.pageSize);
   }
 
-  carregarDados(page = 0, size = this.pageSize): void {
+  carregarDados(page = this.pageIndex, size = this.pageSize): void {
     this.isLoading = true;
-    this.userService.listAll(page, size).subscribe({
+
+    this.userService.advancedSearch(this.filtros, { page, size }).subscribe({
       next: (response) => {
-        this.usuarios = response.content;
+        this.usuarios = response.content || [];
         this.totalElements = response.totalElements;
         this.pageIndex = response.number;
         this.isLoading = false;
@@ -99,6 +133,13 @@ export class UserComponent implements OnInit {
 
   editarUsuario(user: UserResponse): void {
     this.router.navigate(['/users/editar', user.id]);
+  }
+
+  profileChipClass(profileName?: string | null): string {
+    const normalized = (profileName ?? '').trim().toLowerCase();
+    if (normalized === 'admin') return 'admin';
+    if (normalized === 'colaborador') return 'colaborador';
+    return 'pendente';
   }
 
   excluirUsuario(user: UserResponse): void {

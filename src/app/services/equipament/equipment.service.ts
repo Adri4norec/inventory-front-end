@@ -1,143 +1,77 @@
-import { Injectable } from '@angular/core';
-import { HttpClient, HttpParams, HttpErrorResponse } from '@angular/common/http';
+import { inject, Injectable } from '@angular/core';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable, Subject } from 'rxjs';
-import { tap } from 'rxjs/operators';
-import { EquipmentLoanResponse, 
-  EquipmentRequest, 
-  EquipmentResponse, 
-  LoanRequest, 
-  PageResponse 
+import { map, tap } from 'rxjs/operators';
+
+import {
+  EquipmentRequest,
+  EquipmentResponse,
+  PageResponse,
 } from '../../models/equipaments/equipament.model';
+import {
+  EquipmentListOptions,
+  EquipmentSearchFilters,
+} from '../../models/equipaments/equipment-search.filters';
+import { normalizePageResponse } from '../../core/http/page-response.util';
 import { environment } from '../../../environments/environment';
+import {
+  buildEquipmentSearchParams,
+  withEquipmentDefaultSort,
+} from './equipment-query.mapper';
 
 @Injectable({ providedIn: 'root' })
 export class EquipamentService {
-  private readonly API = `${environment.apiUrl}/api/v1/equipments`;
+  private readonly http = inject(HttpClient);
+  private readonly baseUrl = `${environment.apiUrl}/api/v1/equipments`;
 
-  constructor(private http: HttpClient) { }
-
-  private withDefaultSort(params: HttpParams): HttpParams {
-    return params
-      .append('sort', 'dateHour,desc')
-      .append('sort', 'id,desc');
-  }
+  private readonly equipmentPhotosRefresh$ = new Subject<string>();
+  readonly onEquipmentPhotosRefresh$ = this.equipmentPhotosRefresh$.asObservable();
 
   list(
     page: number,
     size: number,
-    disponivel: boolean = false,
-    proprietaryId: string | null = null
-  ): Observable<any> {
+    options: EquipmentListOptions = {},
+  ): Observable<PageResponse<EquipmentResponse>> {
+    const { disponivel = false, proprietaryId = null } = options;
+
     let params = new HttpParams()
-      .set('page', page.toString())
-      .set('size', size.toString())
-      .set('apenasDisponiveis', disponivel.toString());
+      .set('page', String(page))
+      .set('size', String(size))
+      .set('apenasDisponiveis', String(disponivel));
 
     if (proprietaryId) {
       params = params.set('proprietaryId', proprietaryId);
     }
 
-    params = this.withDefaultSort(params);
-    return this.http.get<any>(this.API, { params });
+    params = withEquipmentDefaultSort(params);
+
+    return this.http
+      .get<PageResponse<EquipmentResponse> | EquipmentResponse[]>(this.baseUrl, { params })
+      .pipe(map((res) => normalizePageResponse(res, page, size)));
   }
 
   save(record: EquipmentRequest): Observable<EquipmentResponse> {
-    return this.http.post<EquipmentResponse>(this.API, record);
+    return this.http.post<EquipmentResponse>(this.baseUrl, record);
   }
-
 
   findById(id: string): Observable<EquipmentResponse> {
-    return this.http.get<EquipmentResponse>(`${this.API}/${id}`);
+    return this.http.get<EquipmentResponse>(`${this.baseUrl}/${id}`);
   }
 
-  advancedSearch(filtros: any, page: number, size: number): Observable<any> {
-    let params = new HttpParams()
-      .set('page', page.toString())
-      .set('size', size.toString());
+  advancedSearch(
+    filters: EquipmentSearchFilters,
+    page: number,
+    size: number,
+  ): Observable<PageResponse<EquipmentResponse>> {
+    const params = buildEquipmentSearchParams(filters, page, size);
 
-    if (filtros.nome) params = params.set('nome', filtros.nome);
-    if (filtros.categoria) params = params.set('categoria', filtros.categoria);
-    if (filtros.tombo) params = params.set('tombo', filtros.tombo);
-    if (filtros.caracteristicas) params = params.set('caracteristicas', filtros.caracteristicas);
-
-    const selectedStatuses: string[] = filtros.statuses ?? [];
-    if (selectedStatuses.length > 0) {
-      selectedStatuses.forEach((statusValue: string) => {
-        params = params.append('status', statusValue);
-      });
-    }
-
-    if (filtros.dataInicio) {
-      const dataInicioFormatada = new Date(filtros.dataInicio).toISOString().split('T')[0];
-      params = params.set('dataInicio', dataInicioFormatada);
-    }
-    
-    if (filtros.dataFim) {
-      const dataFimFormatada = new Date(filtros.dataFim).toISOString().split('T')[0];
-      params = params.set('dataFim', dataFimFormatada);
-    }
-
-    params = this.withDefaultSort(params);
-    return this.http.get<any>(`${this.API}/advanced-search`, { params });
+    return this.http
+      .get<PageResponse<EquipmentResponse> | EquipmentResponse[]>(`${this.baseUrl}/advanced-search`, { params })
+      .pipe(map((res) => normalizePageResponse(res, page, size)));
   }
-  
+
   deleteEquipment(id: string): Observable<void> {
-    return this.http.delete<void>(`${this.API}/${id}`);
-  }
-
-  normalizeErrorDetails(err: unknown): { code?: string; message?: string; violations?: unknown } {
-    const payload = this.extractErrorPayload(err);
-    const error = payload ?? {};
-
-    return {
-      code: this.extractErrorCode(error),
-      message: this.extractErrorMessage(error),
-      violations: this.extractErrorViolations(error)
-    };
-  }
-
-  extractErrorMessage(err: unknown, fallback = 'Erro no servidor'): string {
-    const payload = this.extractErrorPayload(err);
-    const message = payload?.['message'] ?? (payload?.['error'] as { message?: string } | undefined)?.message;
-    return typeof message === 'string' && message.trim() ? message : fallback;
-  }
-
-  extractErrorCode(err: unknown): string | undefined {
-    const payload = this.extractErrorPayload(err);
-    const code = payload?.['code'] ?? (payload?.['error'] as { code?: string } | undefined)?.code;
-    return typeof code === 'string' && code.trim() ? code : undefined;
-  }
-
-  extractErrorViolations(err: unknown): unknown {
-    const payload = this.extractErrorPayload(err);
-    return payload?.['violations'] ?? (payload?.['error'] as { violations?: unknown } | undefined)?.violations;
-  }
-
-  private extractErrorPayload(err: unknown): Record<string, unknown> | null {
-    if (!err || typeof err !== 'object') {
-      return null;
-    }
-
-    const record = err as Record<string, unknown>;
-    const body = record['error'];
-
-    if (body && typeof body === 'object' && body !== null) {
-      return body as Record<string, unknown>;
-    }
-
-    if (body && typeof body === 'string') {
-      return { message: body };
-    }
-
-    if (record['message'] && typeof record['message'] === 'string') {
-      return { message: record['message'] };
-    }
-
-    if (err instanceof HttpErrorResponse) {
-      return { message: err.message };
-    }
-
-    return null;
+    return this.http.delete<void>(`${this.baseUrl}/${id}`);
   }
 
   /** @deprecated Use deleteEquipment */
@@ -146,47 +80,43 @@ export class EquipamentService {
   }
 
   update(id: string, record: EquipmentRequest): Observable<EquipmentResponse> {
-    return this.http.put<EquipmentResponse>(`${this.API}/${id}`, record);
+    return this.http.put<EquipmentResponse>(`${this.baseUrl}/${id}`, record);
   }
-
-  private readonly equipmentPhotosRefresh$ = new Subject<string>();
-  readonly onEquipmentPhotosRefresh$ = this.equipmentPhotosRefresh$.asObservable();
 
   syncEquipmentPhotos(id: string): Observable<EquipmentResponse> {
     const params = new HttpParams().set('src', Date.now().toString());
-    return this.http.get<EquipmentResponse>(`${this.API}/${id}`, { params }).pipe(
-      tap(() => this.equipmentPhotosRefresh$.next(id))
+    return this.http.get<EquipmentResponse>(`${this.baseUrl}/${id}`, { params }).pipe(
+      tap(() => this.equipmentPhotosRefresh$.next(id)),
     );
   }
 
   uploadImages(id: string, files: File[]): Observable<EquipmentResponse> {
     const formData = new FormData();
-    files.forEach(file => {
-      formData.append('files', file);
-    });
-    return this.http.post<EquipmentResponse>(`${this.API}/${id}/images`, formData);
+    files.forEach((file) => formData.append('files', file));
+    return this.http.post<EquipmentResponse>(`${this.baseUrl}/${id}/images`, formData);
   }
 
   manageImages(id: string, keepUrls: string[], newFiles: File[]): Observable<string[]> {
-    console.log('[EquipamentService.manageImages] URL:', `${this.API}/${id}/images`);
-    console.log('[EquipamentService.manageImages] keepUrls:', JSON.stringify(keepUrls));
-    console.log('[EquipamentService.manageImages] newFiles:', newFiles.length);
     const formData = new FormData();
     formData.append('keepUrls', new Blob([JSON.stringify(keepUrls)], { type: 'application/json' }));
-    newFiles.forEach(file => formData.append('files', file));
-    return this.http.put<string[]>(`${this.API}/${id}/images`, formData);
+    newFiles.forEach((file) => formData.append('files', file));
+    return this.http.put<string[]>(`${this.baseUrl}/${id}/images`, formData);
   }
 
   search(
     term: string,
     page: number,
-    size: number
-  ): Observable<any> {
-    const params = new HttpParams()
+    size: number,
+  ): Observable<PageResponse<EquipmentResponse>> {
+    let params = new HttpParams()
       .set('term', term)
-      .set('page', page.toString())
-      .set('size', size.toString());
+      .set('page', String(page))
+      .set('size', String(size));
 
-    return this.http.get<any>(`${this.API}/search`, { params: this.withDefaultSort(params) });
+    params = withEquipmentDefaultSort(params);
+
+    return this.http
+      .get<PageResponse<EquipmentResponse> | EquipmentResponse[]>(`${this.baseUrl}/search`, { params })
+      .pipe(map((res) => normalizePageResponse(res, page, size)));
   }
 }

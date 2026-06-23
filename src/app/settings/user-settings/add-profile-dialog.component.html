@@ -1,0 +1,59 @@
+<div class="dialog-shell">
+  <div class="dialog-header">
+    <div class="dialog-title">
+      <mat-icon class="dialog-title-icon">edit</mat-icon>
+      <span>Novo perfil</span>
+    </div>
+    <button mat-icon-button type="button" (click)="close()" aria-label="Fechar">
+      <mat-icon>close</mat-icon>
+    </button>
+  </div>
+
+  <div class="dialog-body" [formGroup]="form">
+    <div class="field-group">
+      <label class="field-label" for="profileNameInput">Nome do perfil</label>
+      <mat-form-field appearance="outline" class="full-width profile-name-field" subscriptSizing="dynamic">
+        <input
+          matInput
+          id="profileNameInput"
+          formControlName="profileName"
+          placeholder="Ex: Consultor"
+          maxlength="30"
+          autocomplete="off" />
+        <mat-error *ngIf="form.get('profileName')?.touched && form.get('profileName')?.hasError('required')">
+          Nome do perfil é obrigatório
+        </mat-error>
+        <mat-error *ngIf="form.get('profileName')?.touched && form.get('profileName')?.hasError('minlength')">
+          Informe ao menos 2 caracteres
+        </mat-error>
+        <mat-error *ngIf="form.get('profileName')?.touched && form.get('profileName')?.hasError('duplicate')">
+          Já existe um perfil com este nome
+        </mat-error>
+      </mat-form-field>
+    </div>
+
+    <h3 class="section-title">Módulos e permissões</h3>
+
+    <div class="module-permission-list" formGroupName="permissions">
+      <div class="module-permission-item" *ngFor="let mod of modules; trackBy: trackModule">
+        <span class="module-label">
+          <mat-icon class="module-label-icon">inventory_2</mat-icon>
+          {{ mod.label }}
+        </span>
+
+        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="permission-select-field">
+          <mat-select [formControlName]="mod.key">
+            <mat-option *ngFor="let opt of permissionOptions" [value]="opt.value">
+              {{ opt.label }}
+            </mat-option>
+          </mat-select>
+        </mat-form-field>
+      </div>
+    </div>
+  </div>
+
+  <div class="dialog-actions">
+    <button mat-stroked-button type="button" class="btn-cancel" (click)="close()">Cancelar</button>
+    <button mat-flat-button color="primary" type="button" class="btn-save" (click)="submit()">Salvar perfil</button>
+  </div>
+</div>

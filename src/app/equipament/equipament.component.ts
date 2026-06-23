@@ -32,20 +32,17 @@ import { MatNativeDateModule } from '@angular/material/core';
 import { PhotoGaleryDialogComponent } from '../photo-galery-dialog/photo-galery-dialog.component';
 import { ConfirmDialogComponent } from '../shared/components/confirm-dialog/confirm-dialog.component';
 import { EquipmentResponse } from '../models/equipaments/equipament.model';
+import { EquipmentSearchFilters } from '../models/equipaments/equipment-search.filters';
+import { formatApiViolations, normalizeApiErrorDetails } from '../core/http/api-error.util';
 import { EquipamentService } from '../services/equipament/equipment.service';
+import { CategoryService } from '../services/equipament/category.service';
 import { LoanRefreshService } from '../services/loan/loan-refresh.service';
 import { AuthService } from '../services/auth/auth.service';
+import { PermissionService } from '../services/auth/permission.service';
 import { LayoutService } from '../services/layout/layout.service';
 import { STATUS_TYPE_LABEL, StatusType, normalizeStatusType, statusColorClass } from '../models/status/status-type';
 import { ToolbarUserActionsComponent } from '../shared/toolbar-user-actions/toolbar-user-actions.component';
-
-const CATEGORIA_OPTIONS = [
-  { value: 'NOTEBOOK', label: 'Notebook' },
-  { value: 'MONITOR', label: 'Monitor' },
-  { value: 'ACESSORIO', label: 'Acessórios' },
-  { value: 'DESKTOP', label: 'Desktop' },
-  { value: 'CELULAR', label: 'Celular' }
-];
+import { ToolbarLogoComponent } from '../shared/toolbar-logo/toolbar-logo.component';
 
 const STATUS_OPTIONS = [
   { value: 'DISPONIVEL', label: 'Disponível' },
@@ -84,7 +81,8 @@ const STATUS_OPTIONS = [
     MatDatepickerModule,
     MatNativeDateModule,
     MatSnackBarModule,
-    ToolbarUserActionsComponent
+    ToolbarUserActionsComponent,
+    ToolbarLogoComponent,
   ],
   templateUrl: './equipament.component.html',
   styleUrls: ['./equipament.component.css']
@@ -93,22 +91,25 @@ export class EquipamentComponent implements OnInit, OnDestroy {
 
   equipamentos: EquipmentResponse[] = [];
   isLoading = true;
+  isFilterCollapsed = false;
   totalElements = 0;
   pageSize = 10;
   pageIndex = 0;
   isColaborador = false;
+  canEditInventory = false;
+  canEditLoans = false;
 
-  filtros = {
+  filtros: EquipmentSearchFilters = {
     nome: '',
-    categoria: '',
+    categorias: [],
     tombo: '',
     caracteristicas: '',
-    dataInicio: null as Date | null,
-    dataFim: null as Date | null,
-    statuses: [] as string[]
+    dataInicio: null,
+    dataFim: null,
+    statuses: [],
   };
 
-  categoriaFilterOptions = CATEGORIA_OPTIONS;
+  categoriaFilterOptions: { value: string; label: string }[] = [];
   statusFilterOptions = STATUS_OPTIONS;
 
   displayedColumns: string[] = [
@@ -126,7 +127,9 @@ export class EquipamentComponent implements OnInit, OnDestroy {
 
   constructor(
     private equipmentService: EquipamentService,
+    private categoryService: CategoryService,
     private authService: AuthService,
+    private permissionService: PermissionService,
     private dialog: MatDialog,
     private router: Router,
     private route: ActivatedRoute,
@@ -139,13 +142,12 @@ export class EquipamentComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.authService.resolveUserRole();
-    this.isColaborador = this.authService.isColaborador();
+    this.permissionService.ensureLoaded().subscribe(() => this.refreshPermissions());
+    this.carregarCategorias();
     this.carregarDados();
 
     this.subs.add(
-      this.authService.userRole$.subscribe(() => {
-        this.isColaborador = this.authService.isColaborador();
-      })
+      this.permissionService.permissions$.subscribe(() => this.refreshPermissions())
     );
 
     this.subs.add(
@@ -184,6 +186,21 @@ export class EquipamentComponent implements OnInit, OnDestroy {
     this.subs.unsubscribe();
   }
 
+  private carregarCategorias(): void {
+    this.categoryService.listAll().subscribe({
+      next: (categories) => {
+        this.categoriaFilterOptions = categories.map((category) => ({
+          value: category.name,
+          label: category.name,
+        }));
+      },
+      error: (err) => {
+        console.error('Erro ao carregar categorias', err);
+        this.categoriaFilterOptions = [];
+      },
+    });
+  }
+
   aplicarFiltros(): void {
     this.pageIndex = 0;
     this.carregarDados();
@@ -192,7 +209,7 @@ export class EquipamentComponent implements OnInit, OnDestroy {
   limparFiltros(): void {
     this.filtros = {
       nome: '',
-      categoria: '',
+      categorias: [],
       tombo: '',
       caracteristicas: '',
       dataInicio: null,
@@ -202,11 +219,26 @@ export class EquipamentComponent implements OnInit, OnDestroy {
     this.aplicarFiltros();
   }
 
-  getStatusSelectLabel(): string {
-    if (!this.filtros.statuses.length) {
+  toggleFilterPanel(): void {
+    this.isFilterCollapsed = !this.isFilterCollapsed;
+  }
+
+  getCategoriaSelectLabel(): string {
+    const categorias = this.filtros.categorias ?? [];
+    if (!categorias.length) {
       return '';
     }
-    return this.filtros.statuses
+    return categorias
+      .map((value) => this.categoriaFilterOptions.find((opt) => opt.value === value)?.label ?? value)
+      .join(', ');
+  }
+
+  getStatusSelectLabel(): string {
+    const statuses = this.filtros.statuses ?? [];
+    if (!statuses.length) {
+      return '';
+    }
+    return statuses
       .map((value) => this.statusFilterOptions.find((opt) => opt.value === value)?.label ?? value)
       .join(', ');
   }
@@ -234,48 +266,12 @@ export class EquipamentComponent implements OnInit, OnDestroy {
   }
 
   private exibirErroDoBackend(err: unknown, fallback: string): void {
-    const details = this.equipmentService.normalizeErrorDetails(err);
+    const details = normalizeApiErrorDetails(err);
     const message = details.message || fallback;
     const code = details.code ? ` (${details.code})` : '';
-    const violations = this.formatViolations(details.violations);
+    const violations = formatApiViolations(details.violations);
     const finalMessage = violations ? `${message}${code} — ${violations}` : `${message}${code}`;
     this.snackBar.open(finalMessage, 'Fechar', { duration: 6000, panelClass: ['error-snackbar'] });
-  }
-
-  private formatViolations(violations: unknown): string | null {
-    if (!violations) return null;
-
-    if (Array.isArray(violations)) {
-      return violations
-        .map((violation) => {
-          if (!violation || typeof violation !== 'object') {
-            return String(violation ?? '').trim();
-          }
-
-          const record = violation as Record<string, unknown>;
-          const field = typeof record['field'] === 'string' ? record['field'] : typeof record['property'] === 'string' ? record['property'] : '';
-          const message = typeof record['message'] === 'string' ? record['message'] : typeof record['defaultMessage'] === 'string' ? record['defaultMessage'] : '';
-          return field && message ? `${field}: ${message}` : message || String(record).trim();
-        })
-        .filter(Boolean)
-        .join(' • ');
-    }
-
-    if (violations && typeof violations === 'object') {
-      const entries = Object.entries(violations as Record<string, unknown>);
-      return entries
-        .map(([field, value]) => {
-          const messages = Array.isArray(value) ? value : [value];
-          const text = messages
-            .map((entry) => String(entry ?? '').trim())
-            .filter(Boolean)
-            .join('; ');
-          return text ? `${field}: ${text}` : field;
-        })
-        .join(' • ');
-    }
-
-    return String(violations).trim();
   }
 
   handlePageEvent(e: PageEvent): void {
@@ -297,6 +293,10 @@ export class EquipamentComponent implements OnInit, OnDestroy {
     return true;
   }
 
+  podeExcluir(status: unknown): boolean {
+    return normalizeStatusType(status) === StatusType.DISPONIVEL;
+  }
+
   editarEquipamento(equipamento: EquipmentResponse): void {
     this.router.navigate(['/cadastro', equipamento.id]);
   }
@@ -305,8 +305,7 @@ export class EquipamentComponent implements OnInit, OnDestroy {
     const dialogRef = this.dialog.open(ConfirmDialogComponent, {
       width: '440px',
       data: {
-        message: `Excluir o equipamento "${equipamento.name}"?`,
-        detail: 'Empréstimos vinculados serão removidos e o item deixará de aparecer nas listagens.'
+        message: `Excluir o equipamento "${equipamento.name}"?`
       },
       disableClose: true
     });
@@ -376,5 +375,11 @@ export class EquipamentComponent implements OnInit, OnDestroy {
   capitalize(text: string | null | undefined): string {
     if (!text) return '-';
     return text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
+  }
+
+  private refreshPermissions(): void {
+    this.canEditInventory = this.permissionService.canEdit('inventory');
+    this.canEditLoans = this.permissionService.canEdit('loans');
+    this.isColaborador = !this.canEditInventory;
   }
 }

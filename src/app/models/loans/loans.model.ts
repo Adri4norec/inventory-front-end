@@ -59,6 +59,13 @@ export interface LoanAcessorioResponse {
 /** @deprecated Use LoanAcessorioResponse */
 export type LoanAccessoryResponse = LoanAcessorioResponse;
 
+export interface ActiveLoanSummaryResponse {
+  id?: string;
+  colaboradorId?: string | number;
+  responsavel?: string;
+  helpdeskTicket?: string;
+}
+
 export interface LoanDetailResponse {
   id: string;
   equipmentId?: string;
@@ -125,6 +132,7 @@ export interface CustodiaResponse {
 export interface ManagerCustodySearchFilters {
   equipmentId?: string;
   nome?: string;
+  custodianteId?: string;
   dataInicio?: string;
   dataFim?: string;
   loanType?: LoanType;

@@ -10,101 +10,97 @@
   </div>
 
   <div class="dialog-body" [formGroup]="form">
-    <div class="field-block">
-      <ng-container *ngIf="isGeneralMode">
-        <div class="equipment-picker" (click)="$event.stopPropagation()">
-          <mat-form-field appearance="outline" class="full-width" subscriptSizing="dynamic">
-            <mat-label>ID / Tombo</mat-label>
-            <mat-icon matPrefix>inventory_2</mat-icon>
-            <input matInput [ngModel]="equipmentInputDisplay" [ngModelOptions]="{ standalone: true }"
-              [placeholder]="equipmentPanelOpen ? 'Ex.: 1112, 1113 ou digite para filtrar' : 'Selecione um ou mais IDs / Tombos'"
-              [readonly]="!equipmentPanelOpen" autocomplete="off" (click)="openEquipmentPanel()"
-              (focus)="openEquipmentPanel()" (ngModelChange)="onEquipmentInputChange($event)" />
-            <mat-icon matSuffix class="equipment-picker-toggle" role="button" tabindex="-1"
-              aria-label="Abrir lista de IDs" (click)="toggleEquipmentPanel($event)">
-              arrow_drop_down
-            </mat-icon>
-          </mat-form-field>
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+      <div><strong>Campos</strong></div>
+      <button mat-icon-button type="button" (click)="toggleFilterPanel()"
+        [attr.aria-label]="isFilterCollapsed ? 'Expandir campos' : 'Ocultar campos'">
+        <mat-icon>{{ isFilterCollapsed ? 'keyboard_arrow_down' : 'keyboard_arrow_up' }}</mat-icon>
+      </button>
+    </div>
+    <div *ngIf="!isFilterCollapsed">
+      <div class="field-block">
+        <ng-container *ngIf="isGeneralMode">
+          <div class="equipment-picker">
+            <mat-form-field appearance="outline" class="full-width equipment-select-field" subscriptSizing="dynamic"
+              (click)="toggleEquipmentList($event)">
+              <mat-label>ID / Tombo</mat-label>
+              <mat-icon matPrefix>inventory_2</mat-icon>
+              <input matInput readonly tabindex="-1" class="equipment-readonly-input"
+                [value]="getEquipmentIdsSelectLabel()" placeholder="Selecione um ou mais IDs" />
+              <mat-icon matSuffix class="equipment-picker-arrow">
+                {{ equipmentListOpen ? 'arrow_drop_up' : 'arrow_drop_down' }}
+              </mat-icon>
+              <mat-error
+                *ngIf="form.get('equipmentIdsMulti')?.touched && form.get('equipmentIdsMulti')?.hasError('required')">
+                Informe ao menos um ID / Tombo
+              </mat-error>
+            </mat-form-field>
 
-          <div class="equipment-checkbox-panel" *ngIf="equipmentPanelOpen">
-            <mat-checkbox *ngFor="let id of filteredAvailableEquipmentIds" class="equipment-checkbox-item"
-              [checked]="isEquipmentSelected(id)" (change)="toggleEquipmentId(id, $event.checked)">
-              {{ id }}
-            </mat-checkbox>
-
-            <p *ngIf="filteredAvailableEquipmentIds.length === 0" class="equipment-empty-filter">
-              Nenhum ID / Tombo encontrado.
-            </p>
+            <div *ngIf="equipmentListOpen" class="equipment-list-container" (click)="$event.stopPropagation()">
+              <label *ngFor="let opt of equipmentSelectOptions; trackBy: trackEquipmentOption"
+                class="equipment-checkbox-item">
+                <input type="checkbox" class="equipment-native-checkbox" [checked]="isEquipmentSelected(opt.value)"
+                  (change)="onEquipmentToggle(opt.value, $any($event.target).checked)" />
+                <span>{{ opt.label }}</span>
+              </label>
+            </div>
           </div>
+        </ng-container>
+
+        <app-autocomplete-create *ngIf="isRowMode" class="full-width" label="ID / Tombo"
+          placeholder="ID / Tombo do item selecionado" icon="inventory_2" [options]="filteredEquipmentOptions"
+          bindLabel="id" bindValue="id" formControlName="equipmentIdSingle" requiredError="Informe o ID / Tombo"
+          [showCreateButton]="false" (search)="onSearchEquipment($event)">
+        </app-autocomplete-create>
+
+        <div class="helper-text" *ngIf="isRowMode && data.custodianteNome">
+          Custodiante atual: {{ data.custodianteNome }}
         </div>
-
-        <div class="helper-text selected-equipment-summary" *ngIf="getEquipmentIdsSelectLabel()">
-          Selecionados: {{ getEquipmentIdsSelectLabel() }}
-        </div>
-
-        <div class="equipment-field-error"
-          *ngIf="form.get('equipmentIdsMulti')?.touched && form.get('equipmentIdsMulti')?.hasError('required')">
-          Informe ao menos um ID / Tombo
-        </div>
-      </ng-container>
-
-      <app-autocomplete-create *ngIf="isRowMode" class="full-width" label="ID / Tombo"
-        placeholder="ID / Tombo do item selecionado" icon="inventory_2" [options]="filteredEquipmentOptions"
-        bindLabel="id" bindValue="id" formControlName="equipmentIdSingle" requiredError="Informe o ID / Tombo"
-        [showCreateButton]="false" (search)="onSearchEquipment($event)">
-      </app-autocomplete-create>
-
-      <div class="helper-text" *ngIf="isRowMode && data.custodianteNome">
-        Custodiante atual: {{ data.custodianteNome }}
       </div>
-      <div class="helper-text" *ngIf="isGeneralMode">
-        Digite IDs separados por vírgula ou marque na lista ao filtrar.
+
+      <div class="field-block">
+        <app-autocomplete-create class="full-width" label="Novo custodiante"
+          placeholder="Digite para buscar responsável..." icon="person" [options]="filteredUsers" bindLabel="fullName"
+          bindValue="id" formControlName="collaboratorId" requiredError="Responsável é obrigatório"
+          [showCreateButton]="false" (search)="onSearchCollaborator($event)">
+        </app-autocomplete-create>
+      </div>
+
+      <div class="field-block">
+        <div class="field-label">Data/Hora de início da nova custódia:</div>
+        <mat-form-field appearance="outline" class="full-width" subscriptSizing="dynamic">
+          <mat-icon matPrefix>event</mat-icon>
+          <input matInput formControlName="startAt" placeholder="DD/MM/AAAA" maxlength="10" inputmode="numeric"
+            autocomplete="off" (input)="onDateInput($event, 'startAt')" />
+          <mat-hint>Horário da movimentação: {{ movementTimeLabel }}</mat-hint>
+          <mat-error *ngIf="form.get('startAt')?.touched && form.get('startAt')?.hasError('required')">
+            Obrigatório
+          </mat-error>
+          <mat-error *ngIf="form.get('startAt')?.touched && form.get('startAt')?.hasError('invalidDate')">
+            Data inválida. Use DD/MM/AAAA
+          </mat-error>
+        </mat-form-field>
+      </div>
+
+      <div class="field-block">
+        <div class="field-label">Data/Hora de fim previsto (opcional):</div>
+        <mat-form-field appearance="outline" class="full-width" subscriptSizing="dynamic">
+          <mat-icon matPrefix>event</mat-icon>
+          <input matInput formControlName="endAt" placeholder="DD/MM/AAAA" maxlength="10" inputmode="numeric"
+            autocomplete="off" (input)="onDateInput($event, 'endAt')" />
+          <mat-hint>Deixe em branco se não houver fim. Horário: {{ movementTimeLabel }}</mat-hint>
+          <mat-error *ngIf="form.get('endAt')?.touched && form.get('endAt')?.hasError('invalidDate')">
+            Data inválida. Use DD/MM/AAAA
+          </mat-error>
+        </mat-form-field>
+        <div class="helper-text">
+          * Se o fim não for informado, será marcado como “(Em aberto)”.
+        </div>
       </div>
     </div>
 
-    <div class="field-block">
-      <app-autocomplete-create class="full-width" label="Novo custodiante"
-        placeholder="Digite para buscar responsável..." icon="person" [options]="filteredUsers" bindLabel="fullName"
-        bindValue="id" formControlName="collaboratorId" requiredError="Responsável é obrigatório"
-        [showCreateButton]="false" (search)="onSearchCollaborator($event)">
-      </app-autocomplete-create>
-    </div>
-
-    <div class="field-block">
-      <div class="field-label">Data/Hora de início da nova custódia:</div>
-      <mat-form-field appearance="outline" class="full-width" subscriptSizing="dynamic">
-        <mat-icon matPrefix>event</mat-icon>
-        <input matInput formControlName="startAt" placeholder="DD/MM/AAAA" maxlength="10" inputmode="numeric"
-          autocomplete="off" (input)="onDateInput($event, 'startAt')" />
-        <mat-hint>Horário da movimentação: {{ movementTimeLabel }}</mat-hint>
-        <mat-error *ngIf="form.get('startAt')?.touched && form.get('startAt')?.hasError('required')">
-          Obrigatório
-        </mat-error>
-        <mat-error *ngIf="form.get('startAt')?.touched && form.get('startAt')?.hasError('invalidDate')">
-          Data inválida. Use DD/MM/AAAA
-        </mat-error>
-      </mat-form-field>
-    </div>
-
-    <div class="field-block">
-      <div class="field-label">Data/Hora de fim previsto (opcional):</div>
-      <mat-form-field appearance="outline" class="full-width" subscriptSizing="dynamic">
-        <mat-icon matPrefix>event</mat-icon>
-        <input matInput formControlName="endAt" placeholder="DD/MM/AAAA" maxlength="10" inputmode="numeric"
-          autocomplete="off" (input)="onDateInput($event, 'endAt')" />
-        <mat-hint>Deixe em branco se não houver fim. Horário: {{ movementTimeLabel }}</mat-hint>
-        <mat-error *ngIf="form.get('endAt')?.touched && form.get('endAt')?.hasError('invalidDate')">
-          Data inválida. Use DD/MM/AAAA
-        </mat-error>
-      </mat-form-field>
-      <div class="helper-text">
-        * Se o fim não for informado, será marcado como “(Em aberto)”.
-      </div>
+    <div class="dialog-actions">
+      <button mat-stroked-button type="button" (click)="close()">Cancelar</button>
+      <button mat-flat-button color="primary" type="button" (click)="submit()">Confirmar Alteração</button>
     </div>
   </div>
-
-  <div class="dialog-actions">
-    <button mat-stroked-button type="button" (click)="close()">Cancelar</button>
-    <button mat-flat-button color="primary" type="button" (click)="submit()">Confirmar Alteração</button>
-  </div>
-</div>

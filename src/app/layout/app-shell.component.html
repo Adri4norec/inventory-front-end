@@ -1,15 +1,14 @@
 <div
   class="app-shell"
   [class.app-shell--no-sidebar]="!showSidebar"
+  [class.app-shell--menu-open]="showSidebar && layout.isMenuOpen"
   [style.--app-sidebar-width.px]="layout.sidebarWidthPx">
   <aside
     *ngIf="showSidebar"
     class="app-shell__sidebar"
-    [class.app-shell__sidebar--collapsed]="!layout.isMenuOpen"
+    [class.app-shell__sidebar--open]="layout.isMenuOpen"
     [attr.aria-hidden]="!layout.isMenuOpen">
-    <div class="app-shell__sidebar-inner">
-      <app-sidebar></app-sidebar>
-    </div>
+    <app-sidebar></app-sidebar>
   </aside>
 
   <main class="app-shell__main">

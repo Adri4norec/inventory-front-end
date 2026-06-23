@@ -6,7 +6,7 @@
 }
 
 .toolbar-user-actions__name {
-  color: #ffffff;
+  color: var(--irt-white);
   font-weight: 600;
   font-size: 14px;
   max-width: 320px;
@@ -16,11 +16,11 @@
 }
 
 .toolbar-user-actions__logout {
-  color: #ffffff !important;
+  color: var(--irt-white) !important;
   font-weight: 600;
 }
 
 .toolbar-user-actions__logout mat-icon {
-  color: #ffffff !important;
+  color: var(--irt-white) !important;
 }
 

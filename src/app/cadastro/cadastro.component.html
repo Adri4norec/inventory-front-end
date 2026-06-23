@@ -1,10 +1,12 @@
 <div class="page-wrapper">
   <mat-toolbar color="primary" class="page-toolbar">
-    <button mat-button (click)="layout.toggleMenu()" aria-label="Abrir/fechar menu">
-      Menu
+    <button mat-icon-button (click)="layout.toggleMenu()" aria-label="Abrir/fechar menu">
+      <mat-icon>menu</mat-icon>
     </button>
+    <app-toolbar-logo></app-toolbar-logo>
+
     <span class="toolbar-title">
-      {{ isVisualizacao ? 'Detalhes do Equipamento' : (isEdicao ? 'Editar Equipamento' : 'Cadastro de Equipamento') }}
+      {{ isVisualizacao ? 'Detalhes do Equipamento' : (isEdicao ? 'Editar Equipamento' : 'Novo Equipamento') }}
     </span>
     <span style="flex: 1 1 auto;"></span>
     <app-toolbar-user-actions></app-toolbar-user-actions>
@@ -26,37 +28,18 @@
             </mat-error>
           </mat-form-field>
 
-          <mat-form-field appearance="outline" class="field-half">
-            <mat-label>Categoria</mat-label>
-
-            <mat-select formControlName="categoria" [disabled]="isVisualizacao">
-              <mat-option value="">Selecione uma categoria</mat-option>
-
-              <mat-option value="NOTEBOOK">
-                <mat-icon>laptop</mat-icon> Notebook
-              </mat-option>
-
-              <mat-option value="MONITOR">
-                <mat-icon>desktop_windows</mat-icon> Monitor
-              </mat-option>
-
-              <mat-option value="ACESSORIO">
-                <mat-icon>keyboard</mat-icon> Acessório
-              </mat-option>
-
-              <mat-option value="DESKTOP">
-                <mat-icon>desktop</mat-icon> Desktop
-              </mat-option>
-
-              <mat-option value="CELULAR">
-                <mat-icon>smartphone</mat-icon> Celular
-              </mat-option>
-            </mat-select>
-
-            <mat-error *ngIf="equipamentoForm.get('categoria')?.hasError('required')">
-              Categoria é obrigatória
-            </mat-error>
-          </mat-form-field>
+          <app-autocomplete-create
+            class="field-half"
+            label="Categoria"
+            placeholder="Digite para buscar categoria..."
+            [options]="categories"
+            bindLabel="name"
+            bindValue="id"
+            formControlName="categoryId"
+            requiredError="Categoria é obrigatória"
+            (search)="onSearchCategoria($event)"
+            (createNew)="onCreateNewCategoria($event)">
+          </app-autocomplete-create>
 
           <mat-form-field appearance="outline" class="field-half field-topo">
             <mat-label>Tombo / Identificador (opcional)</mat-label>
@@ -153,7 +136,7 @@
 
       <mat-divider></mat-divider>
 
-      <mat-card-actions align="end" class="form-actions">
+      <mat-card-actions class="form-actions" [class.space-between-actions]="!isVisualizacao" [attr.align]="isVisualizacao ? 'end' : null">
         <button mat-raised-button style="background-color: #e0e0e0; color: rgba(0,0,0,.87);" type="button"
           *ngIf="isVisualizacao" (click)="cancelar()" class="btn-fechar">
           Fechar

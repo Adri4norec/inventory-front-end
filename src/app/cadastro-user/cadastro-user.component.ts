@@ -12,11 +12,16 @@ import { MatButtonModule } from "@angular/material/button";
 import { MatIconModule } from "@angular/material/icon";
 import { MatDividerModule } from "@angular/material/divider";
 import { MatTooltipModule } from "@angular/material/tooltip";
+import { MatSnackBar, MatSnackBarModule } from "@angular/material/snack-bar";
 
 import { UserService } from "../services/user/user.service";
+import { UserRequest } from "../models/users/UserRequest";
 import { UserResponse } from "../models/users/UserResponse";
 import { LayoutService } from "../services/layout/layout.service";
 import { ToolbarUserActionsComponent } from "../shared/toolbar-user-actions/toolbar-user-actions.component";
+import { ToolbarLogoComponent } from '../shared/toolbar-logo/toolbar-logo.component';
+import { AutocompleteCreateComponent } from "../shared/components/autocomplete-create/autocomplete-create.component";
+import { extractApiErrorMessage } from "../core/http/api-error.util";
 
 @Component({
   selector: 'app-cadastro-user',
@@ -24,8 +29,9 @@ import { ToolbarUserActionsComponent } from "../shared/toolbar-user-actions/tool
   imports: [
     ReactiveFormsModule, CommonModule, MatToolbarModule, MatCardModule,
     MatFormFieldModule, MatInputModule, MatSelectModule, MatButtonModule,
-    MatIconModule, MatDividerModule, MatTooltipModule,
-    ToolbarUserActionsComponent
+    MatIconModule, MatDividerModule, MatTooltipModule, MatSnackBarModule,
+    ToolbarUserActionsComponent, AutocompleteCreateComponent,
+    ToolbarLogoComponent,
   ],
   templateUrl: './cadastro-user.component.html',
   styleUrls: ['./cadastro-user.component.css']
@@ -35,12 +41,17 @@ export class CadastroUserComponent implements OnInit {
   isEdicao = false;
   isVisualizacao = false;
   userId: string | null = null;
+  profileOptions: { id: string; name: string }[] = [];
+  isLoadingProfiles = true;
+  archivedProfileId: string | null = null;
+  archivedProfileName: string | null = null;
 
   constructor(
     private fb: FormBuilder,
     private router: Router,
     private route: ActivatedRoute,
     private userService: UserService,
+    private snackBar: MatSnackBar,
     public layout: LayoutService
   ) {
     this.userForm = this.fb.group({
@@ -48,29 +59,42 @@ export class CadastroUserComponent implements OnInit {
       email: ['', [Validators.required, Validators.email]],
       username: ['', [Validators.required]],
       password: ['', []],
-      roleName: [null]
+      profileId: [null as string | null, [Validators.required]]
     });
   }
-
-  perfis = [
-    { label: 'Colaborador', value: 'COLABORADOR' },
-    { label: 'Administrador', value: 'ADMIN' },
-    { label: 'Visualizador', value: 'VISUALIZADOR' }
-  ];
 
   ngOnInit(): void {
     this.userId = this.route.snapshot.paramMap.get('id');
 
     this.route.queryParams.subscribe(params => {
-
       this.isVisualizacao = params['mode'] === 'view' || this.router.url.includes('visualizar');
 
       if (this.userId) {
         this.isEdicao = !this.isVisualizacao;
-        this.carregarDados(this.userId);
+        this.loadProfileOptions(() => this.carregarDados(this.userId!));
       } else {
         this.isEdicao = false;
+        this.loadProfileOptions();
         this.userForm.get('password')?.setValidators([Validators.required, Validators.minLength(6)]);
+      }
+    });
+  }
+
+  private loadProfileOptions(onLoaded?: () => void): void {
+    this.isLoadingProfiles = true;
+    this.userService.listProfiles().subscribe({
+      next: (profiles) => {
+        this.profileOptions = (profiles ?? []).map((p) => ({ id: p.id, name: p.name }));
+        this.isLoadingProfiles = false;
+        onLoaded?.();
+      },
+      error: (err) => {
+        this.isLoadingProfiles = false;
+        this.snackBar.open(
+          extractApiErrorMessage(err, 'Não foi possível carregar os perfis de acesso.'),
+          'Fechar',
+          { duration: 5000 }
+        );
       }
     });
   }
@@ -78,32 +102,71 @@ export class CadastroUserComponent implements OnInit {
   carregarDados(id: string): void {
     this.userService.findById(id).subscribe({
       next: (user: UserResponse) => {
-        console.log('Usuário carregado:', user);
-
-        this.userForm.patchValue({
-          fullName: user.fullName,
-          email: user.email,
-          username: user.username,
-          roleName: user.roleName
-        });
-
-        if (this.isVisualizacao) {
-          this.userForm.disable();
-        }
-
-        this.userForm.get('password')?.clearValidators();
-        this.userForm.get('password')?.updateValueAndValidity();
+        this.applyUserData(user);
       },
-      error: (err) => {
-        console.error('Erro ao carregar dados do usuário:', err);
+      error: () => {
+        this.snackBar.open('Erro ao carregar dados do usuário.', 'Fechar', { duration: 5000 });
       }
     });
   }
 
-  salvar(): void {
-    if (this.userForm.invalid) return;
+  private applyUserData(user: UserResponse): void {
+    const profileId = user.profileId ?? null;
+    const profileInList = profileId
+      ? this.profileOptions.some((p) => p.id === profileId)
+      : false;
 
-    const dados = this.userForm.getRawValue();
+    if (profileId && !profileInList) {
+      this.archivedProfileId = profileId;
+      this.archivedProfileName = user.profileName ?? 'Perfil arquivado';
+      this.userForm.patchValue({ profileId: null });
+      this.userForm.get('profileId')?.clearValidators();
+    } else {
+      this.archivedProfileId = null;
+      this.archivedProfileName = null;
+      this.userForm.patchValue({ profileId: profileId });
+      if (!this.isVisualizacao) {
+        this.userForm.get('profileId')?.setValidators([Validators.required]);
+      }
+    }
+    this.userForm.get('profileId')?.updateValueAndValidity();
+
+    this.userForm.patchValue({
+      fullName: user.fullName,
+      email: user.email,
+      username: user.username,
+    });
+
+    if (this.isVisualizacao) {
+      this.userForm.disable();
+    }
+
+    this.userForm.get('password')?.clearValidators();
+    this.userForm.get('password')?.updateValueAndValidity();
+  }
+
+  get showArchivedProfile(): boolean {
+    return !!this.archivedProfileName && (this.isEdicao || this.isVisualizacao);
+  }
+
+  salvar(): void {
+    if (this.userForm.invalid) {
+      this.userForm.markAllAsTouched();
+      return;
+    }
+
+    const raw = this.userForm.getRawValue();
+    const selectedProfileId = String(raw.profileId ?? '').trim();
+    const dados: UserRequest = {
+      fullName: String(raw.fullName ?? '').trim(),
+      email: String(raw.email ?? '').trim(),
+      username: String(raw.username ?? '').trim(),
+      profileId: selectedProfileId || this.archivedProfileId || undefined,
+    };
+
+    if (!this.isEdicao && raw.password) {
+      dados.password = String(raw.password);
+    }
 
     const request = (this.isEdicao && this.userId)
       ? this.userService.update(this.userId, dados)
@@ -111,7 +174,13 @@ export class CadastroUserComponent implements OnInit {
 
     request.subscribe({
       next: () => this.router.navigate(['/users']),
-      error: (err) => alert('Erro ao salvar usuário')
+      error: (err) => {
+        this.snackBar.open(
+          extractApiErrorMessage(err, 'Erro ao salvar usuário.'),
+          'Fechar',
+          { duration: 5000 }
+        );
+      }
     });
   }
 

@@ -24,7 +24,10 @@
 
           <mat-form-field appearance="outline" class="full-width">
             <mat-label>Usuário</mat-label>
-            <input matInput formControlName="username" placeholder="Digite seu usuário">
+            <input
+              matInput
+              formControlName="username"
+              [placeholder]="loginForm.get('useLdap')?.value ? 'Login de rede (ex: joao.silva)' : 'Digite seu usuário'">
             <mat-icon matPrefix>person_outline</mat-icon>
           </mat-form-field>
 

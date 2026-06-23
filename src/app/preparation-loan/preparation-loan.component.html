@@ -3,6 +3,8 @@
         <button mat-icon-button (click)="layout.toggleMenu()" aria-label="Abrir/fechar menu">
             <mat-icon>menu</mat-icon>
         </button>
+    <app-toolbar-logo></app-toolbar-logo>
+
         <!--<button mat-icon-button (click)="voltar()" matTooltip="Voltar para lista">
             <mat-icon>arrow_back</mat-icon>
         </button>-->
@@ -15,22 +17,24 @@
         <mat-card *ngIf="equipamento" class="form-card" appearance="outlined">
             <mat-card-header>
                 <div class="card-header-row">
-                    <mat-card-title>
-                        <mat-icon>devices</mat-icon>
-                        {{ equipamento?.name }}
-                    </mat-card-title>
+                    <div class="card-header-text">
+                        <mat-card-title>
+                            <mat-icon>devices</mat-icon>
+                            {{ equipamento?.name }}
+                        </mat-card-title>
+                        <mat-card-subtitle class="status-subtitle">
+                            Status Atual:
+                            <span class="status-label" [ngClass]="getStatusClass(equipamento?.statusName)">
+                                {{ formatStatusLabel(equipamento?.statusName) }}
+                            </span>
+                        </mat-card-subtitle>
+                    </div>
                     <button mat-stroked-button class="copy-btn" (click)="copiarDadosEquipamento()"
                         [disabled]="!equipamento">
                         <mat-icon>content_copy</mat-icon>
                         Copiar Dados
                     </button>
                 </div>
-                <mat-card-subtitle>
-                    Status Atual:
-                    <span class="status-label" [ngClass]="getStatusClass(equipamento?.statusName)">
-                        {{ formatStatusLabel(equipamento?.statusName) }}
-                    </span>
-                </mat-card-subtitle>
             </mat-card-header>
 
             <mat-divider></mat-divider>

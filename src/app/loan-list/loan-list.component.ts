@@ -22,19 +22,14 @@ import { catchError, filter, map } from 'rxjs/operators';
 import { LoanService } from '../services/loan/loan.service';
 import { LoanRefreshService } from '../services/loan/loan-refresh.service';
 import { EquipamentService } from '../services/equipament/equipment.service';
+import { CategoryService } from '../services/equipament/category.service';
 import { LoanListResponse } from '../models/loans/loans.model';
 import { EquipmentResponse, PageResponse } from '../models/equipaments/equipament.model';
 import { LayoutService } from '../services/layout/layout.service';
+import { PermissionService } from '../services/auth/permission.service';
 import { formatStatusLabel, normalizeStatusType, StatusType, statusColorClass } from '../models/status/status-type';
 import { ToolbarUserActionsComponent } from '../shared/toolbar-user-actions/toolbar-user-actions.component';
-
-const CATEGORIA_OPTIONS = [
-  { value: 'NOTEBOOK', label: 'Notebook' },
-  { value: 'MONITOR', label: 'Monitor' },
-  { value: 'ACESSORIO', label: 'Acessórios' },
-  { value: 'DESKTOP', label: 'Desktop' },
-  { value: 'CELULAR', label: 'Celular' }
-];
+import { ToolbarLogoComponent } from '../shared/toolbar-logo/toolbar-logo.component';
 
 const STATUS_OPTIONS = [
   { value: 'EM_PREPARACAO', label: 'Em preparação' },
@@ -62,7 +57,8 @@ interface EquipmentStatusResult {
     MatButtonModule, MatIconModule, MatToolbarModule, MatTooltipModule,
     MatInputModule, MatFormFieldModule, MatSelectModule, MatOptionModule,
     MatMenuModule, MatPaginatorModule, MatProgressBarModule, MatSnackBarModule,
-    ToolbarUserActionsComponent
+    ToolbarUserActionsComponent,
+    ToolbarLogoComponent,
   ],
   templateUrl: './loan-list.component.html',
   styleUrls: ['./loan-list.component.css']
@@ -72,18 +68,20 @@ export class LoanListComponent implements OnInit, OnDestroy {
   displayedColumns: string[] = ['codigo', 'name', 'description', 'status', 'categoria', 'loanDate', 'returnDate', 'acoes'];
   dataSource: LoanListResponse[] = [];
   isLoading = true;
+  isFilterCollapsed = false;
   totalElements = 0;
   pageSize = 10;
   pageIndex = 0;
+  canEditLoans = false;
 
   filtros = {
     codigo: '',
-    categoria: '',
+    categorias: [] as string[],
     nome: '',
     caracteristicas: '',
     statuses: [] as string[]
   };
-  /** Controle de empréstimo: só fluxo ativo — equipamento disponível não entra nesta lista. */
+
   private readonly allowedStatuses: StatusType[] = [
     StatusType.EM_PREPARACAO,
     StatusType.EM_MANUTENCAO,
@@ -91,7 +89,7 @@ export class LoanListComponent implements OnInit, OnDestroy {
     StatusType.EM_DEVOLUCAO
   ];
 
-  categoriaFilterOptions = CATEGORIA_OPTIONS;
+  categoriaFilterOptions: { value: string; label: string }[] = [];
   statusFilterOptions = STATUS_OPTIONS;
   private requestedStatusFilters: StatusType[] = [];
   private readonly maxBootstrapFetchSize = 200;
@@ -100,14 +98,21 @@ export class LoanListComponent implements OnInit, OnDestroy {
 
   constructor(
     private loanService: LoanService,
+    private categoryService: CategoryService,
     private equipamentService: EquipamentService,
     private router: Router,
     private snackBar: MatSnackBar,
     private loanRefreshService: LoanRefreshService,
+    private permissionService: PermissionService,
     public layout: LayoutService
   ) { }
 
   ngOnInit(): void {
+    this.permissionService.ensureLoaded().subscribe(() => this.refreshPermissions());
+    this.subs.add(
+      this.permissionService.permissions$.subscribe(() => this.refreshPermissions())
+    );
+    this.carregarCategorias();
     this.carregarDados();
 
     this.subs.add(
@@ -156,17 +161,38 @@ export class LoanListComponent implements OnInit, OnDestroy {
     this.fetchAndBuildPage(this.buildFiltrosParaApi(), page, size, 0);
   }
 
+  private carregarCategorias(): void {
+    this.categoryService.listAll().subscribe({
+      next: (categories) => {
+        this.categoriaFilterOptions = categories.map((category) => ({
+          value: category.name,
+          label: category.name,
+        }));
+      },
+      error: (err) => {
+        console.error('Erro ao carregar categorias', err);
+        this.categoriaFilterOptions = [];
+      },
+    });
+  }
+
   private buildFiltrosParaApi(): Record<string, string | string[]> {
     const payload: Record<string, string | string[]> = {
       codigo: this.filtros.codigo,
-      categoria: this.filtros.categoria,
       nome: this.filtros.nome,
       caracteristicas: this.filtros.caracteristicas
     };
+    if (this.filtros.categorias.length) {
+      payload['categorias'] = this.filtros.categorias;
+    }
     if (this.filtros.statuses.length) {
       payload['statuses'] = this.filtros.statuses;
     }
     return payload;
+  }
+
+  toggleFilterPanel(): void {
+    this.isFilterCollapsed = !this.isFilterCollapsed;
   }
 
   private fetchAndBuildPage(filtrosParaApi: any, desiredPage: number, desiredSize: number, attempt: number): void {
@@ -396,6 +422,16 @@ export class LoanListComponent implements OnInit, OnDestroy {
     });
   }
 
+  getCategoriaSelectLabel(): string {
+    const categorias = this.filtros.categorias ?? [];
+    if (!categorias.length) {
+      return '';
+    }
+    return categorias
+      .map((value) => this.categoriaFilterOptions.find((opt) => opt.value === value)?.label ?? value)
+      .join(', ');
+  }
+
   getStatusSelectLabel(): string {
     if (!this.filtros.statuses.length) {
       return '';
@@ -448,7 +484,7 @@ export class LoanListComponent implements OnInit, OnDestroy {
   limparFiltros(): void {
     this.filtros = {
       codigo: '',
-      categoria: '',
+      categorias: [],
       nome: '',
       caracteristicas: '',
       statuses: []
@@ -460,5 +496,12 @@ export class LoanListComponent implements OnInit, OnDestroy {
     this.pageIndex = e.pageIndex;
     this.pageSize = e.pageSize;
     this.carregarDados(this.pageIndex, this.pageSize);
+  }
+
+  private refreshPermissions(): void {
+    this.canEditLoans = this.permissionService.canEdit('loans');
+    this.displayedColumns = this.canEditLoans
+      ? ['codigo', 'name', 'description', 'status', 'categoria', 'loanDate', 'returnDate', 'acoes']
+      : ['codigo', 'name', 'description', 'status', 'categoria', 'loanDate', 'returnDate'];
   }
 }

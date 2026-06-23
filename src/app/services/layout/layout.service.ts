@@ -3,10 +3,10 @@ import { BehaviorSubject } from 'rxjs';
 
 @Injectable({ providedIn: 'root' })
 export class LayoutService {
-  /** Largura do menu lateral em px (shell flex — mesmo valor no CSS). */
+  /** Largura do menu lateral em px (drawer overlay — mesmo valor no CSS). */
   readonly sidebarWidthPx = 260;
 
-  private readonly _menuOpen$ = new BehaviorSubject<boolean>(true);
+  private readonly _menuOpen$ = new BehaviorSubject<boolean>(false);
   readonly menuOpen$ = this._menuOpen$.asObservable();
 
   get isMenuOpen(): boolean {

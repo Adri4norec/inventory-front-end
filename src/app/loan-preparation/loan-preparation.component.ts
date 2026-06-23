@@ -32,6 +32,7 @@ import { UserResponse } from '../models/users/UserResponse';
 import { LoanRequest, LoanType } from '../models/loans/loans.model';
 import { LayoutService } from '../services/layout/layout.service';
 import { ToolbarUserActionsComponent } from '../shared/toolbar-user-actions/toolbar-user-actions.component';
+import { ToolbarLogoComponent } from '../shared/toolbar-logo/toolbar-logo.component';
 
 @Component({
   selector: 'app-loan-preparation',
@@ -54,7 +55,8 @@ import { ToolbarUserActionsComponent } from '../shared/toolbar-user-actions/tool
     MatDatepickerModule,
     MatNativeDateModule,
     MatRadioModule,
-    ToolbarUserActionsComponent
+    ToolbarUserActionsComponent,
+    ToolbarLogoComponent,
   ],
   templateUrl: './loan-preparation.component.html',
   styleUrls: ['./loan-preparation.component.css']
@@ -116,7 +118,9 @@ export class LoanPreparationComponent implements OnInit {
     this.userService.listAll().subscribe({
       next: (response: any) => {
         const listaBruta = response.content ? response.content : response;
-        this.collaborators = listaBruta.filter((u: UserResponse) => u.roleName === 'COLABORADOR');
+        this.collaborators = listaBruta.filter(
+          (u: UserResponse) => u.profileName?.trim().toLowerCase() === 'colaborador'
+        );
       },
       error: (err: any) => {
         console.error('Erro na requisição:', err);

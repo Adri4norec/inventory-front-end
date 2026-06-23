@@ -42,8 +42,10 @@ import { LoanRefreshService } from '../services/loan/loan-refresh.service';
 import { LayoutService } from '../services/layout/layout.service';
 import { formatStatusLabel, STATUS_TYPE_LABEL, STATUS_TYPE_OPTIONS, StatusType, normalizeStatusType, statusColorClass } from '../models/status/status-type';
 import { ToolbarUserActionsComponent } from '../shared/toolbar-user-actions/toolbar-user-actions.component';
+import { ToolbarLogoComponent } from '../shared/toolbar-logo/toolbar-logo.component';
 import { ImageLightboxComponent } from '../shared/components/image-lightbox/image-lightbox.component';
 import { AutocompleteCreateComponent } from '../shared/components/autocomplete-create/autocomplete-create.component';
+import { writeCustodyViewerPin } from '../core/custody-viewer-pins.util';
 import { environment } from '../../environments/environment';
 import { provideBrazilianDate } from '../core/provide-brazilian-date';
 
@@ -75,7 +77,8 @@ import { provideBrazilianDate } from '../core/provide-brazilian-date';
     MatRadioModule,
     MatDialogModule,
     ToolbarUserActionsComponent,
-    AutocompleteCreateComponent
+    AutocompleteCreateComponent,
+    ToolbarLogoComponent,
   ],
   templateUrl: './preparation-loan.component.html',
   styleUrls: ['./preparation-loan.component.css']
@@ -1102,6 +1105,7 @@ export class PreparationLoanComponent implements OnInit {
 
         return forkJoin([uploadDocs$, syncImages$]).pipe(
           tap(() => {
+            this.rememberProjectCustodyViewer(request, loanId);
             this.loanRefreshService.notifyRefresh();
             this.finalizeSuccess('Empréstimo preparado com sucesso!', '/loans');
           }),
@@ -1153,6 +1157,24 @@ export class PreparationLoanComponent implements OnInit {
         return of([]);
       })
     );
+  }
+
+  private rememberProjectCustodyViewer(request: LoanRequest, loanId?: string | null): void {
+    if (request.loanType !== 'PROJECT') return;
+
+    const viewerId = String(request.colaboradorId ?? '').trim();
+    if (!viewerId) return;
+
+    const equipmentKeys = new Set(
+      [
+        String(this.equipmentCodeLabel ?? '').trim(),
+        String(this.equipamentId ?? '').trim(),
+        String(request.equipmentId ?? '').trim(),
+        String(loanId ?? '').trim()
+      ].filter(Boolean)
+    );
+
+    equipmentKeys.forEach((key) => writeCustodyViewerPin(key, viewerId));
   }
 
   private mapFormToRequest(): LoanRequest {

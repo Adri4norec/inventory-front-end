@@ -1,8 +1,10 @@
 <div class="page-wrapper">
     <mat-toolbar color="primary" class="page-toolbar">
-        <button mat-icon-button (click)="cancelar()" matTooltip="Voltar">
-            <mat-icon>arrow_back</mat-icon>
+        <button mat-icon-button (click)="layout.toggleMenu()" aria-label="Abrir/fechar menu">
+            <mat-icon>menu</mat-icon>
         </button>
+    <app-toolbar-logo></app-toolbar-logo>
+
         <span class="toolbar-title">
             {{ isVisualizacao ? 'Detalhes do Usuário' : (isEdicao ? 'Editar Usuário' : 'Novo Usuário') }}
         </span>
@@ -21,24 +23,31 @@
             <mat-card-content>
                 <form [formGroup]="userForm" (ngSubmit)="salvar()" class="form-grid">
 
-                    <mat-form-field appearance="outline" class="field-full">
+                    <app-autocomplete-create *ngIf="!isEdicao && !isVisualizacao" class="field-full"
+                        label="Nome Completo" placeholder="Ex: Jair Ventura" icon="badge"
+                        [options]="[]" bindLabel="fullName" bindValue="fullName"
+                        formControlName="fullName" requiredError="Nome é obrigatório"
+                        [showCreateButton]="false" [allowFreeText]="true">
+                    </app-autocomplete-create>
+
+                    <mat-form-field appearance="outline" class="field-full" *ngIf="isEdicao || isVisualizacao">
                         <mat-label>Nome Completo</mat-label>
                         <mat-icon matPrefix>badge</mat-icon>
-                        <input matInput formControlName="fullName" placeholder="Ex: Victor Bruno">
+                        <input matInput formControlName="fullName" placeholder="Ex: Jair Ventura">
                         <mat-error *ngIf="userForm.get('fullName')?.hasError('required')">Nome é obrigatório</mat-error>
                     </mat-form-field>
 
                     <mat-form-field appearance="outline" class="field-full">
                         <mat-label>E-mail</mat-label>
                         <mat-icon matPrefix>email</mat-icon>
-                        <input matInput formControlName="email" type="email" placeholder="vsilva@reconcavo.com.br">
+                        <input matInput formControlName="email" type="email" placeholder="jventura@reconcavo.com.br">
                         <mat-error *ngIf="userForm.get('email')?.hasError('required')">E-mail é obrigatório</mat-error>
                     </mat-form-field>
 
                     <mat-form-field appearance="outline" class="field-half">
                         <mat-label>Nome de Usuário</mat-label>
                         <mat-icon matPrefix>account_circle</mat-icon>
-                        <input matInput formControlName="username" placeholder="Ex: vsilva">
+                        <input matInput formControlName="username" placeholder="Ex: jventura">
                         <mat-error *ngIf="userForm.get('username')?.hasError('required')">Username é
                             obrigatório</mat-error>
                     </mat-form-field>
@@ -51,18 +60,30 @@
                             obrigatória</mat-error>
                     </mat-form-field>
 
-                    <mat-form-field appearance="outline" class="field-full">
-                        <mat-label>Perfil de Acesso</mat-label>
+                    <mat-form-field appearance="outline" class="field-full" *ngIf="showArchivedProfile && isEdicao">
+                        <mat-label>Perfil atual (arquivado)</mat-label>
+                        <mat-icon matPrefix>history</mat-icon>
+                        <input matInput [value]="archivedProfileName" readonly>
+                    </mat-form-field>
+
+                    <mat-form-field appearance="outline" class="field-full" *ngIf="!isVisualizacao || !showArchivedProfile">
+                        <mat-label>{{ showArchivedProfile ? 'Trocar para perfil ativo' : 'Perfil de Acesso' }}</mat-label>
                         <mat-icon matPrefix>admin_panel_settings</mat-icon>
-                        <mat-select formControlName="roleName">
-                            <mat-option [value]="null">Aguardando Permissão</mat-option>
-                            <mat-option *ngFor="let perfil of perfis" [value]="perfil.value">
-                                {{ perfil.label }}
+                        <mat-select formControlName="profileId" [disabled]="isLoadingProfiles">
+                            <mat-option *ngFor="let perfil of profileOptions" [value]="perfil.id">
+                                {{ perfil.name }}
                             </mat-option>
                         </mat-select>
-                        <mat-error *ngIf="userForm.get('roleName')?.hasError('required')">
+                        <mat-hint *ngIf="showArchivedProfile">Opcional — mantém o perfil arquivado se não selecionar outro.</mat-hint>
+                        <mat-error *ngIf="userForm.get('profileId')?.hasError('required')">
                             Perfil é obrigatório
                         </mat-error>
+                    </mat-form-field>
+
+                    <mat-form-field appearance="outline" class="field-full" *ngIf="isVisualizacao && showArchivedProfile">
+                        <mat-label>Perfil de Acesso</mat-label>
+                        <mat-icon matPrefix>admin_panel_settings</mat-icon>
+                        <input matInput [value]="archivedProfileName" readonly>
                     </mat-form-field>
 
                 </form>
@@ -70,7 +91,7 @@
 
             <mat-divider></mat-divider>
 
-            <mat-card-actions align="end" class="form-actions">
+            <mat-card-actions class="form-actions" [class.space-between-actions]="!isVisualizacao" [attr.align]="isVisualizacao ? 'end' : null">
                 <button mat-stroked-button type="button" (click)="cancelar()" class="btn-cancelar">
                     <mat-icon>close</mat-icon>
                     {{ isVisualizacao ? 'Fechar' : 'Cancelar' }}

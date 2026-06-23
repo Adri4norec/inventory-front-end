@@ -2,7 +2,7 @@ import { Injectable, Inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { HttpClient, HttpParams, HttpHeaders, HttpErrorResponse } from '@angular/common/http';
 import { Observable, of, forkJoin } from 'rxjs';
-import { map, tap, switchMap, catchError } from 'rxjs/operators';
+import { map, tap, catchError, switchMap } from 'rxjs/operators';
 import {
   EquipmentLoanResponse,
   LoanDetailResponse,
@@ -18,8 +18,8 @@ import {
 } from '../../models/loans/loans.model';
 import { StatusType } from '../../models/status/status-type';
 import { environment } from '../../../environments/environment';
+import { appendAll } from '../../core/http/http-params.util';
 import { LoanTypeCacheService } from './loan-type-cache.service';
-import { pickActiveLoanForEquipment } from '../../core/loan-form.util';
 
 @Injectable({
   providedIn: 'root'
@@ -83,10 +83,6 @@ export class LoanService {
       );
   }
 
-  /**
-   * Busca o empréstimo ativo vinculado ao equipamento.
-   * Ordem: loanId conhecido → endpoint dedicado → busca legada (advanced-search / lista).
-   */
   findActiveLoanByEquipment(
     equipmentId: string,
     tombo?: string,
@@ -99,79 +95,11 @@ export class LoanService {
     }
 
     const eqId = equipmentId.trim();
-    if (!eqId && !(tombo ?? '').trim() && !(altCode ?? '').trim()) {
+    if (!eqId) {
       return of(null);
     }
 
-    const dedicated$ = eqId
-      ? this.getActiveLoanByEquipment(eqId)
-      : of(null);
-
-    return dedicated$.pipe(
-      switchMap((loan) => (loan ? of(loan) : this.findActiveLoanByEquipmentLegacy(eqId, tombo, altCode)))
-    );
-  }
-
-  /** Fallback quando GET /active-by-equipment não existe ou não retorna resultado. */
-  private findActiveLoanByEquipmentLegacy(
-    equipmentId: string,
-    tombo?: string,
-    altCode?: string
-  ): Observable<LoanDetailResponse | null> {
-    const codes = [...new Set([tombo, altCode].map((c) => String(c ?? '').trim()).filter(Boolean))];
-    const searches: Observable<LoanListResponse[]>[] = codes.map((code) =>
-      this.advancedSearch({ codigo: code }, 0, 50).pipe(
-        map((res) => res.content ?? []),
-        catchError(() => of([] as LoanListResponse[]))
-      )
-    );
-
-    searches.push(
-      this.advancedSearch(
-        {
-          statuses: [StatusType.EM_USO, StatusType.EM_PREPARACAO, StatusType.EM_DEVOLUCAO]
-        },
-        0,
-        200
-      ).pipe(
-        map((res) => res.content ?? []),
-        catchError(() => of([] as LoanListResponse[]))
-      )
-    );
-
-    searches.push(
-      this.getLoansList().pipe(
-        map((list) => (Array.isArray(list) ? list : [])),
-        catchError(() => of([] as LoanListResponse[]))
-      )
-    );
-
-    const pickFromMerged = (lists: LoanListResponse[][]): LoanListResponse | null => {
-      const merged = new Map<string, LoanListResponse>();
-      for (const list of lists) {
-        for (const item of list) {
-          merged.set(item.id, item);
-        }
-      }
-      const all = [...merged.values()];
-      for (const code of codes) {
-        const picked = pickActiveLoanForEquipment(all, equipmentId, code);
-        if (picked) return picked;
-      }
-      return pickActiveLoanForEquipment(all, equipmentId);
-    };
-
-    return forkJoin(searches).pipe(
-      map((results) => pickFromMerged(results)),
-      switchMap((summary) => {
-        if (!summary?.id) return of(null);
-        return this.getLoanById(summary.id).pipe(
-          map((detail) => ({ ...summary, ...detail } as LoanDetailResponse)),
-          catchError(() => of(summary as unknown as LoanDetailResponse))
-        );
-      }),
-      catchError(() => of(null))
-    );
+    return this.getActiveLoanByEquipment(eqId);
   }
 
   rememberLoanType(loanId: string, loanType: LoanType): void {
@@ -227,7 +155,6 @@ export class LoanService {
 
     const mapeamento: Record<string, string> = {
       codigo: 'tombo',
-      categoria: 'categoria',
       nome: 'nome',
       caracteristicas: 'caracteristicas'
     };
@@ -238,6 +165,12 @@ export class LoanService {
         params = params.set(mapeamento[key], value);
       }
     });
+
+    const selectedCategories = (filtros['categorias'] as string[] | undefined)
+      ?? (typeof filtros['categoria'] === 'string' && filtros['categoria']
+        ? [filtros['categoria']]
+        : []);
+    params = appendAll(params, 'categoria', selectedCategories);
 
     const selectedStatuses = (filtros['statuses'] as string[] | undefined) ?? [];
     if (selectedStatuses.length > 0) {
@@ -255,9 +188,10 @@ export class LoanService {
 
   /**
    * Contrato esperado do backend (manager-custody):
-   * - managerId = dono da cadeia de custódia (quem originou o empréstimo/alteração), NÃO o custodiante vigente.
-   * - Cada movimentação deve expor gerenteId/custodyOwnerId estável e custodianteNome do responsável daquele período.
-   * - Após transferência, o dono continua recebendo todo o histórico; o novo custodiante não deve herdar a listagem.
+   * - managerId = UUID do gerente/originador (opcional quando custodianteId é informado).
+   * - custodianteId = UUID do responsável designado no empréstimo projeto.
+   * - nome = filtro textual do custodiante.
+   * - O frontend também complementa com empréstimos PROJECT ativos (colaboradorId).
    */
   getManagerCustody(managerId: string, page: number, size: number): Observable<PageResponse<CustodiaResponse>> {
     const options = this.getOptions();
@@ -269,21 +203,27 @@ export class LoanService {
   }
 
   managerCustodyAdvancedSearch(
-    managerId: string,
+    managerId: string | null | undefined,
     filtros: ManagerCustodySearchFilters,
     page: number,
     size: number
   ): Observable<PageResponse<CustodiaResponse>> {
     const options = this.getOptions();
     let params = new HttpParams()
-      .set('managerId', managerId)
       .set('page', page.toString())
       .set('size', size.toString());
 
+    const manager = managerId?.trim();
+    if (manager) {
+      params = params.set('managerId', manager);
+    }
+
     const equipmentId = filtros.equipmentId?.trim();
     const nome = filtros.nome?.trim();
+    const custodianteId = filtros.custodianteId?.trim();
     if (equipmentId) params = params.set('equipmentId', equipmentId);
     if (nome) params = params.set('nome', nome);
+    if (custodianteId) params = params.set('custodianteId', custodianteId);
     if (filtros.dataInicio) params = params.set('dataInicio', filtros.dataInicio);
     if (filtros.dataFim) params = params.set('dataFim', filtros.dataFim);
     if (filtros.loanType) params = params.set('loanType', filtros.loanType);
@@ -292,6 +232,224 @@ export class LoanService {
       `${this.apiUrl}/manager-custody/advanced-search`,
       { ...options, params }
     );
+  }
+
+  /**
+   * Todos os empréstimos PROJECT ativos — usado para montar índice do visualizador original
+   * (colaboradorId no empréstimo) e complementar a listagem de custódia.
+   */
+  fetchAllActiveProjectLoanCustody(): Observable<{
+    items: CustodiaResponse[];
+    viewerByEquipment: Map<string, { userId: string | null; names: Set<string> }>;
+  }> {
+    return this.getLoansList().pipe(
+      switchMap((list) => {
+        const activeEntries = (list ?? [])
+          .filter((item) => this.isActiveLoanListItem(item))
+          .map((item) => ({
+            id: String(item?.id ?? '').trim(),
+            codigo: item?.codigo
+          }))
+          .filter((entry) => !!entry.id);
+
+        if (!activeEntries.length) {
+          return of({
+            items: [] as CustodiaResponse[],
+            viewerByEquipment: new Map<string, { userId: string | null; names: Set<string> }>()
+          });
+        }
+
+        return forkJoin(
+          activeEntries.map((entry) =>
+            this.getLoanById(entry.id).pipe(
+              map((loan) => ({ loan, codigo: entry.codigo })),
+              catchError(() => of(null as { loan: LoanDetailResponse; codigo?: string } | null))
+            )
+          )
+        ).pipe(
+          map((details) => {
+            const items: CustodiaResponse[] = [];
+            const viewerByEquipment = new Map<string, { userId: string | null; names: Set<string> }>();
+
+            for (const entry of details ?? []) {
+              if (!entry?.loan) continue;
+
+              const enriched = this.enrichLoanWithType(entry.loan);
+              if (this.parseLoanType(enriched) !== 'PROJECT') continue;
+
+              const viewerId = this.readLoanColaboradorId(enriched) || null;
+              const viewerName = this.normalizeViewerName(
+                this.readLoanColaboradorName(enriched, null)
+              );
+              const names = new Set<string>();
+              if (viewerName) names.add(viewerName);
+
+              const custody = this.mapLoanToCustodiaResponse(
+                enriched,
+                viewerId ?? '',
+                this.readLoanColaboradorName(enriched, null),
+                entry.codigo
+              );
+              items.push(custody);
+
+              const equipmentKey = String(custody.equipmentId ?? '').trim();
+              if (equipmentKey) {
+                viewerByEquipment.set(equipmentKey, { userId: viewerId, names });
+              }
+            }
+
+            return { items, viewerByEquipment };
+          })
+        );
+      }),
+      catchError(() =>
+        of({
+          items: [] as CustodiaResponse[],
+          viewerByEquipment: new Map<string, { userId: string | null; names: Set<string> }>()
+        })
+      )
+    );
+  }
+
+  private normalizeViewerName(value?: string | null): string {
+    return String(value ?? '')
+      .trim()
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/\s+/g, ' ');
+  }
+
+  /**
+   * Fallback quando manager-custody não devolve itens para o custodiante:
+   * monta custódia a partir de empréstimos PROJECT ativos em que colaboradorId = usuário logado.
+   */
+  fetchProjectCustodyAsCustodian(
+    custodianUserId: string,
+    custodianName?: string | null,
+    equipmentKey?: string
+  ): Observable<CustodiaResponse[]> {
+    const userId = custodianUserId.trim();
+    if (!userId) return of([]);
+
+    return this.getLoansList().pipe(
+      switchMap((list) => {
+        const activeIds = (list ?? [])
+          .filter((item) => this.isActiveLoanListItem(item))
+          .map((item) => String(item?.id ?? '').trim())
+          .filter(Boolean);
+
+        if (!activeIds.length) return of([] as CustodiaResponse[]);
+
+        return forkJoin(
+          activeIds.map((id) =>
+            this.getLoanById(id).pipe(
+              map((loan) => {
+                const listItem = (list ?? []).find((entry) => String(entry?.id ?? '').trim() === id);
+                return { loan, codigo: listItem?.codigo };
+              }),
+              catchError(() => of(null as { loan: LoanDetailResponse; codigo?: string } | null))
+            )
+          )
+        ).pipe(
+          map((details) =>
+            (details ?? [])
+              .filter(
+                (entry): entry is { loan: LoanDetailResponse; codigo?: string } =>
+                  !!entry?.loan && this.isProjectLoanForCustodian(entry.loan, userId, custodianName)
+              )
+              .map(({ loan, codigo }) =>
+                this.mapLoanToCustodiaResponse(loan, userId, custodianName, codigo)
+              )
+              .filter((item) => this.matchesEquipmentKey(item, equipmentKey))
+          )
+        );
+      }),
+      catchError(() => of([]))
+    );
+  }
+
+  private isActiveLoanListItem(item: LoanListResponse): boolean {
+    const status = String(item?.status ?? '').trim().toUpperCase();
+    return status === StatusType.EM_USO
+      || status === StatusType.EM_PREPARACAO
+      || status === 'PREPARACAO'
+      || status === StatusType.EM_DEVOLUCAO;
+  }
+
+  private isProjectLoanForCustodian(
+    loan: LoanDetailResponse,
+    custodianUserId: string,
+    custodianName?: string | null
+  ): boolean {
+    const enriched = this.enrichLoanWithType(loan);
+    const loanType = this.parseLoanType(enriched);
+    if (loanType !== 'PROJECT') return false;
+
+    const colaboradorId = this.readLoanColaboradorId(enriched);
+    if (colaboradorId && colaboradorId === custodianUserId) return true;
+
+    if (custodianName) {
+      const loanName = this.normalizeViewerName(this.readLoanColaboradorName(enriched, custodianName));
+      const targetName = this.normalizeViewerName(custodianName);
+      if (loanName && targetName && loanName === targetName) return true;
+    }
+
+    return false;
+  }
+
+  private readLoanColaboradorId(loan: LoanDetailResponse): string {
+    const direct = String(loan.colaboradorId ?? '').trim();
+    if (direct) return direct;
+
+    const responsavel = loan.responsavel;
+    if (responsavel && typeof responsavel === 'object') {
+      return String(responsavel.id ?? '').trim();
+    }
+
+    return '';
+  }
+
+  private readLoanColaboradorName(loan: LoanDetailResponse, fallback?: string | null): string {
+    const responsavel = loan.responsavel;
+    if (responsavel && typeof responsavel === 'object') {
+      const name = String(responsavel.fullName ?? '').trim();
+      if (name) return name;
+    }
+    if (typeof responsavel === 'string' && responsavel.trim()) {
+      return responsavel.trim();
+    }
+    const fullName = String(loan.fullName ?? '').trim();
+    if (fullName) return fullName;
+    return String(fallback ?? '').trim();
+  }
+
+  private mapLoanToCustodiaResponse(
+    loan: LoanDetailResponse,
+    custodianUserId: string,
+    custodianName?: string | null,
+    listCodigo?: string
+  ): CustodiaResponse {
+    const record = loan as LoanDetailResponse & { codigo?: string; topo?: string | number };
+    const equipmentId = String(
+      listCodigo ?? record.codigo ?? record.equipmentId ?? record.topo ?? ''
+    ).trim();
+
+    return {
+      id: String(loan.id),
+      equipmentId,
+      custodianteNome: this.readLoanColaboradorName(loan, custodianName),
+      custodianteId: custodianUserId,
+      inicioPeriodo: loan.loanDate ?? new Date().toISOString(),
+      fimPeriodo: loan.expectedReturnDate ?? loan.returnDate ?? null,
+      loanType: 'PROJECT'
+    };
+  }
+
+  private matchesEquipmentKey(item: CustodiaResponse, equipmentKey?: string): boolean {
+    const key = String(equipmentKey ?? '').trim();
+    if (!key) return true;
+    return String(item.equipmentId ?? '').trim() === key;
   }
 
   isManagerCustodyAdvancedSearchUnavailable(err: unknown): boolean {

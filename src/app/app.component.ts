@@ -9,7 +9,7 @@ import { filter } from 'rxjs/operators';
   standalone: true,
   imports: [AppShellComponent, CommonModule],
   templateUrl: './app.component.html',
-  styleUrl: './app.component.css'
+  styleUrls: ['./app.component.css']
 })
 export class AppComponent implements OnInit {
   mostrarLayout = true;

@@ -1,0 +1,90 @@
+<div class="page-wrapper">
+  <mat-toolbar color="primary" class="page-toolbar">
+    <button mat-icon-button (click)="layout.toggleMenu()" aria-label="Abrir/fechar menu">
+      <mat-icon>menu</mat-icon>
+    </button>
+    <app-toolbar-logo></app-toolbar-logo>
+
+    <span class="toolbar-title">Configuração de usuário</span>
+    <span style="flex: 1 1 auto;"></span>
+    <app-toolbar-user-actions></app-toolbar-user-actions>
+  </mat-toolbar>
+
+  <div class="content settings-content">
+    <mat-card appearance="outlined" class="profiles-panel">
+      <div class="profiles-panel-header">
+        <div class="profiles-panel-title">
+          <mat-icon class="profiles-panel-title-icon">lock</mat-icon>
+          <span>Perfis de acesso</span>
+          <span class="profiles-fixed-badge">Admin • fixo</span>
+        </div>
+        <button mat-flat-button color="primary" type="button" class="btn-create-profile" (click)="adicionarPerfil()">
+          <mat-icon>add_circle</mat-icon>
+          Criar novo perfil
+        </button>
+      </div>
+
+      <div *ngIf="loading">Carregando perfis...</div>
+      <div *ngIf="error" class="error-banner">{{ error }}</div>
+
+      <div class="profile-list" *ngIf="!loading">
+        <article
+          *ngFor="let profile of profiles; trackBy: trackProfile"
+          class="profile-card"
+          [class.profile-card--admin]="profile.isAdmin">
+          <div class="profile-header">
+            <div class="profile-name-area">
+              <span class="profile-name">{{ profile.name }}</span>
+              <span class="profile-badge" [class.profile-badge--admin]="profile.isAdmin">
+                <mat-icon *ngIf="profile.isAdmin" class="profile-badge-icon">workspace_premium</mat-icon>
+                {{ profile.isAdmin ? 'Admin' : 'personalizado' }}
+              </span>
+              <mat-icon *ngIf="profile.isAdmin" class="admin-lock" matTooltip="Perfil fixo do sistema">lock</mat-icon>
+            </div>
+
+            <div class="profile-actions">
+              <button
+                mat-icon-button
+                type="button"
+                class="expand-btn"
+                (click)="toggleExpand(profile)"
+                [attr.aria-label]="profile.expanded ? 'Recolher permissões' : 'Expandir permissões'">
+                <mat-icon class="expand-icon" [class.expand-icon--open]="profile.expanded">chevron_right</mat-icon>
+              </button>
+
+              <button
+                *ngIf="!profile.isAdmin"
+                mat-stroked-button
+                type="button"
+                class="btn-delete-profile"
+                (click)="excluirPerfil(profile, $event)"
+                aria-label="Excluir perfil">
+                <mat-icon>delete_outline</mat-icon>
+              </button>
+            </div>
+          </div>
+
+          <div class="permission-grid" *ngIf="profile.expanded">
+            <div class="permission-row" *ngFor="let mod of modules; trackBy: trackModule">
+              <span class="module-name">
+                <mat-icon class="module-icon">inventory_2</mat-icon>
+                {{ mod.label }}
+              </span>
+
+              <mat-form-field appearance="outline" subscriptSizing="dynamic" class="permission-select-field">
+                <mat-select
+                  [value]="profile.permissions[mod.key]"
+                  [disabled]="profile.isAdmin"
+                  (selectionChange)="onPermissionChange(profile, mod.key, $event.value)">
+                  <mat-option *ngFor="let opt of permissionOptions" [value]="opt.value">
+                    {{ opt.label }}
+                  </mat-option>
+                </mat-select>
+              </mat-form-field>
+            </div>
+          </div>
+        </article>
+      </div>
+    </mat-card>
+  </div>
+</div>

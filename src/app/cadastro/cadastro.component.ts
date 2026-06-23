@@ -21,12 +21,15 @@ import { forkJoin, of } from "rxjs";
 import { catchError, filter, map, switchMap, tap } from "rxjs/operators";
 
 import { ProprietaryService } from "../services/equipament/proprietary.service";
+import { CategoryService } from "../services/equipament/category.service";
 import { EquipamentService } from "../services/equipament/equipment.service";
 import { ProprietaryResponse } from "../models/proprietaries/proprietary";
-import { EquipmentResponse, EquipmentRequest } from "../models/equipaments/equipament.model";
+import { CategoryResponse, EquipmentResponse, EquipmentRequest } from "../models/equipaments/equipament.model";
+import { formatApiViolations, normalizeApiErrorDetails } from "../core/http/api-error.util";
 import { LayoutService } from "../services/layout/layout.service";
 import { environment } from "../../environments/environment";
 import { ToolbarUserActionsComponent } from "../shared/toolbar-user-actions/toolbar-user-actions.component";
+import { ToolbarLogoComponent } from '../shared/toolbar-logo/toolbar-logo.component';
 import { AutocompleteCreateComponent } from "../shared/components/autocomplete-create/autocomplete-create.component";
 import { ImageLightboxComponent } from "../shared/components/image-lightbox/image-lightbox.component";
 
@@ -52,7 +55,8 @@ import { ImageLightboxComponent } from "../shared/components/image-lightbox/imag
     MatNativeDateModule,
     MatDialogModule,
     ToolbarUserActionsComponent,
-    AutocompleteCreateComponent
+    AutocompleteCreateComponent,
+    ToolbarLogoComponent,
   ],
   templateUrl: './cadastro.component.html',
   styleUrls: ['./cadastro.component.css']
@@ -64,6 +68,7 @@ export class CadastroComponent implements OnInit {
   private readonly snackBar = inject(MatSnackBar);
   private readonly equipmentService = inject(EquipamentService);
   private readonly proprietaryService = inject(ProprietaryService);
+  private readonly categoryService = inject(CategoryService);
   public readonly layout = inject(LayoutService);
   private readonly dialog = inject(MatDialog);
 
@@ -71,6 +76,8 @@ export class CadastroComponent implements OnInit {
 
   equipamentoForm!: FormGroup;
   proprietaries: ProprietaryResponse[] = [];
+  categories: CategoryResponse[] = [];
+  private allCategories: CategoryResponse[] = [];
   selectedFiles: File[] = [];
   previsualizacoes: string[] = [];
 
@@ -92,7 +99,7 @@ export class CadastroComponent implements OnInit {
       name: ['', Validators.required],
       description: ['', Validators.required],
       topo: [null, Validators.pattern("^[0-9]*$")],
-      categoria: ['', Validators.required],
+      categoryId: [null, Validators.required],
       proprietaryId: [null, Validators.required],
       usageType: ['', Validators.required],
       dueDate: [null as Date | null],
@@ -102,9 +109,14 @@ export class CadastroComponent implements OnInit {
   }
 
   private loadInitialData(): void {
-    this.proprietaryService.listAll().pipe(
-      tap(data => {
-        this.proprietaries = data;
+    forkJoin({
+      proprietaries: this.proprietaryService.listAll(),
+      categories: this.categoryService.listAll(),
+    }).pipe(
+      tap(({ proprietaries, categories }) => {
+        this.proprietaries = proprietaries;
+        this.allCategories = categories;
+        this.categories = categories;
       }),
       switchMap(() => this.route.paramMap),
       map(params => params.get('id')),
@@ -213,6 +225,11 @@ export class CadastroComponent implements OnInit {
       this.equipamentoForm.get('proprietaryId')?.setValue(prop.id);
     }
 
+    const cat = this.allCategories.find(c => c.name === equipamento.categoria);
+    if (cat) {
+      this.equipamentoForm.get('categoryId')?.setValue(cat.id);
+    }
+
     if (this.isVisualizacao) this.equipamentoForm.disable();
   }
 
@@ -276,6 +293,34 @@ export class CadastroComponent implements OnInit {
     return new Date(y, m - 1, d);
   }
 
+  onSearchCategoria(term: string): void {
+    const trimmed = term?.trim() ?? '';
+    this.categories = trimmed
+      ? this.allCategories.filter((c) => c.name.toLowerCase().includes(trimmed.toLowerCase()))
+      : [...this.allCategories];
+  }
+
+  onCreateNewCategoria(term: string): void {
+    const name = term?.trim();
+    if (!name) {
+      this.showMessage('Informe o nome da categoria.');
+      return;
+    }
+
+    this.categoryService.create({ name }).subscribe({
+      next: (created) => {
+        this.allCategories = this.mergeCategory(this.allCategories, created);
+        this.categories = this.mergeCategory(this.categories, created);
+        this.equipamentoForm.get('categoryId')?.setValue(created.id);
+        this.snackBar.open(`Categoria "${created.name}" criada com sucesso.`, 'Fechar', {
+          duration: 4000,
+          verticalPosition: 'top',
+        });
+      },
+      error: (err) => this.handleApiError(err, 'Erro ao criar categoria.'),
+    });
+  }
+
   onSearchProprietario(term: string): void {
     this.proprietaryService.listAll().subscribe({
       next: (data) => {
@@ -312,48 +357,60 @@ export class CadastroComponent implements OnInit {
   }
 
   private handleApiError(err: unknown, fallback: string): void {
-    const details = this.equipmentService.normalizeErrorDetails(err);
+    const details = normalizeApiErrorDetails(err);
+    this.applyFormViolations(details.violations);
     const code = details.code ? ` (${details.code})` : '';
     const message = details.message || fallback;
-    const violations = this.formatViolations(details.violations);
+    const violations = formatApiViolations(details.violations);
     const finalMessage = violations ? `${message}${code} — ${violations}` : `${message}${code}`;
     this.showMessage(finalMessage);
   }
 
-  private formatViolations(violations: unknown): string | null {
-    if (!violations) return null;
+  private applyFormViolations(violations: unknown): void {
+    if (!violations) return;
 
     if (Array.isArray(violations)) {
-      return violations
-        .map((violation) => {
-          if (!violation || typeof violation !== 'object') {
-            return String(violation ?? '').trim();
-          }
-
-          const record = violation as Record<string, unknown>;
-          const field = typeof record['field'] === 'string' ? record['field'] : typeof record['property'] === 'string' ? record['property'] : '';
-          const message = typeof record['message'] === 'string' ? record['message'] : typeof record['defaultMessage'] === 'string' ? record['defaultMessage'] : '';
-          return field && message ? `${field}: ${message}` : message || String(record).trim();
-        })
-        .filter(Boolean)
-        .join(' • ');
+      violations.forEach((violation) => {
+        if (!violation || typeof violation !== 'object') return;
+        const record = violation as Record<string, unknown>;
+        const field = typeof record['field'] === 'string'
+          ? record['field']
+          : typeof record['property'] === 'string'
+            ? record['property']
+            : '';
+        const message = typeof record['message'] === 'string'
+          ? record['message']
+          : typeof record['defaultMessage'] === 'string'
+            ? record['defaultMessage']
+            : '';
+        if (field && message) {
+          this.setFieldViolation(field, message);
+        }
+      });
+      return;
     }
 
-    if (violations && typeof violations === 'object') {
-      const entries = Object.entries(violations as Record<string, unknown>);
-      return entries
-        .map(([field, value]) => {
-          const messages = Array.isArray(value) ? value : [value];
-          const text = messages
-            .map((entry) => String(entry ?? '').trim())
-            .filter(Boolean)
-            .join('; ');
-          return text ? `${field}: ${text}` : field;
-        })
-        .join(' • ');
+    if (typeof violations === 'object') {
+      Object.entries(violations as Record<string, unknown>).forEach(([field, value]) => {
+        const messages = Array.isArray(value) ? value : [value];
+        const text = messages
+          .map((entry) => String(entry ?? '').trim())
+          .filter(Boolean)
+          .join('; ');
+        if (text) {
+          this.setFieldViolation(field, text);
+        }
+      });
     }
+  }
 
-    return String(violations).trim();
+  private setFieldViolation(field: string, message: string): void {
+    const control = this.equipamentoForm.get(field);
+    if (!control) return;
+
+    const existingErrors = control.errors ?? {};
+    control.setErrors({ ...existingErrors, server: message });
+    control.markAsTouched();
   }
 
   private mergeProprietary(
@@ -361,6 +418,16 @@ export class CadastroComponent implements OnInit {
     created: ProprietaryResponse,
   ): ProprietaryResponse[] {
     if (list.some((p) => p.id === created.id)) {
+      return list;
+    }
+    return [...list, created].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+  }
+
+  private mergeCategory(
+    list: CategoryResponse[],
+    created: CategoryResponse,
+  ): CategoryResponse[] {
+    if (list.some((c) => c.id === created.id)) {
       return list;
     }
     return [...list, created].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));

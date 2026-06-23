@@ -3,6 +3,8 @@
     <button mat-icon-button (click)="layout.toggleMenu()" aria-label="Abrir/fechar menu">
       <mat-icon>menu</mat-icon>
     </button>
+    <app-toolbar-logo></app-toolbar-logo>
+
     <span class="toolbar-title">Área do Gerente — Itens sob Custódia</span>
     <span style="flex: 1 1 auto;"></span>
     <app-toolbar-user-actions></app-toolbar-user-actions>
@@ -11,36 +13,47 @@
   <div class="content manager-area-content">
 
     <mat-card appearance="outlined" class="filter-card">
-      <div class="filter-row">
-        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="compact-filter filter-field-id">
-          <mat-label>ID / Tombo</mat-label>
-          <input matInput [(ngModel)]="filtros.equipmentId" (keyup.enter)="aplicarFiltros()"
-            placeholder="Busca parcial">
-        </mat-form-field>
-
-        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="compact-filter filter-field-nome">
-          <mat-label>Nome</mat-label>
-          <input matInput [(ngModel)]="filtros.nome" (keyup.enter)="aplicarFiltros()" placeholder="Custodiante">
-        </mat-form-field>
-
-        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="compact-filter filter-field-period">
-          <mat-label>Período de Custódia</mat-label>
-          <mat-date-range-input [rangePicker]="pickerPeriodo">
-            <input matStartDate placeholder="Início" [(ngModel)]="filtros.dataInicio">
-            <input matEndDate placeholder="Fim" [(ngModel)]="filtros.dataFim" (dateChange)="aplicarFiltros()">
-          </mat-date-range-input>
-          <mat-datepicker-toggle matIconSuffix [for]="pickerPeriodo"></mat-datepicker-toggle>
-          <mat-date-range-picker #pickerPeriodo></mat-date-range-picker>
-        </mat-form-field>
+      <div class="filter-panel-toggle" [class.filter-panel-toggle--collapsed]="isFilterCollapsed">
+        <button mat-icon-button type="button" class="filter-panel-toggle-btn" (click)="toggleFilterPanel()"
+          [attr.aria-label]="isFilterCollapsed ? 'Expandir filtros' : 'Ocultar filtros'">
+          <mat-icon class="filter-panel-toggle-icon">filter_list</mat-icon>
+        </button>
       </div>
+      <div class="filter-panel-body" [class.filter-panel-body--collapsed]="isFilterCollapsed"
+        [attr.aria-hidden]="isFilterCollapsed">
+        <div class="filter-panel-body__inner">
+          <div class="filter-row">
+            <mat-form-field appearance="outline" subscriptSizing="dynamic" class="compact-filter filter-field-id">
+              <mat-label>ID / Tombo</mat-label>
+              <input matInput [(ngModel)]="filtros.equipmentId" (keyup.enter)="aplicarFiltros()"
+                placeholder="Busca parcial">
+            </mat-form-field>
 
-      <div class="filter-actions">
-        <button mat-stroked-button type="button" (click)="limparFiltros()">
-          <mat-icon>close</mat-icon> Limpar
-        </button>
-        <button mat-flat-button color="primary" type="button" (click)="aplicarFiltros()">
-          <mat-icon>search</mat-icon> Buscar
-        </button>
+            <mat-form-field appearance="outline" subscriptSizing="dynamic" class="compact-filter filter-field-nome">
+              <mat-label>Nome</mat-label>
+              <input matInput [(ngModel)]="filtros.nome" (keyup.enter)="aplicarFiltros()" placeholder="Custodiante">
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" subscriptSizing="dynamic" class="compact-filter filter-field-period">
+              <mat-label>Período de Custódia</mat-label>
+              <mat-date-range-input [rangePicker]="pickerPeriodo">
+                <input matStartDate placeholder="Início" [(ngModel)]="filtros.dataInicio">
+                <input matEndDate placeholder="Fim" [(ngModel)]="filtros.dataFim" (dateChange)="aplicarFiltros()">
+              </mat-date-range-input>
+              <mat-datepicker-toggle matIconSuffix [for]="pickerPeriodo"></mat-datepicker-toggle>
+              <mat-date-range-picker #pickerPeriodo></mat-date-range-picker>
+            </mat-form-field>
+          </div>
+
+          <div class="filter-actions">
+            <button mat-stroked-button type="button" (click)="limparFiltros()">
+              <mat-icon>close</mat-icon> Limpar
+            </button>
+            <button mat-flat-button color="primary" type="button" (click)="aplicarFiltros()">
+              <mat-icon>search</mat-icon> Buscar
+            </button>
+          </div>
+        </div>
       </div>
     </mat-card>
 
@@ -56,6 +69,7 @@
           <mat-card-subtitle>{{ totalElements }} registro(s)</mat-card-subtitle>
         </div>
         <button mat-flat-button color="primary" type="button" class="btn-alterar-custodia-geral"
+          *ngIf="canEditCustody"
           [disabled]="totalElements === 0" (click)="alterarCustodiaGeral()">
           <mat-icon>published_with_changes</mat-icon>
           Alterar custódia
@@ -66,7 +80,7 @@
         <div *ngIf="dataSource.length === 0" class="empty-state">
           <p class="empty-title">Nenhum item sob custódia encontrado.</p>
           <p class="empty-subtitle">
-            Verifique se existe custódia ativa para seu usuário ou ajuste os filtros.
+            Verifique se existe empréstimo do tipo projeto ativo para seu usuário ou ajuste os filtros.
           </p>
         </div>
 
@@ -104,7 +118,7 @@
             <ng-container matColumnDef="acoes">
               <th mat-header-cell *matHeaderCellDef class="acoes-header"> Ações </th>
               <td mat-cell *matCellDef="let element" class="acoes-cell">
-                <button mat-icon-button [matMenuTriggerFor]="menu" aria-label="Ações de custódia">
+                <button mat-icon-button [matMenuTriggerFor]="menu" aria-label="Ações de custódia" *ngIf="canEditCustody">
                   <mat-icon>more_vert</mat-icon>
                 </button>
 
@@ -118,6 +132,10 @@
                     <span>Alterar custódia</span>
                   </button>
                 </mat-menu>
+
+                <button mat-icon-button *ngIf="!canEditCustody" (click)="verDetalhes(element)" aria-label="Ver detalhes">
+                  <mat-icon>visibility</mat-icon>
+                </button>
               </td>
             </ng-container>
 

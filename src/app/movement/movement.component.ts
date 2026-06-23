@@ -23,19 +23,19 @@ import { MatAutocompleteModule } from '@angular/material/autocomplete';
 
 import { EquipamentService } from '../services/equipament/equipment.service';
 import { MovementService } from '../services/movement/movement.service';
-import { LoanService } from '../services/loan/loan.service';
-import { UserService } from '../services/user/user.service';
 import { PhotoGaleryDialogComponent } from '../photo-galery-dialog/photo-galery-dialog.component';
 import { ImageLightboxComponent } from '../shared/components/image-lightbox/image-lightbox.component';
 import { AutocompleteCreateComponent } from '../shared/components/autocomplete-create/autocomplete-create.component';
 import { MovementRequest, MovementResponse, MovementType } from '../models/movement/movement.model';
-import { LoanDetailResponse, UserSearchResponse } from '../models/loans/loans.model';
+import { UserSearchResponse } from '../models/loans/loans.model';
 import { EquipmentResponse } from '../models/equipaments/equipament.model';
-import { extractLoanFormDefaults, extractLoanDefaultsFromEquipment, hasLoanFormDefaults, isMovementLoanPrefillStatus, readActiveLoanId, LoanFormDefaults } from '../core/loan-form.util';
-import { environment } from '../../environments/environment';
+import { extractLoanFormDefaults, hasLoanFormDefaults, isMovementLoanPrefillStatus, LoanFormDefaults } from '../core/loan-form.util';
+import { resolveMovementErrorMessage } from '../core/movement-error.util';
 import { LayoutService } from '../services/layout/layout.service';
 import { formatStatusLabel, statusColorClass } from '../models/status/status-type';
 import { ToolbarUserActionsComponent } from '../shared/toolbar-user-actions/toolbar-user-actions.component';
+import { ToolbarLogoComponent } from '../shared/toolbar-logo/toolbar-logo.component';
+import { environment } from '../../environments/environment';
 
 @Component({
   selector: 'app-movement',
@@ -45,7 +45,8 @@ import { ToolbarUserActionsComponent } from '../shared/toolbar-user-actions/tool
     MatButtonModule, MatIconModule, MatDividerModule, MatMenuModule, MatToolbarModule,
     MatTooltipModule, MatDialogModule, MatChipsModule, MatFormFieldModule, MatInputModule,
     MatSelectModule, MatSnackBarModule, MatAutocompleteModule,
-    ToolbarUserActionsComponent, AutocompleteCreateComponent
+    ToolbarUserActionsComponent, AutocompleteCreateComponent,
+    ToolbarLogoComponent,
   ],
   templateUrl: './movement.component.html',
   styleUrls: ['./movement.component.css']
@@ -74,8 +75,6 @@ export class MovementComponent implements OnInit {
     private route: ActivatedRoute,
     private equipamentService: EquipamentService,
     private movementService: MovementService,
-    private loanService: LoanService,
-    private userService: UserService,
     private router: Router,
     private dialog: MatDialog,
     private fb: FormBuilder,
@@ -191,41 +190,15 @@ export class MovementComponent implements OnInit {
     });
   }
 
-  /** Preenche responsável e projeto a partir do empréstimo ativo (equipamento Em Uso). */
   private prefillFromActiveLoan(equipment: EquipmentResponse): void {
     if (this.isViewMode || this.loanDefaultsApplied) return;
     if (!isMovementLoanPrefillStatus(equipment.statusName)) return;
 
-    const embedded = extractLoanDefaultsFromEquipment(equipment);
+    const embedded = extractLoanFormDefaults(equipment.activeLoan);
+
     if (hasLoanFormDefaults(embedded)) {
       this.applyLoanFormDefaults(embedded);
-      return;
     }
-
-    const loanId = readActiveLoanId(equipment);
-    const topo = String(equipment.topo ?? '').trim();
-    const codigo = String(equipment.codigo ?? '').trim();
-
-    this.loanService
-      .findActiveLoanByEquipment(equipment.id, topo || codigo, codigo, loanId || undefined)
-      .subscribe({
-        next: (loan) => {
-          if (!loan) {
-            if (!environment.production) {
-              console.warn(
-                '[movement] Empréstimo ativo não encontrado ou sem responsável/projeto no backend.',
-                { equipmentId: equipment.id, topo, codigo, loanId }
-              );
-            }
-            return;
-          }
-          this.applyLoanDefaultsToForm(loan);
-        }
-      });
-  }
-
-  private applyLoanDefaultsToForm(loan: LoanDetailResponse): void {
-    this.applyLoanFormDefaults(extractLoanFormDefaults(loan));
   }
 
   private applyLoanFormDefaults(defaults: LoanFormDefaults): void {
@@ -247,27 +220,7 @@ export class MovementComponent implements OnInit {
       });
     }
 
-    if (needsResponsavel && !defaults.responsavel && defaults.colaboradorId) {
-      this.resolveResponsavelName(defaults.colaboradorId);
-      return;
-    }
-
     this.loanDefaultsApplied = true;
-  }
-
-  private resolveResponsavelName(colaboradorId: string): void {
-    this.userService.findById(colaboradorId).subscribe({
-      next: (user: any) => {
-        const fullName = String(user?.fullName ?? '').trim();
-        if (!fullName || this.movementForm.get('responsavel')?.value) return;
-        this.ensureUserInOptions(fullName, colaboradorId);
-        this.movementForm.patchValue({ responsavel: fullName }, { emitEvent: false });
-        this.loanDefaultsApplied = true;
-      },
-      error: () => {
-        this.loanDefaultsApplied = true;
-      }
-    });
   }
 
   private applyLoanFieldsLock(): void {
@@ -382,7 +335,7 @@ export class MovementComponent implements OnInit {
 
     this.movementService.save(dados).subscribe({
       next: () => {
-        if ((hasImageChanges) && equipmentId) {
+        if (hasImageChanges && equipmentId) {
           this.equipamentService.manageImages(equipmentId, keepUrls, newFiles).pipe(
             catchError((err) => {
               console.error('[movement] manageImages ERRO:', err);
@@ -393,7 +346,15 @@ export class MovementComponent implements OnInit {
         } else {
           this.finalizarSalvamento();
         }
-      }
+      },
+      error: (err) => this.showMovementViolation(err)
+    });
+  }
+
+  private showMovementViolation(err: unknown): void {
+    this.snackBar.open(resolveMovementErrorMessage(err), 'Fechar', {
+      duration: 7000,
+      panelClass: ['error-snackbar']
     });
   }
 

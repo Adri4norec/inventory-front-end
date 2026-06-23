@@ -5,6 +5,7 @@ import { LoginRequest } from '../../models/auth/LoginRequest';
 import { UserResponse } from '../../models/users/UserResponse';
 import { UserService } from '../user/user.service';
 
+/** Papel derivado do nome do perfil para guards e menu lateral. */
 export type UserRole = 'ADMIN' | 'COLABORADOR';
 
 @Injectable({
@@ -27,34 +28,57 @@ export class AuthService {
     );
   }
 
+  getProfileId(): string | null {
+    if (!isPlatformBrowser(this.platformId)) {
+      return null;
+    }
+    const stored = localStorage.getItem('profileId')?.trim();
+    return stored || null;
+  }
+
+  getProfileName(): string | null {
+    if (!isPlatformBrowser(this.platformId)) {
+      return null;
+    }
+    const stored = localStorage.getItem('profileName')?.trim();
+    return stored || null;
+  }
+
   /**
-   * Obtém o papel (role) do usuário armazenado no localStorage
+   * Papel derivado do perfil (Admin → ADMIN; demais perfis → COLABORADOR).
    */
   getUserRole(): UserRole | null {
     if (!isPlatformBrowser(this.platformId)) {
       return null;
     }
+
     const stored = localStorage.getItem('userRole');
-    if (stored === 'ADMIN' || stored === 'COLABORADOR') return stored;
+    if (stored === 'ADMIN' || stored === 'COLABORADOR') {
+      return stored;
+    }
 
     const fromToken = this.getRoleFromToken();
-    if (fromToken) return fromToken;
+    if (fromToken) {
+      return fromToken;
+    }
 
-    return this.normalizeRole(localStorage.getItem('roleName'));
+    return this.deriveUserRoleFromProfileName(this.getProfileName());
   }
 
-  /**
-   * Recalcula o perfil a partir do JWT e do roleName persistido no login.
-   */
   resolveUserRole(): UserRole | null {
     if (!isPlatformBrowser(this.platformId)) {
       return null;
     }
 
-    const role = this.getRoleFromToken() ?? this.normalizeRole(localStorage.getItem('roleName'));
+    const role =
+      this.getRoleFromToken() ?? this.deriveUserRoleFromProfileName(this.getProfileName());
+
     if (role) {
       localStorage.setItem('userRole', role);
+    } else {
+      localStorage.removeItem('userRole');
     }
+
     this.updateUserRole();
     return role;
   }
@@ -74,7 +98,6 @@ export class AuthService {
     return name && name.trim() ? name : null;
   }
 
-  /** UUID do usuário autenticado (localStorage ou claims do JWT). */
   getLoggedUserId(): string | null {
     if (!isPlatformBrowser(this.platformId)) {
       return null;
@@ -111,10 +134,6 @@ export class AuthService {
     return uuid;
   }
 
-  /**
-   * Força recalcular role a partir do JWT e persistir em `userRole`.
-   * Útil logo após o login.
-   */
   syncUserRoleFromToken(): UserRole | null {
     return this.resolveUserRole();
   }
@@ -131,54 +150,60 @@ export class AuthService {
     }
 
     localStorage.setItem('user', response.username);
+
     const id = String(response.id ?? '').trim();
     if (this.isUuid(id)) {
       localStorage.setItem('userId', id);
     } else {
       localStorage.removeItem('userId');
     }
+
     if (response.fullName) {
       localStorage.setItem('fullName', response.fullName);
     } else {
       localStorage.removeItem('fullName');
     }
 
-    if (response.roleName) {
-      localStorage.setItem('roleName', response.roleName);
+    const profileId = String(response.profileId ?? '').trim();
+    if (profileId) {
+      localStorage.setItem('profileId', profileId);
     } else {
-      localStorage.removeItem('roleName');
+      localStorage.removeItem('profileId');
     }
 
-    const role = this.getRoleFromToken() ?? this.normalizeRole(response.roleName);
+    if (response.profileName) {
+      localStorage.setItem('profileName', response.profileName);
+    } else {
+      localStorage.removeItem('profileName');
+    }
+
+    const role =
+      this.getRoleFromToken() ?? this.deriveUserRoleFromProfileName(response.profileName);
+
     if (role) {
       localStorage.setItem('userRole', role);
     } else {
       localStorage.removeItem('userRole');
     }
+
     this.updateUserRole();
+  }
+
+  private deriveUserRoleFromProfileName(profileName: string | null | undefined): UserRole | null {
+    const name = profileName?.trim();
+    if (!name) {
+      return null;
+    }
+
+    if (name.toLowerCase() === 'admin') {
+      return 'ADMIN';
+    }
+
+    return 'COLABORADOR';
   }
 
   private isUuid(value: string): boolean {
     return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
-  }
-
-  private normalizeRole(value: unknown): UserRole | null {
-    if (value == null) return null;
-    const text = String(value).trim();
-    if (!text) return null;
-
-    const upper = text.replace(/^ROLE_/, '').toUpperCase();
-
-    if (upper === 'ADMIN' || upper === 'ADMINISTRADOR' || upper === 'ADMINISTRATOR') {
-      return 'ADMIN';
-    }
-    if (upper === 'COLABORADOR' || upper === 'COLLABORATOR') {
-      return 'COLABORADOR';
-    }
-    if (upper.includes('ADMIN')) return 'ADMIN';
-    if (upper.includes('COLABOR')) return 'COLABORADOR';
-
-    return null;
   }
 
   private getRoleFromToken(): UserRole | null {
@@ -188,33 +213,56 @@ export class AuthService {
     const payload = this.decodeJwtPayload(token);
     if (!payload) return null;
 
+    const profileName = payload['profileName'] ?? payload['profile_name'];
+    if (profileName) {
+      const fromProfile = this.deriveUserRoleFromProfileName(String(profileName));
+      if (fromProfile) {
+        return fromProfile;
+      }
+    }
+
     const raw =
-      payload.role ??
-      payload.roleName ??
-      payload.roles ??
-      payload.authorities ??
-      payload.authority ??
-      payload.perfis ??
-      payload.perfil;
+      payload['role'] ??
+      payload['roles'] ??
+      payload['authorities'] ??
+      payload['authority'];
 
     const candidates: string[] = [];
     if (Array.isArray(raw)) {
-      raw.forEach(v => candidates.push(String(v)));
+      raw.forEach((v) => candidates.push(String(v)));
     } else if (typeof raw === 'string') {
-      // pode vir como "ADMIN" ou "ROLE_ADMIN" ou "ADMIN,COLABORADOR"
-      raw.split(/[,\s]+/).filter(Boolean).forEach(v => candidates.push(v));
+      raw.split(/[,\s]+/).filter(Boolean).forEach((v) => candidates.push(v));
     } else if (raw != null) {
       candidates.push(String(raw));
     }
 
     for (const candidate of candidates) {
-      const role = this.normalizeRole(candidate);
+      const role = this.normalizeLegacyRole(candidate);
       if (role) return role;
     }
+
     return null;
   }
 
-  private decodeJwtPayload(token: string): any | null {
+  /** Fallback para tokens legados que ainda carregam ROLE_ADMIN / ROLE_COLABORADOR. */
+  private normalizeLegacyRole(value: unknown): UserRole | null {
+    if (value == null) return null;
+    const text = String(value).trim();
+    if (!text) return null;
+
+    const upper = text.replace(/^ROLE_/, '').toUpperCase();
+
+    if (upper === 'ADMIN' || upper.includes('ADMIN')) {
+      return 'ADMIN';
+    }
+    if (upper === 'COLABORADOR' || upper.includes('COLABOR')) {
+      return 'COLABORADOR';
+    }
+
+    return null;
+  }
+
+  private decodeJwtPayload(token: string): Record<string, unknown> | null {
     const parts = token.split('.');
     if (parts.length < 2) return null;
 
@@ -226,7 +274,7 @@ export class AuthService {
       const json = decodeURIComponent(
         atob(padded)
           .split('')
-          .map(c => `%${('00' + c.charCodeAt(0).toString(16)).slice(-2)}`)
+          .map((c) => `%${('00' + c.charCodeAt(0).toString(16)).slice(-2)}`)
           .join('')
       );
       return JSON.parse(json);
@@ -235,9 +283,6 @@ export class AuthService {
     }
   }
 
-  /**
-   * Atualiza o estado do papel do usuário
-   */
   private updateUserRole(): void {
     if (!isPlatformBrowser(this.platformId)) {
       return;
@@ -248,9 +293,6 @@ export class AuthService {
     }
   }
 
-  /**
-   * Armazena o papel do usuário no localStorage e atualiza o estado
-   */
   setUserRole(role: UserRole): void {
     if (!isPlatformBrowser(this.platformId)) {
       return;
@@ -259,38 +301,23 @@ export class AuthService {
     this.updateUserRole();
   }
 
-  /**
-   * Verifica se o usuário tem o papel especificado
-   */
   hasRole(role: UserRole): boolean {
     return this.getUserRole() === role;
   }
 
-  /**
-   * Verifica se o usuário tem algum dos papéis especificados
-   */
   hasAnyRole(roles: UserRole[]): boolean {
     const userRole = this.getUserRole();
     return userRole ? roles.includes(userRole) : false;
   }
 
-  /**
-   * Verifica se o usuário é administrador
-   */
   isAdmin(): boolean {
-    return this.hasRole('ADMIN');
+    return this.getProfileName()?.trim().toLowerCase() === 'admin';
   }
 
-  /**
-   * Verifica se o usuário é colaborador
-   */
   isColaborador(): boolean {
-    return this.hasRole('COLABORADOR');
+    return !this.isAdmin() && !!this.getToken() && !!this.getProfileName();
   }
 
-  /**
-   * Limpa o papel do usuário (logout)
-   */
   clearUserRole(): void {
     if (!isPlatformBrowser(this.platformId)) {
       return;
@@ -310,7 +337,8 @@ export class AuthService {
     localStorage.removeItem('userId');
     localStorage.removeItem('fullName');
     localStorage.removeItem('userRole');
-    localStorage.removeItem('roleName');
+    localStorage.removeItem('profileId');
+    localStorage.removeItem('profileName');
 
     this.updateUserRole();
   }

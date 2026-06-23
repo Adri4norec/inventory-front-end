@@ -1,4 +1,10 @@
+export type AuthType = 'LOCAL' | 'LDAP';
+
 export interface UserRequest {
-  username: string;
-  password?: string; 
+  fullName?: string;
+  email?: string;
+  username?: string;
+  password?: string;
+  profileId?: string;
+  authType?: AuthType;
 }

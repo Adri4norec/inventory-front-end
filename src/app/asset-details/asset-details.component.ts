@@ -8,7 +8,7 @@ import { MatCardModule } from '@angular/material/card';
 import { MatTableModule } from '@angular/material/table';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
-import { Subscription, of } from 'rxjs';
+import { Subscription, forkJoin, of } from 'rxjs';
 import { finalize, map, catchError } from 'rxjs/operators';
 
 import { LayoutService } from '../services/layout/layout.service';
@@ -18,10 +18,16 @@ import { EquipamentService } from '../services/equipament/equipment.service';
 import { EquipmentResponse } from '../models/equipaments/equipament.model';
 import { CustodiaResponse } from '../models/loans/loans.model';
 import { ToolbarUserActionsComponent } from '../shared/toolbar-user-actions/toolbar-user-actions.component';
+import { ToolbarLogoComponent } from '../shared/toolbar-logo/toolbar-logo.component';
 import {
-  isLoggedUserCustodyOwner,
+  buildCustodyViewerIndex,
+  filterMovementsByViewerIndex,
+  mergeCustodyViewerIndex,
+  mergeViewerIndexes,
+  CustodyViewerRef,
   normalizePersonName
 } from '../core/custody-owner.util';
+import { readCustodyViewerPins } from '../core/custody-viewer-pins.util';
 
 @Component({
   selector: 'app-asset-details',
@@ -36,7 +42,8 @@ import {
     MatTableModule,
     MatProgressBarModule,
     MatPaginatorModule,
-    ToolbarUserActionsComponent
+    ToolbarUserActionsComponent,
+    ToolbarLogoComponent,
   ],
   templateUrl: './asset-details.component.html',
   styleUrls: ['./asset-details.component.css']
@@ -150,25 +157,55 @@ export class AssetDetailsComponent implements OnInit, OnDestroy {
   private loadCustodyHistoryFromApi(): void {
     const managerId = this.authService.getLoggedUserId();
     const equipmentKey = String(this.assetId ?? '').trim();
+    const loggedName = this.authService.getFullName()?.trim();
 
     if (!managerId || !equipmentKey) {
       this.setCustodyHistory([]);
       return;
     }
 
+    const equipmentFilter = { equipmentId: equipmentKey, loanType: 'PROJECT' as const };
+    const custodianFilter = {
+      ...equipmentFilter,
+      custodianteId: managerId,
+      ...(loggedName ? { nome: loggedName } : {})
+    };
+
     this.isLoading = true;
     this.subs.add(
-      this.loanService
-        .managerCustodyAdvancedSearch(
-          managerId,
-          { equipmentId: equipmentKey },
-          0,
-          AssetDetailsComponent.CUSTODY_FETCH_SIZE
+      forkJoin({
+        byManager: this.loanService
+          .managerCustodyAdvancedSearch(managerId, equipmentFilter, 0, AssetDetailsComponent.CUSTODY_FETCH_SIZE)
+          .pipe(catchError(() => of({ content: [] as CustodiaResponse[] }))),
+        byCustodian: this.loanService
+          .managerCustodyAdvancedSearch(managerId, custodianFilter, 0, AssetDetailsComponent.CUSTODY_FETCH_SIZE)
+          .pipe(catchError(() => of({ content: [] as CustodiaResponse[] }))),
+        byCustodianGlobal: this.loanService
+          .managerCustodyAdvancedSearch(null, custodianFilter, 0, AssetDetailsComponent.CUSTODY_FETCH_SIZE)
+          .pipe(catchError(() => of({ content: [] as CustodiaResponse[] }))),
+        fromLoans: this.loanService.fetchProjectCustodyAsCustodian(managerId, loggedName, equipmentKey)
+      })
+        .pipe(
+          map(({ byManager, byCustodian, byCustodianGlobal, fromLoans }) => {
+            const merged = new Map<string, CustodiaResponse>();
+            for (const group of [
+              byManager.content ?? [],
+              byCustodian.content ?? [],
+              byCustodianGlobal.content ?? [],
+              fromLoans
+            ]) {
+              for (const item of group) {
+                const key = String(item?.id ?? item?.equipmentId ?? '').trim();
+                if (key && !merged.has(key)) merged.set(key, item);
+              }
+            }
+            return Array.from(merged.values());
+          }),
+          finalize(() => (this.isLoading = false))
         )
-        .pipe(finalize(() => (this.isLoading = false)))
         .subscribe({
-          next: (response) => {
-            this.setCustodyHistory(this.mapCustodyHistory(response?.content ?? [], equipmentKey));
+          next: (content) => {
+            this.setCustodyHistory(this.mapCustodyHistory(content, equipmentKey));
           },
           error: (err) => {
             if (this.loanService.isManagerCustodyAdvancedSearchUnavailable(err)) {
@@ -201,15 +238,23 @@ export class AssetDetailsComponent implements OnInit, OnDestroy {
 
     if (!equipmentMovements.length) return [];
 
-    if (!isLoggedUserCustodyOwner(
+    const historyIndex = buildCustodyViewerIndex(content);
+    const fromLoansIndex = buildCustodyViewerIndex(equipmentMovements);
+    const pins = readCustodyViewerPins();
+    const viewerIndex = mergeCustodyViewerIndex(
+      mergeViewerIndexes(historyIndex, fromLoansIndex),
+      pins
+    );
+
+    const visible = filterMovementsByViewerIndex(
       equipmentMovements,
       this.authService.getLoggedUserId(),
-      this.getLoggedPersonNames()
-    )) {
-      return [];
-    }
+      this.getLoggedPersonNames(),
+      viewerIndex,
+      pins
+    );
 
-    return equipmentMovements;
+    return visible.length ? equipmentMovements : [];
   }
 
   private getLoggedPersonNames(): Set<string> {

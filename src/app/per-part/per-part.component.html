@@ -3,6 +3,8 @@
     <button mat-icon-button (click)="layout.toggleMenu()" aria-label="Abrir/fechar menu">
       <mat-icon>menu</mat-icon>
     </button>
+    <app-toolbar-logo></app-toolbar-logo>
+
     <span class="toolbar-title">{{ isEdit ? 'Atualizar Acessório' : 'Novo Acessório' }}</span>
     <span style="flex: 1 1 auto;"></span>
     <app-toolbar-user-actions></app-toolbar-user-actions>
@@ -13,7 +15,7 @@
       <mat-card-header>
         <mat-card-subtitle>
           <ng-container *ngIf="!isEdit">Acessório independente: nome e quantidade (proprietário padrão: IRT)</ng-container>
-          <ng-container *ngIf="isEdit">Ajuste nome e quantidade do registro pai (disponível)</ng-container>
+          <ng-container *ngIf="isEdit">Ajuste nome e quantidade geral do acessório<a href="http://" target="_blank" rel="noopener noreferrer"></a></ng-container>
         </mat-card-subtitle>
       </mat-card-header>
 

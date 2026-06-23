@@ -31,12 +31,6 @@
   overflow-y: auto;
 }
 
-.equipment-line {
-  font-size: 14px;
-  color: #111827;
-  margin-bottom: 14px;
-}
-
 .field-block {
   margin-bottom: 14px;
 }
@@ -60,48 +54,56 @@
 
 .equipment-picker {
   position: relative;
+  width: 100%;
 }
 
-.equipment-picker-toggle {
+.equipment-select-field {
+  width: 100%;
+  cursor: pointer;
+}
+
+.equipment-readonly-input {
+  cursor: pointer;
+  caret-color: transparent;
+}
+
+.equipment-picker-arrow {
+  color: rgba(0, 0, 0, 0.54);
+  pointer-events: none;
+}
+
+.equipment-list-container {
+  position: absolute;
+  z-index: 10;
+  top: calc(100% - 8px);
+  left: 0;
+  right: 0;
+  max-height: 220px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 4px 0;
+  background: #fff;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.equipment-checkbox-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  margin: 0;
+  padding: 0 16px;
   cursor: pointer;
   user-select: none;
 }
 
-.equipment-checkbox-panel {
-  position: absolute;
-  left: 0;
-  right: 0;
-  z-index: 20;
-  margin-top: -8px;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  padding: 8px 12px;
-  max-height: 220px;
-  overflow-y: auto;
-  background: #fff;
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
-}
-
-.equipment-checkbox-item {
-  display: block;
-  margin: 4px 0;
-}
-
-.equipment-empty-filter {
-  margin: 8px 0;
-  font-size: 13px;
-  color: #64748b;
-}
-
-.selected-equipment-summary {
-  margin-top: 8px;
-  font-weight: 500;
-}
-
-.equipment-field-error {
-  margin-top: 6px;
-  font-size: 12px;
-  color: #b91c1c;
+.equipment-native-checkbox {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  cursor: pointer;
 }
 
 .dialog-actions {
@@ -111,4 +113,3 @@
   padding: 12px 16px 16px 16px;
   border-top: 1px solid #e5e7eb;
 }
-

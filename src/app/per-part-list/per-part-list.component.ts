@@ -24,7 +24,9 @@ import {
   PerPartSearchFilters
 } from '../models/per-part/per-part.model';
 import { LayoutService } from '../services/layout/layout.service';
+import { PermissionService } from '../services/auth/permission.service';
 import { ToolbarUserActionsComponent } from '../shared/toolbar-user-actions/toolbar-user-actions.component';
+import { ToolbarLogoComponent } from '../shared/toolbar-logo/toolbar-logo.component';
 import { ConfirmDialogComponent } from '../shared/components/confirm-dialog/confirm-dialog.component';
 
 @Component({
@@ -47,19 +49,22 @@ import { ConfirmDialogComponent } from '../shared/components/confirm-dialog/conf
     MatFormFieldModule,
     MatInputModule,
     MatSlideToggleModule,
-    ToolbarUserActionsComponent
+    ToolbarUserActionsComponent,
+    ToolbarLogoComponent,
   ],
   templateUrl: './per-part-list.component.html',
   styleUrls: ['./per-part-list.component.css']
 })
 export class PerPartListComponent implements OnInit {
   verItensEmUso = false;
+  isFilterCollapsed = false;
   displayedColumns: string[] = ['name', 'quantity', 'actions'];
   dataSource: PerPartResponse[] = [];
   isLoading = true;
   totalElements = 0;
   pageSize = 10;
   pageIndex = 0;
+  canEditInventory = false;
 
   filtros: { nome: string } = { nome: '' };
 
@@ -68,11 +73,19 @@ export class PerPartListComponent implements OnInit {
     private router: Router,
     private dialog: MatDialog,
     private snackBar: MatSnackBar,
+    private permissionService: PermissionService,
     public layout: LayoutService
   ) { }
 
   ngOnInit(): void {
+    this.permissionService.ensureLoaded().subscribe(() => this.refreshPermissions());
+    this.permissionService.permissions$.subscribe(() => this.refreshPermissions());
     this.carregar(this.pageIndex, this.pageSize);
+  }
+
+  private refreshPermissions(): void {
+    this.canEditInventory = this.permissionService.canEdit('inventory');
+    this.updateDisplayedColumns();
   }
 
   get isEmUsoView(): boolean {
@@ -88,7 +101,9 @@ export class PerPartListComponent implements OnInit {
   private updateDisplayedColumns(): void {
     this.displayedColumns = this.verItensEmUso
       ? ['name', 'quantity', 'responsavel']
-      : ['name', 'quantity', 'actions'];
+      : this.canEditInventory
+        ? ['name', 'quantity', 'actions']
+        : ['name', 'quantity'];
   }
 
   private buildSearchFilters(): PerPartSearchFilters {
@@ -131,6 +146,10 @@ export class PerPartListComponent implements OnInit {
     this.aplicarFiltros();
   }
 
+  toggleFilterPanel(): void {
+    this.isFilterCollapsed = !this.isFilterCollapsed;
+  }
+
   handlePageEvent(e: PageEvent): void {
     this.pageIndex = e.pageIndex;
     this.pageSize = e.pageSize;
@@ -138,7 +157,7 @@ export class PerPartListComponent implements OnInit {
   }
 
   podeEditarExcluir(row: PerPartResponse): boolean {
-    return !this.verItensEmUso && row.responsavel == null;
+    return this.canEditInventory && !this.verItensEmUso && row.responsavel == null;
   }
 
   formatQuantity(row: PerPartResponse): string {

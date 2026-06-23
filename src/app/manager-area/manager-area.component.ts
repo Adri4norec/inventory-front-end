@@ -22,6 +22,7 @@ import { catchError, finalize, map, switchMap } from 'rxjs/operators';
 
 import { LayoutService } from '../services/layout/layout.service';
 import { AuthService } from '../services/auth/auth.service';
+import { PermissionService } from '../services/auth/permission.service';
 import { LoanService } from '../services/loan/loan.service';
 import { EquipamentService } from '../services/equipament/equipment.service';
 import { StatusType, normalizeStatusType } from '../models/status/status-type';
@@ -33,15 +34,25 @@ import {
 } from '../models/loans/loans.model';
 import { UserService } from '../services/user/user.service';
 import { ToolbarUserActionsComponent } from '../shared/toolbar-user-actions/toolbar-user-actions.component';
+import { ToolbarLogoComponent } from '../shared/toolbar-logo/toolbar-logo.component';
 import {
   ChangeCustodyDialogComponent,
   ChangeCustodyDialogData
 } from './change-custody-dialog.component';
 import {
   diagnoseCustodyScope,
-  filterMovementsForLoggedCustodyOwner,
+  buildCustodyViewerIndex,
+  filterMovementsByViewerIndex,
+  mergeCustodyViewerIndex,
+  mergeViewerIndexes,
+  CustodyViewerRef,
   normalizePersonName
 } from '../core/custody-owner.util';
+import {
+  writeCustodyViewerPin,
+  writeCustodyViewerPins,
+  readCustodyViewerPins
+} from '../core/custody-viewer-pins.util';
 import { environment } from '../../environments/environment';
 
 @Component({
@@ -65,7 +76,8 @@ import { environment } from '../../environments/environment';
     MatPaginatorModule,
     MatDialogModule,
     MatSnackBarModule,
-    ToolbarUserActionsComponent
+    ToolbarUserActionsComponent,
+    ToolbarLogoComponent,
   ],
   templateUrl: './manager-area.component.html',
   styleUrls: ['./manager-area.component.css']
@@ -84,9 +96,11 @@ export class ManagerAreaComponent implements OnInit, OnDestroy {
     dataFim: null as Date | null
   };
   isLoading = true;
+  isFilterCollapsed = false;
   totalElements = 0;
   pageSize = 10;
   pageIndex = 0;
+  canEditCustody = false;
 
   private static readonly CUSTODY_CLIENT_FETCH_SIZE = 5000;
 
@@ -95,6 +109,9 @@ export class ManagerAreaComponent implements OnInit, OnDestroy {
     string,
     { inicioPeriodo: string; fimPeriodo: string | null }
   >();
+
+  /** Equipamentos que já tiveram alteração de custódia (histórico ou nesta sessão). */
+  private readonly changedEquipmentIds = new Set<string>();
 
   private readonly subs = new Subscription();
 
@@ -108,6 +125,7 @@ export class ManagerAreaComponent implements OnInit, OnDestroy {
     private router: Router,
     public layout: LayoutService,
     private authService: AuthService,
+    private permissionService: PermissionService,
     private loanService: LoanService,
     private equipamentService: EquipamentService,
     private userService: UserService,
@@ -129,6 +147,19 @@ export class ManagerAreaComponent implements OnInit, OnDestroy {
     );
   }
 
+  private findLoanIdForEquipment(equipmentKey: string): string | null {
+    const key = String(equipmentKey ?? '').trim();
+    if (!key) return null;
+
+    for (const item of [...this.visibleCustodyItems, ...this.allCustodyMovements]) {
+      if (String(item?.equipmentId ?? '').trim() !== key) continue;
+      const loanId = String(item?.id ?? '').trim();
+      if (loanId) return loanId;
+    }
+
+    return null;
+  }
+
   private getLoggedPersonNames(): Set<string> {
     const names = new Set<string>();
     const fullName = normalizePersonName(this.authService.getFullName());
@@ -139,7 +170,16 @@ export class ManagerAreaComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
+    this.permissionService.ensureLoaded().subscribe(() => this.refreshPermissions());
+    this.subs.add(
+      this.permissionService.permissions$.subscribe(() => this.refreshPermissions())
+    );
     this.carregarItensCustodia();
+  }
+
+  private refreshPermissions(): void {
+    this.canEditCustody = this.permissionService.canEdit('custody');
+    this.displayedColumns = ['equipmentId', 'custodianteNome', 'inicioPeriodo', 'fimPeriodo', 'acoes'];
   }
 
   ngOnDestroy(): void {
@@ -158,25 +198,19 @@ export class ManagerAreaComponent implements OnInit, OnDestroy {
     }
 
     const filtersOnServer = this.advancedSearchAvailable;
-    const request$ = filtersOnServer
-      ? this.loanService.managerCustodyAdvancedSearch(
-          managerId,
-          this.buildCustodyApiFilters(),
-          0,
-          ManagerAreaComponent.CUSTODY_CLIENT_FETCH_SIZE
-        )
-      : this.loanService.getManagerCustody(
-          managerId,
-          0,
-          ManagerAreaComponent.CUSTODY_CLIENT_FETCH_SIZE
-        );
+    const request$ = this.fetchCustodyMovements(managerId, filtersOnServer);
 
     this.subs.add(
       request$
         .pipe(
-          switchMap((response) => {
-            const content = (response?.content ?? []) as CustodiaResponse[];
-            const items = this.buildCustodyListItems(content, filtersOnServer);
+          switchMap((payload) => {
+            const content = (payload?.content ?? []) as CustodiaResponse[];
+            const items = this.buildCustodyListItems(
+              content,
+              filtersOnServer,
+              payload?.viewerIndex ?? new Map(),
+              payload?.pins ?? readCustodyViewerPins()
+            );
             return this.excludeReturnedAvailableEquipment(items);
           }),
           finalize(() => (this.isLoading = false))
@@ -195,11 +229,138 @@ export class ManagerAreaComponent implements OnInit, OnDestroy {
     );
   }
 
+  private fetchCustodyMovements(
+    managerId: string,
+    filtersOnServer: boolean
+  ): Observable<{ content: CustodiaResponse[]; viewerIndex: Map<string, CustodyViewerRef>; pins: Map<string, string> }> {
+    const size = ManagerAreaComponent.CUSTODY_CLIENT_FETCH_SIZE;
+    const loggedName = this.authService.getFullName()?.trim();
+    const manualFilters = this.buildApiFilters();
+    const projectFilters: ManagerCustodySearchFilters = {
+      ...manualFilters,
+      loanType: 'PROJECT'
+    };
+
+    const fromLoans$ = this.loanService.fetchProjectCustodyAsCustodian(
+      managerId,
+      loggedName,
+      manualFilters.equipmentId
+    );
+    const allProjectLoans$ = this.loanService.fetchAllActiveProjectLoanCustody();
+    const allHistory$ = this.loanService
+      .managerCustodyAdvancedSearch(null, { loanType: 'PROJECT' }, 0, size)
+      .pipe(catchError(() => of({ content: [] as CustodiaResponse[] })));
+
+    const buildPayload = (
+      contentGroups: CustodiaResponse[][],
+      history: CustodiaResponse[],
+      fromLoans: CustodiaResponse[]
+    ) => {
+      const historyIndex = buildCustodyViewerIndex(history);
+      const fromLoansIndex = buildCustodyViewerIndex(fromLoans);
+      const pins = readCustodyViewerPins();
+      const viewerIndex = mergeCustodyViewerIndex(
+        mergeViewerIndexes(historyIndex, fromLoansIndex),
+        pins
+      );
+
+      return {
+        content: this.mergeCustodyResponses(...contentGroups, history),
+        viewerIndex,
+        pins
+      };
+    };
+
+    if (!filtersOnServer) {
+      return forkJoin({
+        legacy: this.loanService.getManagerCustody(managerId, 0, size),
+        fromLoans: fromLoans$,
+        allProjectLoans: allProjectLoans$,
+        allHistory: allHistory$
+      }).pipe(
+        map(({ legacy, fromLoans, allProjectLoans, allHistory }) =>
+          buildPayload(
+            [legacy.content ?? [], fromLoans, allProjectLoans.items],
+            allHistory.content ?? [],
+            fromLoans
+          )
+        )
+      );
+    }
+
+    const byManager$ = this.loanService.managerCustodyAdvancedSearch(
+      managerId,
+      projectFilters,
+      0,
+      size
+    );
+
+    const custodianFilters: ManagerCustodySearchFilters = {
+      ...projectFilters,
+      custodianteId: managerId
+    };
+    if (!manualFilters.nome && loggedName) {
+      custodianFilters.nome = loggedName;
+    }
+
+    const byCustodian$ = this.loanService
+      .managerCustodyAdvancedSearch(managerId, custodianFilters, 0, size)
+      .pipe(catchError(() => of({ content: [] as CustodiaResponse[] })));
+
+    const byCustodianGlobal$ = this.loanService
+      .managerCustodyAdvancedSearch(null, custodianFilters, 0, size)
+      .pipe(catchError(() => of({ content: [] as CustodiaResponse[] })));
+
+    return forkJoin({
+      byManager: byManager$,
+      byCustodian: byCustodian$,
+      byCustodianGlobal: byCustodianGlobal$,
+      fromLoans: fromLoans$,
+      allProjectLoans: allProjectLoans$,
+      allHistory: allHistory$
+    }).pipe(
+      map(({ byManager, byCustodian, byCustodianGlobal, fromLoans, allProjectLoans, allHistory }) =>
+        buildPayload(
+          [
+            byManager.content ?? [],
+            byCustodian.content ?? [],
+            byCustodianGlobal.content ?? [],
+            fromLoans,
+            allProjectLoans.items
+          ],
+          allHistory.content ?? [],
+          fromLoans
+        )
+      )
+    );
+  }
+
+  private mergeCustodyResponses(...groups: CustodiaResponse[][]): CustodiaResponse[] {
+    const merged = new Map<string, CustodiaResponse>();
+
+    for (const group of groups) {
+      for (const item of group) {
+        const id = String(item?.id ?? '').trim();
+        const equipmentId = String(item?.equipmentId ?? '').trim();
+        const key = id ? `${id}|${equipmentId}` : equipmentId;
+        if (!key) continue;
+        if (!merged.has(key)) {
+          merged.set(key, { ...item });
+        }
+      }
+    }
+
+    return Array.from(merged.values());
+  }
+
   private buildCustodyListItems(
     content: CustodiaResponse[],
-    filtersOnServer: boolean
+    filtersOnServer: boolean,
+    viewerIndex: Map<string, CustodyViewerRef>,
+    pins: Map<string, string>
   ): CustodiaResponse[] {
     this.allCustodyMovements = content.map((item) => ({ ...item }));
+    this.syncChangedEquipmentIdsFromHistory(this.allCustodyMovements);
 
     if (!environment.production) {
       const loggedId = this.getLoggedManagerId();
@@ -219,18 +380,19 @@ export class ManagerAreaComponent implements OnInit, OnDestroy {
       );
       if (!content.length) {
         console.warn(
-          '[Custódia] API retornou lista vazia. Se o equipamento sumiu após transferência, ' +
-            'o backend provavelmente filtra pelo custodiante vigente em vez do dono da cadeia.'
+          '[Custódia] API retornou lista vazia. Verifique se o backend devolve movimentações do custodiante logado.'
         );
       }
       console.groupEnd();
     }
 
     this.allCustodyMovements = this.filterProjectLoanMovements(this.allCustodyMovements);
-    this.allCustodyMovements = filterMovementsForLoggedCustodyOwner(
+    this.allCustodyMovements = filterMovementsByViewerIndex(
       this.allCustodyMovements,
       this.getLoggedManagerId(),
-      this.getLoggedPersonNames()
+      this.getLoggedPersonNames(),
+      viewerIndex,
+      pins
     );
 
     let items = this.dedupeLatestPerEquipment(this.allCustodyMovements);
@@ -239,6 +401,10 @@ export class ManagerAreaComponent implements OnInit, OnDestroy {
       items = this.applyClientFilters(items);
     }
     return this.sortCustodiaList(items);
+  }
+
+  toggleFilterPanel(): void {
+    this.isFilterCollapsed = !this.isFilterCollapsed;
   }
 
   private publishCustodyPage(items: CustodiaResponse[], page: number, size: number): void {
@@ -354,7 +520,7 @@ export class ManagerAreaComponent implements OnInit, OnDestroy {
 
     this.openChangeCustodyDialog({
       mode: 'general',
-      availableEquipmentIds: ids
+      availableEquipmentIds: [...ids]
     });
   }
 
@@ -389,6 +555,17 @@ export class ManagerAreaComponent implements OnInit, OnDestroy {
     if (dataFim) filters.dataFim = dataFim;
 
     return filters;
+  }
+
+  private syncChangedEquipmentIdsFromHistory(items: CustodiaResponse[]): void {
+    const keys = new Set(
+      items.map((item) => String(item?.equipmentId ?? '').trim()).filter(Boolean)
+    );
+    keys.forEach((key) => {
+      if (this.getMovementsForEquipment(key).length > 1) {
+        this.changedEquipmentIds.add(key);
+      }
+    });
   }
 
   /** Filtros da custódia: apenas empréstimos do tipo Projeto entram na listagem. */
@@ -594,6 +771,7 @@ export class ManagerAreaComponent implements OnInit, OnDestroy {
       const key = String(id ?? '').trim();
       if (!key) return;
 
+      this.changedEquipmentIds.add(key);
       this.pendingCustodyByEquipment.set(key, {
         inicioPeriodo: payload.inicioPeriodo,
         fimPeriodo: payload.fimPeriodo ?? null
@@ -671,6 +849,15 @@ export class ManagerAreaComponent implements OnInit, OnDestroy {
         .subscribe({
           next: () => {
             this.rememberPendingCustodyChange({ ...batchRequest, equipmentIds });
+            const loggedId = this.getLoggedManagerId();
+            if (loggedId) {
+              const pinKeys = new Set<string>(equipmentIds);
+              equipmentIds.forEach((equipmentKey) => {
+                const loanId = this.findLoanIdForEquipment(equipmentKey);
+                if (loanId) pinKeys.add(loanId);
+              });
+              writeCustodyViewerPins([...pinKeys], loggedId);
+            }
             const msg =
               equipmentIds.length > 1
                 ? `Custódia alterada com sucesso para ${equipmentIds.length} equipamentos.`

@@ -1,5 +1,68 @@
 @import "@angular/material/prebuilt-themes/indigo-pink.css";
 
+:root {
+  /* Paleta IRT (logo recôncavo) */
+  /* Azul padrão mais claro e menos brilhante (fosco) */
+  --irt-blue-primary: #2f76c7;
+  --irt-blue-dark: #002b5c;
+  --irt-blue-medium: #2a6ab2;
+  --irt-blue-hover: #3a86dd;
+  --irt-blue-accent: #5aa1f0;
+  --irt-white: #ffffff;
+  --irt-text-muted: rgba(255, 255, 255, 0.78);
+  --irt-border-subtle: rgba(255, 255, 255, 0.22);
+  --irt-bg-hover: rgba(255, 255, 255, 0.12);
+  --irt-bg-active: rgba(255, 255, 255, 0.2);
+
+  --mdc-theme-primary: var(--irt-blue-primary);
+  --mdc-theme-on-primary: var(--irt-white);
+
+  /* Angular Material — primary alinhado à paleta IRT */
+  --mat-primary: var(--irt-blue-primary);
+  --mat-on-primary: var(--irt-white);
+  --mdc-filled-button-container-color: var(--irt-blue-primary);
+  --mdc-filled-button-label-text-color: var(--irt-white);
+  --mdc-protected-button-container-color: var(--irt-blue-primary);
+  --mdc-protected-button-label-text-color: var(--irt-white);
+
+  --page-toolbar-height: 64px;
+  --app-sidebar-width: 260px;
+}
+
+/* Botões primary (Salvar, Buscar, Confirmar…) — mesma cor da toolbar e sidebar */
+.mat-mdc-raised-button.mat-primary,
+.mat-mdc-unelevated-button.mat-primary {
+  --mdc-protected-button-container-color: var(--irt-blue-primary);
+  --mdc-protected-button-label-text-color: var(--irt-white);
+  --mdc-filled-button-container-color: var(--irt-blue-primary);
+  --mdc-filled-button-label-text-color: var(--irt-white);
+}
+
+.mat-mdc-raised-button.mat-primary:not([disabled]),
+.mat-mdc-unelevated-button.mat-primary:not([disabled]),
+.btn-salvar:not([disabled]),
+.btn-save:not([disabled]),
+.btn-submit:not([disabled]) {
+  background-color: var(--irt-blue-primary) !important;
+  color: var(--irt-white) !important;
+}
+
+.mat-mdc-raised-button.mat-primary:not([disabled]):hover,
+.mat-mdc-unelevated-button.mat-primary:not([disabled]):hover,
+.btn-salvar:not([disabled]):hover,
+.btn-save:not([disabled]):hover,
+.btn-submit:not([disabled]):hover {
+  background-color: var(--irt-blue-hover) !important;
+}
+
+.mat-mdc-raised-button.mat-primary .mat-icon,
+.mat-mdc-unelevated-button.mat-primary .mat-icon,
+.btn-salvar:not([disabled]) .mat-icon,
+.btn-save:not([disabled]) .mat-icon,
+.btn-submit:not([disabled]) .mat-icon {
+  color: var(--irt-white) !important;
+}
+
 html, body { height: 100%; }
 body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
 
@@ -19,22 +82,105 @@ body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
 .page-wrapper {
   display: flex;
   flex-direction: column;
-  height: 100vh; 
-  overflow: hidden; 
+  height: 100vh;
+  overflow: hidden;
+  padding-top: var(--page-toolbar-height, 64px);
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .page-toolbar {
-  position: sticky;
-  top: 0;
-  z-index: 100; 
-  flex-shrink: 0; 
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  width: 100%;
+  z-index: 200;
+  flex-shrink: 0;
+  padding: 0 24px !important;
+  box-sizing: border-box;
+  overflow: visible !important;
+  --mat-toolbar-container-background-color: var(--irt-blue-primary);
+  --mat-toolbar-container-text-color: var(--irt-white);
+  background: var(--irt-blue-primary) !important;
+  color: var(--irt-white) !important;
+  box-shadow: none !important;
+  --mat-toolbar-container-elevation-shadow: none;
+}
+
+.page-toolbar.mat-mdc-toolbar,
+.page-toolbar .mat-toolbar-row,
+.page-toolbar .mat-mdc-toolbar,
+.page-toolbar .mdc-toolbar {
+  overflow: visible !important;
+}
+
+.page-toolbar .toolbar-title,
+.page-toolbar .toolbar-icon,
+.page-toolbar .mat-icon,
+.page-toolbar .mat-mdc-button,
+.page-toolbar .mat-mdc-icon-button {
+  color: var(--irt-white) !important;
+}
+
+.page-toolbar .toolbar-title {
+  font-weight: 700 !important;
+  letter-spacing: 0.2px;
+}
+
+.page-toolbar .mat-mdc-icon-button .mat-mdc-button-persistent-ripple::before,
+.page-toolbar .mat-mdc-button .mat-mdc-button-persistent-ripple::before {
+  background-color: var(--irt-white);
+}
+
+.page-toolbar app-toolbar-logo {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 0;
+  pointer-events: auto;
+  overflow: visible;
+}
+
+.toolbar-logo {
+  display: block;
+  height: 72px;
+  width: auto;
+  max-width: min(400px, 62vw);
+  object-fit: contain;
 }
 
 .content {
   flex: 1;
-  overflow-y: auto; 
+  overflow-y: auto;
+  overflow-x: auto;
   padding: 20px;
   background-color: #f1f5f9;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.content mat-card {
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.form-grid {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.form-grid > mat-form-field,
+.form-grid > app-autocomplete-create,
+.form-grid > .field-half,
+.form-grid > .field-full {
+  min-width: 0;
+  max-width: 100%;
 }
 
 .lightbox-dialog-panel {
@@ -50,4 +196,56 @@ body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
 }
 .lightbox-dialog-backdrop {
   background: rgba(0, 0, 0, 0.85) !important;
+}
+
+mat-card.filter-card {
+  padding: 8px 10px;
+  box-sizing: border-box;
+}
+
+.filter-card .filter-panel-toggle {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 12px;
+  transition: margin-bottom 0.4s ease;
+}
+
+.filter-card .filter-panel-toggle--collapsed {
+  margin-bottom: 0;
+}
+
+.filter-card .filter-panel-toggle-btn {
+  --mdc-icon-button-icon-color: var(--irt-blue-primary);
+  transition: --mdc-icon-button-icon-color 0.35s ease;
+}
+
+.filter-card .filter-panel-toggle--collapsed .filter-panel-toggle-btn {
+  --mdc-icon-button-icon-color: #1a1a1a;
+}
+
+.filter-card .filter-panel-toggle-btn .filter-panel-toggle-icon {
+  color: var(--irt-blue-primary);
+  transition: color 0.35s ease;
+}
+
+.filter-card .filter-panel-toggle--collapsed .filter-panel-toggle-btn .filter-panel-toggle-icon {
+  color: #1a1a1a;
+}
+
+.filter-panel-body {
+  display: grid;
+  grid-template-rows: 1fr;
+  opacity: 1;
+  transition: grid-template-rows 0.45s ease, opacity 0.4s ease;
+}
+
+.filter-panel-body--collapsed {
+  grid-template-rows: 0fr;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.filter-panel-body__inner {
+  overflow: hidden;
+  min-height: 0;
 }

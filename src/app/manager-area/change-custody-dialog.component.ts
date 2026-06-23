@@ -6,8 +6,6 @@ import { MatIconModule } from '@angular/material/icon';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
-import { MatCheckboxModule } from '@angular/material/checkbox';
-import { FormsModule } from '@angular/forms';
 import { of, Subscription } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 
@@ -19,6 +17,11 @@ export type ChangeCustodyDialogMode = 'general' | 'row';
 
 export interface EquipmentOption {
   id: string;
+}
+
+export interface EquipmentSelectOption {
+  value: string;
+  label: string;
 }
 
 export interface ChangeCustodyDialogData {
@@ -40,8 +43,6 @@ export interface ChangeCustodyDialogData {
     MatIconModule,
     MatFormFieldModule,
     MatInputModule,
-    MatCheckboxModule,
-    FormsModule,
     AutocompleteCreateComponent
   ],
   templateUrl: './change-custody-dialog.component.html',
@@ -58,9 +59,10 @@ export class ChangeCustodyDialogComponent implements OnInit, AfterViewInit, OnDe
 
   filteredUsers: UserSearchResponse[] = [];
   filteredEquipmentOptions: EquipmentOption[] = [];
-  equipmentSearchTerm = '';
-  filteredAvailableEquipmentIds: string[] = [];
-  equipmentPanelOpen = false;
+  /** Lista mestra fixa — nunca alterada pela seleção. */
+  equipmentSelectOptions: EquipmentSelectOption[] = [];
+  equipmentListOpen = false;
+  isFilterCollapsed = false;
 
   private readonly movementCapturedAt = new Date();
   private readonly subs = new Subscription();
@@ -83,6 +85,7 @@ export class ChangeCustodyDialogComponent implements OnInit, AfterViewInit, OnDe
     const todayLabel = this.formatBrDate(new Date());
 
     if (this.isGeneralMode) {
+      this.equipmentSelectOptions = this.buildEquipmentSelectOptions([...(this.data.availableEquipmentIds ?? [])]);
       this.form.controls.equipmentIdSingle.clearValidators();
       this.form.controls.equipmentIdSingle.updateValueAndValidity({ emitEvent: false });
     } else {
@@ -128,155 +131,45 @@ export class ChangeCustodyDialogComponent implements OnInit, AfterViewInit, OnDe
     this.filteredEquipmentOptions = prefill ? [{ id: prefill }] : [];
   }
 
-  get equipmentInputDisplay(): string {
-    if (this.equipmentPanelOpen) {
-      return this.equipmentSearchTerm;
-    }
-    return this.getEquipmentIdsSelectLabel();
-  }
-
-  openEquipmentPanel(): void {
-    if (this.equipmentPanelOpen) return;
-    this.equipmentPanelOpen = true;
-    this.equipmentSearchTerm = this.getEquipmentIdsSelectLabel();
-    this.refreshFilteredEquipmentIds();
-  }
-
-  closeEquipmentPanel(): void {
-    if (!this.equipmentPanelOpen) return;
-    this.finalizeEquipmentInputFromText(this.equipmentSearchTerm);
-    this.equipmentPanelOpen = false;
-    this.equipmentSearchTerm = '';
-  }
-
-  toggleEquipmentPanel(event: MouseEvent): void {
-    event.stopPropagation();
-    if (this.equipmentPanelOpen) {
-      this.closeEquipmentPanel();
-      return;
-    }
-    this.openEquipmentPanel();
-  }
-
-  onEquipmentInputChange(term: string): void {
-    if (!this.equipmentPanelOpen) return;
-    this.equipmentSearchTerm = term;
-    this.syncEquipmentIdsFromInput(term);
-    this.refreshFilteredEquipmentIds();
-  }
-
-  private parseEquipmentInput(value: string): { committedIds: string[]; filterToken: string } {
-    const trimmed = value.trim();
-    if (!trimmed) {
-      return { committedIds: [], filterToken: '' };
-    }
-
-    if (trimmed.endsWith(',')) {
-      return {
-        committedIds: trimmed
-          .split(',')
-          .map((part) => part.trim())
-          .filter(Boolean),
-        filterToken: ''
-      };
-    }
-
-    const parts = value.split(',');
-    if (parts.length === 1) {
-      return { committedIds: [], filterToken: parts[0].trim() };
-    }
-
-    return {
-      committedIds: parts
-        .slice(0, -1)
-        .map((part) => part.trim())
-        .filter(Boolean),
-      filterToken: parts[parts.length - 1].trim()
-    };
-  }
-
-  private syncEquipmentIdsFromInput(value: string): void {
-    const { committedIds } = this.parseEquipmentInput(value);
-    const validated = this.validateEquipmentIds(committedIds);
-    this.form.controls.equipmentIdsMulti.setValue(validated, { emitEvent: false });
-    this.form.controls.equipmentIdsMulti.markAsDirty();
-  }
-
-  private finalizeEquipmentInputFromText(value: string): void {
-    const tokens = value
-      .split(',')
-      .map((part) => part.trim())
-      .filter(Boolean);
-    const validated = this.validateEquipmentIds(tokens);
-
-    this.form.controls.equipmentIdsMulti.setValue(validated);
-    this.form.controls.equipmentIdsMulti.markAsDirty();
-    this.form.controls.equipmentIdsMulti.markAsTouched();
-  }
-
-  private validateEquipmentIds(ids: string[]): string[] {
-    const available = this.data.availableEquipmentIds ?? [];
-    const byNormalized = new Map(
-      available.map((id) => [String(id).trim().toLowerCase(), String(id).trim()])
-    );
-
-    const result: string[] = [];
-    for (const id of ids) {
-      const match = byNormalized.get(id.trim().toLowerCase());
-      if (match && !result.includes(match)) {
-        result.push(match);
-      }
-    }
-    return result;
-  }
-
-  private syncEquipmentSearchTermFromSelection(): void {
-    if (!this.equipmentPanelOpen) return;
-    this.equipmentSearchTerm = this.getEquipmentIdsSelectLabel();
-    this.refreshFilteredEquipmentIds();
-  }
-
-  private refreshFilteredEquipmentIds(): void {
-    const { filterToken } = this.parseEquipmentInput(this.equipmentSearchTerm);
-    const search = filterToken.trim().toLowerCase();
-    const source = this.data.availableEquipmentIds ?? [];
-
-    this.filteredAvailableEquipmentIds = !search
-      ? [...source]
-      : source.filter((id) => String(id).toLowerCase().includes(search));
-  }
-
   @HostListener('document:click')
-  onDocumentClick(): void {
-    this.closeEquipmentPanel();
+  closeEquipmentList(): void {
+    this.equipmentListOpen = false;
+  }
+
+  toggleEquipmentList(event: MouseEvent): void {
+    event.stopPropagation();
+    this.equipmentListOpen = !this.equipmentListOpen;
+  }
+
+  toggleFilterPanel(): void {
+    this.isFilterCollapsed = !this.isFilterCollapsed;
   }
 
   isEquipmentSelected(id: string): boolean {
-    return (this.form.controls.equipmentIdsMulti.value ?? []).includes(id);
+    const key = String(id).trim();
+    return (this.form.controls.equipmentIdsMulti.value ?? []).some(
+      (item) => String(item).trim() === key
+    );
   }
 
-  toggleEquipmentId(id: string, checked: boolean): void {
-    const current = [...(this.form.controls.equipmentIdsMulti.value ?? [])];
+  onEquipmentToggle(id: string, checked: boolean): void {
+    const key = String(id).trim();
+    const current = this.normalizeEquipmentIds(this.form.controls.equipmentIdsMulti.value);
+    const next = checked
+      ? (current.some((item) => item === key) ? current : [...current, key])
+      : current.filter((item) => item !== key);
 
-    if (checked) {
-      if (!current.includes(id)) {
-        current.push(id);
-      }
-    } else {
-      const index = current.indexOf(id);
-      if (index >= 0) {
-        current.splice(index, 1);
-      }
-    }
-
-    this.form.controls.equipmentIdsMulti.setValue(current);
+    this.form.controls.equipmentIdsMulti.setValue(next, { emitEvent: false });
     this.form.controls.equipmentIdsMulti.markAsDirty();
     this.form.controls.equipmentIdsMulti.markAsTouched();
-    this.syncEquipmentSearchTermFromSelection();
+  }
+
+  trackEquipmentOption(_index: number, opt: EquipmentSelectOption): string {
+    return opt.value;
   }
 
   getEquipmentIdsSelectLabel(): string {
-    const ids = this.form.controls.equipmentIdsMulti.value ?? [];
+    const ids = this.normalizeEquipmentIds(this.form.controls.equipmentIdsMulti.value);
     if (!ids.length) {
       return '';
     }
@@ -297,8 +190,6 @@ export class ChangeCustodyDialogComponent implements OnInit, AfterViewInit, OnDe
       this.form.markAllAsTouched();
       return;
     }
-
-    this.finalizeEquipmentPanel();
 
     const value = this.form.getRawValue();
     const equipmentIds = this.extractEquipmentIds(value);
@@ -323,12 +214,12 @@ export class ChangeCustodyDialogComponent implements OnInit, AfterViewInit, OnDe
     this.dialogRef.close(payload);
   }
 
-  private finalizeEquipmentPanel(): void {
-    if (this.isGeneralMode && this.equipmentPanelOpen) {
-      this.finalizeEquipmentInputFromText(this.equipmentSearchTerm);
-      this.equipmentPanelOpen = false;
-      this.equipmentSearchTerm = '';
-    }
+  private buildEquipmentSelectOptions(ids: string[]): EquipmentSelectOption[] {
+    return this.normalizeEquipmentIds(ids).map((id) => ({ value: id, label: id }));
+  }
+
+  private normalizeEquipmentIds(ids: string[] | null | undefined): string[] {
+    return [...new Set((ids ?? []).map((id) => String(id).trim()).filter(Boolean))];
   }
 
   private extractEquipmentIds(value: ReturnType<typeof this.form.getRawValue>): string[] {
@@ -336,7 +227,7 @@ export class ChangeCustodyDialogComponent implements OnInit, AfterViewInit, OnDe
       ? value.equipmentIdsMulti ?? []
       : [value.equipmentIdSingle ?? ''];
 
-    return [...new Set(ids.map((id) => String(id).trim()).filter(Boolean))];
+    return this.normalizeEquipmentIds(ids);
   }
 
   private markEquipmentFieldAsInvalid(): void {

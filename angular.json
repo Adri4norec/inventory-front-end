@@ -21,8 +21,13 @@
             ],
             "tsConfig": "tsconfig.app.json",
             "assets": [
-              "src/favicon.ico",
-              "src/assets"
+              "src/favicon.png",
+              "src/assets",
+              {
+                "glob": "**/*",
+                "input": "src/app/shared/image",
+                "output": "/shared/image"
+              }
             ],
             "styles": [
               "@angular/material/prebuilt-themes/indigo-pink.css",
@@ -92,8 +97,13 @@
             ],
             "tsConfig": "tsconfig.spec.json",
             "assets": [
-              "src/favicon.ico",
-              "src/assets"
+              "src/favicon.png",
+              "src/assets",
+              {
+                "glob": "**/*",
+                "input": "src/app/shared/image",
+                "output": "/shared/image"
+              }
             ],
             "styles": [
               "@angular/material/prebuilt-themes/indigo-pink.css",

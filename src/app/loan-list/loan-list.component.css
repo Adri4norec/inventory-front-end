@@ -9,7 +9,7 @@
   height: 100%;
 }
 
-/* ─── Layout Principal ───────────────────────────────────────── */
+/* ─── Layout Principal: toolbar fixa no topo; corpo rola dentro de .content (global styles.css) ─── */
 .page-wrapper {
   display: flex;
   flex-direction: column;
@@ -18,10 +18,9 @@
   height: 100%;
   max-height: 100%;
   background: #f0f4f8;
-  padding: 0;
 }
 
-/* Área rolável: filtros + tabela + paginação */
+/* Área rolável: filtros + tabela + paginação ficam acessíveis ao scroll */
 .loan-list-content {
   flex: 1;
   min-height: 0;
@@ -31,23 +30,27 @@
 
 /* ─── Barra Azul (Toolbar) ───────────────────────────────────── */
 .page-toolbar {
-  position: sticky;
-  top: 0;
   z-index: 998;
   width: 100%;
+  flex-shrink: 0;
   border-radius: 0;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-  margin-bottom: 24px;
-  padding: 0 24px 0 80px !important;
-  flex-shrink: 0;
 }
 
 /* ─── Cards (Filtros e Tabela) ───────────────────────────────── */
-.filter-card, .table-card {
-  margin: 0 24px 24px 24px;
+.filter-card,
+.table-card {
   border-radius: 8px !important;
   z-index: 997;
   flex-shrink: 0;
+}
+
+.loan-list-content .filter-card {
+  margin: 0 0 16px 0;
+}
+
+.loan-list-content .table-card {
+  margin: 0;
 }
 
 .table-scroll {

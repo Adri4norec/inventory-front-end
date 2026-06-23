@@ -25,6 +25,7 @@ import { PerPartRequest } from '../models/per-part/per-part.model';
 import { ProprietaryResponse } from '../models/proprietaries/proprietary';
 import { LayoutService } from '../services/layout/layout.service';
 import { ToolbarUserActionsComponent } from '../shared/toolbar-user-actions/toolbar-user-actions.component';
+import { ToolbarLogoComponent } from '../shared/toolbar-logo/toolbar-logo.component';
 
 @Component({
   selector: 'app-per-part',
@@ -46,7 +47,8 @@ import { ToolbarUserActionsComponent } from '../shared/toolbar-user-actions/tool
     MatProgressSpinnerModule,
     MatDatepickerModule,
     MatNativeDateModule,
-    ToolbarUserActionsComponent
+    ToolbarUserActionsComponent,
+    ToolbarLogoComponent,
   ],
   templateUrl: './per-part.component.html',
   styleUrls: ['./per-part.component.css']

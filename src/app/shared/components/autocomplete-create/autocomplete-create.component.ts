@@ -45,7 +45,7 @@ export const AUTOCOMPLETE_CREATE_NEW = '__AUTOCOMPLETE_CREATE_NEW__' as const;
     MatIconModule,
   ],
   templateUrl: './autocomplete-create.component.html',
-  styleUrl: './autocomplete-create.component.scss',
+  styleUrls: ['./autocomplete-create.component.scss'],
 })
 export class AutocompleteCreateComponent<T = Record<string, unknown>>
   implements ControlValueAccessor, OnInit, OnChanges, OnDestroy
@@ -58,6 +58,7 @@ export class AutocompleteCreateComponent<T = Record<string, unknown>>
   @Input({ required: true }) bindValue!: string;
   @Input() requiredError = '';
   @Input() showCreateButton = true;
+  @Input() allowFreeText = false;
 
   @Output() search = new EventEmitter<string>();
   @Output() createNew = new EventEmitter<string>();
@@ -113,6 +114,11 @@ export class AutocompleteCreateComponent<T = Record<string, unknown>>
         }
         this.lastTypedTerm = term;
         this.search.emit(term);
+        if (this.allowFreeText) {
+          this.storedValue = term;
+          this.onChange(term.trim() || null);
+          return;
+        }
         this.clearStoredValueIfTextChanged(term);
       });
   }
@@ -203,6 +209,14 @@ export class AutocompleteCreateComponent<T = Record<string, unknown>>
   }
 
   onInputBlur(): void {
+    if (this.allowFreeText && typeof this.displayControl.value === 'string') {
+      const trimmed = this.displayControl.value.trim();
+      this.storedValue = trimmed;
+      this.onChange(trimmed || null);
+      if (trimmed !== this.displayControl.value) {
+        this.displayControl.setValue(trimmed, { emitEvent: false });
+      }
+    }
     this.markTouched();
   }
 

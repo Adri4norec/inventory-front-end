@@ -3,6 +3,8 @@
     <button mat-icon-button (click)="layout.toggleMenu()" aria-label="Abrir/fechar menu">
       <mat-icon>menu</mat-icon>
     </button>
+    <app-toolbar-logo></app-toolbar-logo>
+
     <span class="toolbar-title">Lista de acessórios</span>
     <span style="flex: 1 1 auto;"></span>
     <app-toolbar-user-actions></app-toolbar-user-actions>
@@ -11,28 +13,40 @@
   <div class="content equipament-list-content">
 
     <mat-card appearance="outlined" class="filter-card">
-      <div class="filter-row">
-        <div class="filter-controls">
-          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="compact-filter"
-            style="flex: 1; min-width: 150px; max-width: 500px;">
-            <mat-label>Nome</mat-label>
-            <input matInput [(ngModel)]="filtros.nome" (keyup.enter)="aplicarFiltros()">
-          </mat-form-field>
+      <div class="filter-panel-toggle" [class.filter-panel-toggle--collapsed]="isFilterCollapsed">
+        <button mat-icon-button type="button" class="filter-panel-toggle-btn" (click)="toggleFilterPanel()" [attr.aria-label]="isFilterCollapsed ? 'Expandir filtros' : 'Ocultar filtros'">
+          <mat-icon class="filter-panel-toggle-icon">filter_list</mat-icon>
+        </button>
+      </div>
+      <div
+        class="filter-panel-body"
+        [class.filter-panel-body--collapsed]="isFilterCollapsed"
+        [attr.aria-hidden]="isFilterCollapsed">
+        <div class="filter-panel-body__inner">
+        <div class="filter-row">
+          <div class="filter-controls">
+            <mat-form-field appearance="outline" subscriptSizing="dynamic" class="compact-filter"
+              style="flex: 1; min-width: 150px; max-width: 500px;">
+              <mat-label>Nome</mat-label>
+              <input matInput [(ngModel)]="filtros.nome" (keyup.enter)="aplicarFiltros()">
+            </mat-form-field>
+          </div>
+
+          <mat-slide-toggle [(ngModel)]="verItensEmUso" (change)="onToggleVisao()" color="primary" class="view-toggle">
+            Ver itens em uso
+          </mat-slide-toggle>
         </div>
 
-        <mat-slide-toggle [(ngModel)]="verItensEmUso" (change)="onToggleVisao()" color="primary" class="view-toggle">
-          Ver itens em uso
-        </mat-slide-toggle>
-      </div>
+        <div style="display: flex; justify-content: space-between; gap: 12px; margin-top: 12px;">
+          <button mat-stroked-button type="button" (click)="limparFiltros()">
+            <mat-icon>close</mat-icon> Cancelar
+          </button>
 
-      <div style="display: flex; justify-content: space-between; gap: 12px; margin-top: 12px;">
-        <button mat-stroked-button type="button" (click)="limparFiltros()">
-          <mat-icon>close</mat-icon> Cancelar
-        </button>
-
-        <button mat-flat-button color="primary" (click)="aplicarFiltros()">
-          <mat-icon>search</mat-icon> Buscar
-        </button>
+          <button mat-flat-button color="primary" (click)="aplicarFiltros()">
+            <mat-icon>search</mat-icon> Buscar
+          </button>
+        </div>
+        </div>
       </div>
     </mat-card>
 

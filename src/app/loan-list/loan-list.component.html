@@ -3,14 +3,26 @@
     <button mat-icon-button (click)="layout.toggleMenu()" aria-label="Abrir/fechar menu">
       <mat-icon>menu</mat-icon>
     </button>
-    <span class="toolbar-title">Controle de Empréstimos</span>
+    <app-toolbar-logo></app-toolbar-logo>
+
+    <span class="toolbar-title">Lista de Empréstimos</span>
     <span style="flex: 1 1 auto;"></span>
     <app-toolbar-user-actions></app-toolbar-user-actions>
   </mat-toolbar>
 
   <div class="content loan-list-content">
     <mat-card appearance="outlined" class="filter-card">
-      <div style="display: flex; gap: 15px; flex-wrap: wrap; align-items: center;">
+      <div class="filter-panel-toggle" [class.filter-panel-toggle--collapsed]="isFilterCollapsed">
+        <button mat-icon-button type="button" class="filter-panel-toggle-btn" (click)="toggleFilterPanel()" [attr.aria-label]="isFilterCollapsed ? 'Expandir filtros' : 'Ocultar filtros'">
+          <mat-icon class="filter-panel-toggle-icon">filter_list</mat-icon>
+        </button>
+      </div>
+      <div
+        class="filter-panel-body"
+        [class.filter-panel-body--collapsed]="isFilterCollapsed"
+        [attr.aria-hidden]="isFilterCollapsed">
+        <div class="filter-panel-body__inner">
+        <div style="display: flex; gap: 15px; flex-wrap: wrap; align-items: center;">
 
         <mat-form-field appearance="outline" subscriptSizing="dynamic" class="compact-filter"
           style="flex: 1; min-width: 120px;">
@@ -27,7 +39,10 @@
         <mat-form-field appearance="outline" subscriptSizing="dynamic" class="compact-filter"
           style="flex: 1; min-width: 150px;">
           <mat-label>Categoria</mat-label>
-          <mat-select [(ngModel)]="filtros.categoria" (selectionChange)="aplicarFiltros()">
+          <mat-select [(ngModel)]="filtros.categorias" multiple (selectionChange)="aplicarFiltros()">
+            <mat-select-trigger>
+              {{ getCategoriaSelectLabel() }}
+            </mat-select-trigger>
             <mat-option *ngFor="let opt of categoriaFilterOptions" [value]="opt.value">
               {{ opt.label }}
             </mat-option>
@@ -63,6 +78,8 @@
         <button mat-flat-button color="primary" (click)="aplicarFiltros()">
           <mat-icon>search</mat-icon> Buscar
         </button>
+      </div>
+        </div>
       </div>
     </mat-card>
 
