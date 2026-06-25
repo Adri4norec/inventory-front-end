@@ -512,6 +512,7 @@ export class ManagerAreaComponent implements OnInit, OnDestroy {
   }
 
   alterarCustodiaGeral(): void {
+    const items = this.visibleCustodyItems.length ? this.visibleCustodyItems : this.dataSource;
     const ids = this.getEquipmentIdsForGeneralDialog();
     if (ids.length === 0) {
       this.lidarComErro('Nenhum item disponível para alteração de custódia.', null);
@@ -520,7 +521,13 @@ export class ManagerAreaComponent implements OnInit, OnDestroy {
 
     this.openChangeCustodyDialog({
       mode: 'general',
-      availableEquipmentIds: [...ids]
+      availableEquipmentIds: [...ids],
+      availableCustodyItems: items
+        .map((item) => ({
+          equipmentId: String(item.equipmentId ?? '').trim(),
+          custodianteNome: this.getCustodianteLabel(item)
+        }))
+        .filter((item) => !!item.equipmentId)
     });
   }
 

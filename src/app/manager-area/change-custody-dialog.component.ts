@@ -24,12 +24,18 @@ export interface EquipmentSelectOption {
   label: string;
 }
 
+export interface CustodySelectOption {
+  equipmentId: string;
+  custodianteNome?: string;
+}
+
 export interface ChangeCustodyDialogData {
   mode: ChangeCustodyDialogMode;
   loanId?: string;
   equipmentId?: string;
   custodianteNome?: string;
   availableEquipmentIds: string[];
+  availableCustodyItems?: CustodySelectOption[];
 }
 
 @Component({
@@ -61,8 +67,11 @@ export class ChangeCustodyDialogComponent implements OnInit, AfterViewInit, OnDe
   filteredEquipmentOptions: EquipmentOption[] = [];
   /** Lista mestra fixa — nunca alterada pela seleção. */
   equipmentSelectOptions: EquipmentSelectOption[] = [];
+  equipmentSearchControl = new FormControl('', { nonNullable: true });
   equipmentListOpen = false;
   isFilterCollapsed = false;
+
+  private availableEquipmentIdSet = new Set<string>();
 
   private readonly movementCapturedAt = new Date();
   private readonly subs = new Subscription();
@@ -85,7 +94,11 @@ export class ChangeCustodyDialogComponent implements OnInit, AfterViewInit, OnDe
     const todayLabel = this.formatBrDate(new Date());
 
     if (this.isGeneralMode) {
-      this.equipmentSelectOptions = this.buildEquipmentSelectOptions([...(this.data.availableEquipmentIds ?? [])]);
+      this.equipmentSelectOptions = this.buildEquipmentSelectOptions(
+        [...(this.data.availableEquipmentIds ?? [])],
+        this.data.availableCustodyItems
+      );
+      this.availableEquipmentIdSet = new Set(this.equipmentSelectOptions.map((opt) => opt.value));
       this.form.controls.equipmentIdSingle.clearValidators();
       this.form.controls.equipmentIdSingle.updateValueAndValidity({ emitEvent: false });
     } else {
@@ -141,6 +154,39 @@ export class ChangeCustodyDialogComponent implements OnInit, AfterViewInit, OnDe
     this.equipmentListOpen = !this.equipmentListOpen;
   }
 
+  onEquipmentSearchFocus(): void {
+    this.equipmentListOpen = true;
+  }
+
+  onEquipmentSearchInput(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const normalized = this.normalizeCommaSeparatedIds(input.value);
+
+    if (normalized !== input.value) {
+      input.value = normalized;
+      this.equipmentSearchControl.setValue(normalized, { emitEvent: false });
+    }
+
+    this.equipmentListOpen = true;
+    this.syncSelectionFromInput(normalized);
+  }
+
+  get equipmentFilterToken(): string {
+    return this.parseInputSegments(this.equipmentSearchControl.value).current.trim();
+  }
+
+  get filteredEquipmentSelectOptions(): EquipmentSelectOption[] {
+    const term = this.equipmentFilterToken.toLowerCase();
+    if (!term) {
+      return this.equipmentSelectOptions;
+    }
+    return this.equipmentSelectOptions.filter((opt) => opt.value.toLowerCase().includes(term));
+  }
+
+  get selectedEquipmentCount(): number {
+    return this.normalizeEquipmentIds(this.form.controls.equipmentIdsMulti.value).length;
+  }
+
   toggleFilterPanel(): void {
     this.isFilterCollapsed = !this.isFilterCollapsed;
   }
@@ -160,6 +206,7 @@ export class ChangeCustodyDialogComponent implements OnInit, AfterViewInit, OnDe
       : current.filter((item) => item !== key);
 
     this.form.controls.equipmentIdsMulti.setValue(next, { emitEvent: false });
+    this.syncInputFromSelection(next);
     this.form.controls.equipmentIdsMulti.markAsDirty();
     this.form.controls.equipmentIdsMulti.markAsTouched();
   }
@@ -186,6 +233,10 @@ export class ChangeCustodyDialogComponent implements OnInit, AfterViewInit, OnDe
   }
 
   submit(): void {
+    if (this.isGeneralMode) {
+      this.syncSelectionFromInput(this.equipmentSearchControl.value);
+    }
+
     if (this.form.invalid) {
       this.form.markAllAsTouched();
       return;
@@ -214,7 +265,24 @@ export class ChangeCustodyDialogComponent implements OnInit, AfterViewInit, OnDe
     this.dialogRef.close(payload);
   }
 
-  private buildEquipmentSelectOptions(ids: string[]): EquipmentSelectOption[] {
+  private buildEquipmentSelectOptions(
+    ids: string[],
+    custodyItems?: CustodySelectOption[]
+  ): EquipmentSelectOption[] {
+    if (custodyItems?.length) {
+      const seen = new Set<string>();
+      const options: EquipmentSelectOption[] = [];
+
+      for (const item of custodyItems) {
+        const value = String(item.equipmentId ?? '').trim();
+        if (!value || seen.has(value)) continue;
+        seen.add(value);
+        options.push({ value, label: value });
+      }
+
+      return options.sort((a, b) => a.value.localeCompare(b.value, undefined, { numeric: true }));
+    }
+
     return this.normalizeEquipmentIds(ids).map((id) => ({ value: id, label: id }));
   }
 
@@ -223,11 +291,65 @@ export class ChangeCustodyDialogComponent implements OnInit, AfterViewInit, OnDe
   }
 
   private extractEquipmentIds(value: ReturnType<typeof this.form.getRawValue>): string[] {
-    const ids = this.isGeneralMode
-      ? value.equipmentIdsMulti ?? []
-      : [value.equipmentIdSingle ?? ''];
+    if (this.isGeneralMode) {
+      this.syncSelectionFromInput(this.equipmentSearchControl.value);
+      return this.normalizeEquipmentIds(this.form.controls.equipmentIdsMulti.value);
+    }
 
-    return this.normalizeEquipmentIds(ids);
+    return this.normalizeEquipmentIds([value.equipmentIdSingle ?? '']);
+  }
+
+  private normalizeCommaSeparatedIds(raw: string): string {
+    return raw.replace(/,\s*/g, ', ').replace(/^\s+/, '');
+  }
+
+  private parseInputSegments(raw: string): { committed: string[]; current: string } {
+    const trimmed = raw.trim();
+    if (!trimmed) {
+      return { committed: [], current: '' };
+    }
+
+    if (trimmed.endsWith(',')) {
+      const committed = trimmed
+        .replace(/,\s*$/, '')
+        .split(',')
+        .map((segment) => segment.trim())
+        .filter(Boolean);
+      return { committed, current: '' };
+    }
+
+    const parts = trimmed.split(',');
+    if (parts.length === 1) {
+      return { committed: [], current: parts[0].trim() };
+    }
+
+    const current = (parts[parts.length - 1] ?? '').trim();
+    const committed = parts
+      .slice(0, -1)
+      .map((segment) => segment.trim())
+      .filter(Boolean);
+
+    return { committed, current };
+  }
+
+  private syncSelectionFromInput(raw: string): void {
+    const { committed, current } = this.parseInputSegments(raw);
+    const selection = this.normalizeEquipmentIds([
+      ...committed.filter((id) => this.availableEquipmentIdSet.has(id)),
+      ...(current && this.availableEquipmentIdSet.has(current) ? [current] : [])
+    ]);
+
+    this.form.controls.equipmentIdsMulti.setValue(selection, { emitEvent: false });
+  }
+
+  private syncInputFromSelection(ids: string[]): void {
+    const { current } = this.parseInputSegments(this.equipmentSearchControl.value);
+    const committed = this.normalizeEquipmentIds(ids);
+    const base = committed.join(', ');
+    const next = current ? (base ? `${base}, ${current}` : current) : base;
+
+    this.equipmentSearchControl.setValue(next, { emitEvent: false });
+    this.syncSelectionFromInput(next);
   }
 
   private markEquipmentFieldAsInvalid(): void {

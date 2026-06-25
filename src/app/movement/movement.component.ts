@@ -5,6 +5,9 @@ import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angula
 import { of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 
+import { LoanService } from '../services/loan/loan.service';
+import { UserService } from '../services/user/user.service';
+
 import { MatCardModule } from '@angular/material/card';
 import { MatTableModule } from '@angular/material/table';
 import { MatButtonModule } from '@angular/material/button';
@@ -27,7 +30,7 @@ import { PhotoGaleryDialogComponent } from '../photo-galery-dialog/photo-galery-
 import { ImageLightboxComponent } from '../shared/components/image-lightbox/image-lightbox.component';
 import { AutocompleteCreateComponent } from '../shared/components/autocomplete-create/autocomplete-create.component';
 import { MovementRequest, MovementResponse, MovementType } from '../models/movement/movement.model';
-import { UserSearchResponse } from '../models/loans/loans.model';
+import { UserSearchResponse, ActiveLoanSummaryResponse, LoanDetailResponse } from '../models/loans/loans.model';
 import { EquipmentResponse } from '../models/equipaments/equipament.model';
 import { extractLoanFormDefaults, hasLoanFormDefaults, isMovementLoanPrefillStatus, LoanFormDefaults } from '../core/loan-form.util';
 import { resolveMovementErrorMessage } from '../core/movement-error.util';
@@ -75,6 +78,8 @@ export class MovementComponent implements OnInit {
     private route: ActivatedRoute,
     private equipamentService: EquipamentService,
     private movementService: MovementService,
+    private loanService: LoanService,
+    private userService: UserService,
     private router: Router,
     private dialog: MatDialog,
     private fb: FormBuilder,
@@ -195,9 +200,37 @@ export class MovementComponent implements OnInit {
     if (!isMovementLoanPrefillStatus(equipment.statusName)) return;
 
     const embedded = extractLoanFormDefaults(equipment.activeLoan);
-
     if (hasLoanFormDefaults(embedded)) {
       this.applyLoanFormDefaults(embedded);
+      return;
+    }
+
+    const preferredLoanId = String(equipment.activeLoanId ?? equipment.activeLoan?.id ?? '').trim();
+    this.loanService
+      .findActiveLoanByEquipment(this.equipamentId, undefined, undefined, preferredLoanId || undefined)
+      .pipe(catchError(() => of(null)))
+      .subscribe((loan) => this.applyLoanDefaultsFromDetail(loan));
+  }
+
+  private applyLoanDefaultsFromDetail(loan: LoanDetailResponse | null): void {
+    if (!loan || this.loanDefaultsApplied) return;
+
+    const defaults = extractLoanFormDefaults(loan as unknown as ActiveLoanSummaryResponse);
+    if (!defaults.responsavel && defaults.colaboradorId) {
+      this.userService.findById(defaults.colaboradorId).pipe(
+        catchError(() => of(null))
+      ).subscribe((user) => {
+        const fullName = String(user?.fullName ?? '').trim();
+        const resolved = fullName ? { ...defaults, responsavel: fullName } : defaults;
+        if (hasLoanFormDefaults(resolved)) {
+          this.applyLoanFormDefaults(resolved);
+        }
+      });
+      return;
+    }
+
+    if (hasLoanFormDefaults(defaults)) {
+      this.applyLoanFormDefaults(defaults);
     }
   }
 

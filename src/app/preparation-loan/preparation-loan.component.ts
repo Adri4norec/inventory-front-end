@@ -381,11 +381,39 @@ export class PreparationLoanComponent implements OnInit {
       this.loadResponsavelById(colaboradorId);
     }
 
-    if (Array.isArray((loan as any).acessorios)) {
-      this.setLoanAccessories((loan as any).acessorios as LoanAcessorioResponse[]);
-    }
+    this.setLoanAccessories(this.extractLoanAccessories(loan));
 
     this.syncLoanTypeFromLoan(loan);
+  }
+
+  private extractLoanAccessories(loan: unknown): LoanAcessorioResponse[] {
+    if (!loan || typeof loan !== 'object') return [];
+    const record = loan as Record<string, unknown>;
+    const raw = record['acessorios'] ?? record['accessories'];
+    if (!Array.isArray(raw)) return [];
+    return raw
+      .map((item) => this.normalizeLoanAccessory(item))
+      .filter((item): item is LoanAcessorioResponse => !!item);
+  }
+
+  private normalizeLoanAccessory(item: unknown): LoanAcessorioResponse | null {
+    if (!item || typeof item !== 'object') return null;
+    const record = item as Record<string, unknown>;
+    const perPartId = String(record['perPartId'] ?? record['id'] ?? '').trim();
+    if (!perPartId) return null;
+
+    const quantidadeEmprestada = Number(
+      record['quantidadeEmprestada'] ?? record['quantity'] ?? record['quantidade'] ?? 0
+    );
+    const originalTotalQuantity = Number(
+      record['originalTotalQuantity'] ??
+        record['totalQuantity'] ??
+        record['availableQuantity'] ??
+        quantidadeEmprestada
+    );
+    const name = String(record['name'] ?? record['perPartName'] ?? record['nome'] ?? 'Acessório').trim();
+
+    return { perPartId, name, quantidadeEmprestada, originalTotalQuantity };
   }
 
   private setLoanAccessories(acessorios: LoanAcessorioResponse[]): void {

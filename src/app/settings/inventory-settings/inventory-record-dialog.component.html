@@ -1,0 +1,53 @@
+<div class="dialog-shell">
+  <div class="dialog-header">
+    <div class="dialog-title">
+      <mat-icon class="dialog-title-icon">{{ isEdit ? 'edit' : 'add_circle' }}</mat-icon>
+      <span>{{ dialogTitle }}</span>
+    </div>
+    <button mat-icon-button type="button" (click)="close()" aria-label="Fechar">
+      <mat-icon>close</mat-icon>
+    </button>
+  </div>
+
+  <div class="dialog-body" [formGroup]="form">
+    <div class="field-group">
+      <label class="field-label" for="recordTypeSelect">Tipo</label>
+      <mat-form-field appearance="outline" class="full-width record-field" subscriptSizing="dynamic">
+        <mat-select id="recordTypeSelect" formControlName="type">
+          <mat-option *ngFor="let option of typeOptions" [value]="option.value">
+            {{ option.label }}
+          </mat-option>
+        </mat-select>
+      </mat-form-field>
+    </div>
+
+    <div class="field-group">
+      <label class="field-label" for="recordNameInput">Nome</label>
+      <mat-form-field appearance="outline" class="full-width record-field" subscriptSizing="dynamic">
+        <input
+          matInput
+          id="recordNameInput"
+          formControlName="name"
+          placeholder="Digite o nome do registro"
+          maxlength="120"
+          autocomplete="off" />
+        <mat-error *ngIf="form.get('name')?.touched && form.get('name')?.hasError('required')">
+          Nome é obrigatório
+        </mat-error>
+        <mat-error *ngIf="form.get('name')?.touched && form.get('name')?.hasError('minlength')">
+          Informe ao menos 2 caracteres
+        </mat-error>
+        <mat-error *ngIf="form.get('name')?.touched && form.get('name')?.hasError('duplicate')">
+          Já existe um registro com este nome
+        </mat-error>
+      </mat-form-field>
+    </div>
+  </div>
+
+  <div class="dialog-actions">
+    <button mat-stroked-button type="button" class="btn-cancel" (click)="close()">Cancelar</button>
+    <button mat-flat-button color="primary" type="button" class="btn-save" (click)="submit()">
+      {{ isEdit ? 'Salvar alterações' : 'Salvar registro' }}
+    </button>
+  </div>
+</div>

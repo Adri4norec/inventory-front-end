@@ -1,0 +1,80 @@
+.dialog-shell {
+  width: 100%;
+  max-width: 520px;
+  border-radius: var(--app-dialog-border-radius, 16px);
+  overflow: hidden;
+  background: #fff;
+}
+
+:host {
+  display: block;
+  border-radius: var(--app-dialog-border-radius, 16px);
+  overflow: hidden;
+}
+
+.dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 22px 24px 12px;
+}
+
+.dialog-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 22px;
+  font-weight: 600;
+  color: #0b1c33;
+}
+
+.dialog-title-icon {
+  color: #5888ba;
+}
+
+.dialog-body {
+  padding: 0 24px 8px;
+}
+
+.field-group {
+  margin-bottom: 18px;
+}
+
+.field-label {
+  display: block;
+  font-weight: 500;
+  color: #1f3255;
+  margin-bottom: 8px;
+  font-size: 15px;
+}
+
+.full-width {
+  width: 100%;
+}
+
+.record-field ::ng-deep .mat-mdc-text-field-wrapper {
+  border-radius: 999px !important;
+  background: #fafcff;
+}
+
+.record-field ::ng-deep .mat-mdc-form-field-subscript-wrapper {
+  padding: 0 16px;
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 16px 24px 24px;
+}
+
+.btn-cancel {
+  border-radius: 999px !important;
+  padding: 0 22px !important;
+}
+
+.btn-save {
+  border-radius: 999px !important;
+  padding: 0 26px !important;
+  box-shadow: 0 6px 14px rgba(47, 118, 199, 0.22);
+}

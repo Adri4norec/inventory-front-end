@@ -25,11 +25,16 @@
               (click)="toggleEquipmentList($event)">
               <mat-label>ID / Tombo</mat-label>
               <mat-icon matPrefix>inventory_2</mat-icon>
-              <input matInput readonly tabindex="-1" class="equipment-readonly-input"
-                [value]="getEquipmentIdsSelectLabel()" placeholder="Selecione um ou mais IDs" />
-              <mat-icon matSuffix class="equipment-picker-arrow">
+              <input matInput class="equipment-search-input" [formControl]="equipmentSearchControl"
+                placeholder="Ex.: 1111, 1113, 1114" autocomplete="off"
+                (focus)="onEquipmentSearchFocus()" (input)="onEquipmentSearchInput($event)"
+                (click)="$event.stopPropagation()" />
+              <mat-icon matSuffix class="equipment-picker-arrow" (click)="toggleEquipmentList($event)">
                 {{ equipmentListOpen ? 'arrow_drop_up' : 'arrow_drop_down' }}
               </mat-icon>
+              <mat-hint *ngIf="selectedEquipmentCount > 0">
+                {{ selectedEquipmentCount }} selecionado(s): {{ getEquipmentIdsSelectLabel() }}
+              </mat-hint>
               <mat-error
                 *ngIf="form.get('equipmentIdsMulti')?.touched && form.get('equipmentIdsMulti')?.hasError('required')">
                 Informe ao menos um ID / Tombo
@@ -37,12 +42,15 @@
             </mat-form-field>
 
             <div *ngIf="equipmentListOpen" class="equipment-list-container" (click)="$event.stopPropagation()">
-              <label *ngFor="let opt of equipmentSelectOptions; trackBy: trackEquipmentOption"
+              <label *ngFor="let opt of filteredEquipmentSelectOptions; trackBy: trackEquipmentOption"
                 class="equipment-checkbox-item">
                 <input type="checkbox" class="equipment-native-checkbox" [checked]="isEquipmentSelected(opt.value)"
                   (change)="onEquipmentToggle(opt.value, $any($event.target).checked)" />
-                <span>{{ opt.label }}</span>
+                <span>{{ opt.value }}</span>
               </label>
+              <div *ngIf="filteredEquipmentSelectOptions.length === 0" class="equipment-empty">
+                Nenhuma custódia encontrada<span *ngIf="equipmentFilterToken"> para "{{ equipmentFilterToken }}"</span>
+              </div>
             </div>
           </div>
         </ng-container>

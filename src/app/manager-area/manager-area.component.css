@@ -178,16 +178,6 @@
   display: none;
 }
 
-/* Dialog: remove padding padrão do mat-dialog */
-::ng-deep .change-custody-dialog-panel .mat-mdc-dialog-surface {
-  padding: 0 !important;
-  border-radius: 18px !important;
-}
-
-::ng-deep .change-custody-dialog-panel .mat-mdc-dialog-content {
-  padding: 0 !important;
-}
-
 ::ng-deep .change-custody-equipment-select-panel {
   max-height: 280px;
 }

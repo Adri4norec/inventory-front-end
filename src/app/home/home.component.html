@@ -19,6 +19,7 @@
       <button
         type="button"
         class="home-card"
+        [ngClass]="'home-card--' + card.theme"
         *ngFor="let card of visibleCards"
         (click)="navigateTo(card.route)"
         [attr.aria-label]="card.title">
@@ -29,6 +30,19 @@
         <p class="home-card__description">{{ card.description }}</p>
         <mat-icon class="home-card__arrow" aria-hidden="true">arrow_forward</mat-icon>
       </button>
+    </section>
+
+    <section class="home-legend" *ngIf="visibleLegendItems.length > 0" aria-label="Legenda de cores por contexto">
+      <h3 class="home-legend__title">Legenda de cores por contexto</h3>
+      <ul class="home-legend__list">
+        <li
+          class="home-legend__item"
+          [ngClass]="'home-legend__item--' + item.theme"
+          *ngFor="let item of visibleLegendItems">
+          <span class="home-legend__dot" aria-hidden="true"></span>
+          {{ item.label }}
+        </li>
+      </ul>
     </section>
   </div>
 </div>

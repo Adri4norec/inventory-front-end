@@ -1,6 +1,15 @@
 .dialog-shell {
   width: 100%;
   max-width: 520px;
+  border-radius: var(--app-dialog-border-radius, 16px);
+  overflow: hidden;
+  background: #fff;
+}
+
+:host {
+  display: block;
+  border-radius: var(--app-dialog-border-radius, 16px);
+  overflow: hidden;
 }
 
 .dialog-header {

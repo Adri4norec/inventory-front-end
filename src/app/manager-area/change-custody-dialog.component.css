@@ -1,6 +1,15 @@
 .dialog-shell {
   width: 100%;
   max-width: 640px;
+  border-radius: var(--app-dialog-border-radius, 16px);
+  overflow: hidden;
+  background: #fff;
+}
+
+:host {
+  display: block;
+  border-radius: var(--app-dialog-border-radius, 16px);
+  overflow: hidden;
 }
 
 .dialog-header {
@@ -59,17 +68,15 @@
 
 .equipment-select-field {
   width: 100%;
-  cursor: pointer;
 }
 
-.equipment-readonly-input {
-  cursor: pointer;
-  caret-color: transparent;
+.equipment-search-input {
+  cursor: text;
 }
 
 .equipment-picker-arrow {
   color: rgba(0, 0, 0, 0.54);
-  pointer-events: none;
+  cursor: pointer;
 }
 
 .equipment-list-container {
@@ -104,6 +111,12 @@
   height: 18px;
   flex-shrink: 0;
   cursor: pointer;
+}
+
+.equipment-empty {
+  padding: 12px 16px;
+  font-size: 13px;
+  color: #64748b;
 }
 
 .dialog-actions {

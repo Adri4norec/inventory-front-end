@@ -27,6 +27,7 @@
 
   --page-toolbar-height: 64px;
   --app-sidebar-width: 260px;
+  --app-dialog-border-radius: 16px;
 }
 
 /* Botões primary (Salvar, Buscar, Confirmar…) — mesma cor da toolbar e sidebar */
@@ -196,6 +197,36 @@ body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
 }
 .lightbox-dialog-backdrop {
   background: rgba(0, 0, 0, 0.85) !important;
+}
+
+/* Diálogos com shell customizado — arredondamento moderado e consistente */
+.cdk-overlay-pane.inventory-record-dialog-panel .mat-mdc-dialog-container,
+.cdk-overlay-pane.inventory-record-dialog-panel .mat-mdc-dialog-surface,
+.cdk-overlay-pane.inventory-record-dialog-panel .mdc-dialog__surface,
+.cdk-overlay-pane.add-profile-dialog-panel .mat-mdc-dialog-container,
+.cdk-overlay-pane.add-profile-dialog-panel .mat-mdc-dialog-surface,
+.cdk-overlay-pane.add-profile-dialog-panel .mdc-dialog__surface,
+.cdk-overlay-pane.change-custody-dialog-panel .mat-mdc-dialog-container,
+.cdk-overlay-pane.change-custody-dialog-panel .mat-mdc-dialog-surface,
+.cdk-overlay-pane.change-custody-dialog-panel .mdc-dialog__surface,
+.inventory-record-dialog-panel .mat-mdc-dialog-container,
+.inventory-record-dialog-panel .mat-mdc-dialog-surface,
+.inventory-record-dialog-panel .mdc-dialog__surface,
+.add-profile-dialog-panel .mat-mdc-dialog-container,
+.add-profile-dialog-panel .mat-mdc-dialog-surface,
+.add-profile-dialog-panel .mdc-dialog__surface,
+.change-custody-dialog-panel .mat-mdc-dialog-container,
+.change-custody-dialog-panel .mat-mdc-dialog-surface,
+.change-custody-dialog-panel .mdc-dialog__surface {
+  padding: 0 !important;
+  border-radius: var(--app-dialog-border-radius) !important;
+  overflow: hidden;
+}
+
+.inventory-record-dialog-panel .mat-mdc-dialog-content,
+.add-profile-dialog-panel .mat-mdc-dialog-content,
+.change-custody-dialog-panel .mat-mdc-dialog-content {
+  padding: 0 !important;
 }
 
 mat-card.filter-card {

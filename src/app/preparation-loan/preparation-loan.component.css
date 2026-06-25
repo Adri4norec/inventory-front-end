@@ -568,16 +568,30 @@
   align-items: center;
 }
 
+.accessory-tags--readonly {
+  margin-top: 4px;
+}
+
+.accessory-section .section-subtitle {
+  margin: 0 0 12px;
+}
+
 .accessory-tag {
   display: inline-flex;
   align-items: center;
   gap: 8px;
   padding: 10px 14px;
-  background: #f3f4f6;
   border-radius: 999px;
-  color: #b91c1c;
   font-size: 13px;
   margin-top: 8px;
+}
+
+.accessory-tag--readonly {
+  background: #fafafa;
+  border: 1px solid #d4d4d4;
+  color: #1a1a1a;
+  cursor: default;
+  user-select: none;
 }
 
 .section-subtitle {

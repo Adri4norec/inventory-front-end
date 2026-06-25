@@ -273,13 +273,3 @@
     max-width: none;
   }
 }
-
-::ng-deep .add-profile-dialog-panel .mat-mdc-dialog-surface {
-  padding: 0 !important;
-  border-radius: 28px !important;
-  overflow: hidden;
-}
-
-::ng-deep .add-profile-dialog-panel .mat-mdc-dialog-content {
-  padding: 0 !important;
-}

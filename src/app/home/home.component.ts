@@ -15,11 +15,19 @@ import { AppModuleKey } from '../settings/user-settings/access-profile.model';
 import { ToolbarUserActionsComponent } from '../shared/toolbar-user-actions/toolbar-user-actions.component';
 import { ToolbarLogoComponent } from '../shared/toolbar-logo/toolbar-logo.component';
 
+export type HomeCardTheme =
+  | 'inventory'
+  | 'users'
+  | 'loans'
+  | 'custody'
+  | 'settings';
+
 interface HomeCard {
   title: string;
   description: string;
   icon: string;
   route: string;
+  theme: HomeCardTheme;
   module?: AppModuleKey;
   requiresEdit?: boolean;
   adminOnly?: boolean;
@@ -48,6 +56,7 @@ export class HomeComponent implements OnInit, OnDestroy {
       description: 'Visualize todos os equipamentos cadastrados.',
       icon: 'laptop_mac',
       route: '/equipaments',
+      theme: 'inventory',
       module: 'inventory',
     },
     {
@@ -55,6 +64,7 @@ export class HomeComponent implements OnInit, OnDestroy {
       description: 'Cadastre um novo equipamento no sistema.',
       icon: 'add',
       route: '/cadastro',
+      theme: 'inventory',
       module: 'inventory',
       requiresEdit: true,
     },
@@ -63,6 +73,7 @@ export class HomeComponent implements OnInit, OnDestroy {
       description: 'Visualize todos os acessórios cadastrados.',
       icon: 'sell',
       route: '/inventario/acessorios',
+      theme: 'inventory',
       module: 'inventory',
     },
     {
@@ -70,6 +81,7 @@ export class HomeComponent implements OnInit, OnDestroy {
       description: 'Cadastre um novo acessório no sistema.',
       icon: 'add_circle_outline',
       route: '/inventario/acessorios/novo',
+      theme: 'inventory',
       module: 'inventory',
       requiresEdit: true,
     },
@@ -78,6 +90,7 @@ export class HomeComponent implements OnInit, OnDestroy {
       description: 'Consulte e gerencie os usuários do sistema.',
       icon: 'group',
       route: '/users',
+      theme: 'users',
       adminOnly: true,
     },
     {
@@ -85,6 +98,7 @@ export class HomeComponent implements OnInit, OnDestroy {
       description: 'Cadastre um novo usuário no sistema.',
       icon: 'person_add',
       route: '/users/novo',
+      theme: 'users',
       adminOnly: true,
     },
     {
@@ -92,6 +106,7 @@ export class HomeComponent implements OnInit, OnDestroy {
       description: 'Acompanhe empréstimos e devoluções.',
       icon: 'assignment',
       route: '/loans',
+      theme: 'loans',
       module: 'loans',
     },
     {
@@ -99,6 +114,7 @@ export class HomeComponent implements OnInit, OnDestroy {
       description: 'Visualize itens sob custódia na área do gerente.',
       icon: 'published_with_changes',
       route: '/area-gerente',
+      theme: 'custody',
       module: 'custody',
     },
     {
@@ -106,6 +122,7 @@ export class HomeComponent implements OnInit, OnDestroy {
       description: 'Ajuste parâmetros do módulo de inventário.',
       icon: 'inventory_2',
       route: '/configuracoes/inventario',
+      theme: 'settings',
       adminOnly: true,
     },
     {
@@ -113,6 +130,7 @@ export class HomeComponent implements OnInit, OnDestroy {
       description: 'Gerencie perfis e regras de acesso.',
       icon: 'manage_accounts',
       route: '/configuracoes/usuario',
+      theme: 'settings',
       adminOnly: true,
     },
     {
@@ -120,6 +138,7 @@ export class HomeComponent implements OnInit, OnDestroy {
       description: 'Defina opções do fluxo de empréstimos.',
       icon: 'settings',
       route: '/configuracoes/emprestimo',
+      theme: 'settings',
       adminOnly: true,
     },
     {
@@ -127,12 +146,22 @@ export class HomeComponent implements OnInit, OnDestroy {
       description: 'Configure regras de custódia de equipamentos.',
       icon: 'admin_panel_settings',
       route: '/configuracoes/custodia',
+      theme: 'custody',
       adminOnly: true,
     },
   ];
 
   visibleCards: HomeCard[] = [];
+  visibleLegendItems: Array<{ theme: HomeCardTheme; label: string }> = [];
   private subs = new Subscription();
+
+  private readonly legendByTheme: Record<HomeCardTheme, string> = {
+    inventory: 'Inventário',
+    users: 'Usuários',
+    loans: 'Empréstimos',
+    custody: 'Custódia',
+    settings: 'Configurações',
+  };
 
   constructor(
     public layout: LayoutService,
@@ -186,6 +215,16 @@ export class HomeComponent implements OnInit, OnDestroy {
     }
 
     this.visibleCards = this.allCards.filter((card) => this.isCardVisible(card));
+    this.visibleLegendItems = this.buildVisibleLegendItems(this.visibleCards);
+  }
+
+  private buildVisibleLegendItems(cards: HomeCard[]): Array<{ theme: HomeCardTheme; label: string }> {
+    const order: HomeCardTheme[] = ['inventory', 'users', 'loans', 'custody', 'settings'];
+    const themes = new Set(cards.map((card) => card.theme));
+
+    return order
+      .filter((theme) => themes.has(theme))
+      .map((theme) => ({ theme, label: this.legendByTheme[theme] }));
   }
 
   private isCardVisible(card: HomeCard): boolean {

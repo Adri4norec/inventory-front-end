@@ -16,7 +16,19 @@ export class CategoryService {
     return this.httpClient.get<CategoryResponse[]>(this.API);
   }
 
+  findById(id: string): Observable<CategoryResponse> {
+    return this.httpClient.get<CategoryResponse>(`${this.API}/${id}`);
+  }
+
   create(request: CategoryRequest): Observable<CategoryResponse> {
     return this.httpClient.post<CategoryResponse>(this.API, request);
+  }
+
+  update(id: string, request: CategoryRequest): Observable<CategoryResponse> {
+    return this.httpClient.put<CategoryResponse>(`${this.API}/${id}`, request);
+  }
+
+  delete(id: string): Observable<void> {
+    return this.httpClient.delete<void>(`${this.API}/${id}`);
   }
 }
