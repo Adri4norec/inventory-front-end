@@ -177,7 +177,8 @@
                   <span>{{ element.status === 'DISPONIVEL' ? 'Novo Empréstimo' : (element.status === 'EM_USO' ? 'Registrar Devolução' : (element.status === 'EM_PREPARACAO' ? 'Registrar Empréstimo' : 'Editar Status de Empréstimo')) }}</span>
                 </button>
 
-                <button mat-menu-item *ngIf="podeFinalizarDevolucao(element.status)"
+                <button mat-menu-item
+                  *ngIf="showAddReturnPhotosMenuItem && podeFinalizarDevolucao(element.status)"
                   (click)="openAddReturnPhotos(element)">
                   <mat-icon color="primary">add_photo_alternate</mat-icon>
                   <span>Adicionar Fotos de Devolução</span>

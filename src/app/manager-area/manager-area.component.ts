@@ -54,6 +54,14 @@ import {
   readCustodyViewerPins
 } from '../core/custody-viewer-pins.util';
 import { environment } from '../../environments/environment';
+import { extractApiErrorMessage, formatApiViolations, extractApiErrorViolations } from '../core/http/api-error.util';
+
+interface CustodyEquipmentDetails {
+  equipmentId: string;
+  status: StatusType | null;
+  name: string | null;
+  proprietaryName: string | null;
+}
 
 @Component({
   selector: 'app-manager-area',
@@ -84,7 +92,15 @@ import { environment } from '../../environments/environment';
 })
 export class ManagerAreaComponent implements OnInit, OnDestroy {
 
-  displayedColumns: string[] = ['equipmentId', 'custodianteNome', 'inicioPeriodo', 'fimPeriodo', 'acoes'];
+  displayedColumns: string[] = [
+    'equipmentId',
+    'equipmentName',
+    'proprietarioNome',
+    'custodianteNome',
+    'inicioPeriodo',
+    'fimPeriodo',
+    'acoes'
+  ];
   private allCustodyMovements: CustodiaResponse[] = [];
   /** Lista completa após filtros (inclui exclusão de devolvidos), antes da paginação. */
   private visibleCustodyItems: CustodiaResponse[] = [];
@@ -139,6 +155,16 @@ export class ManagerAreaComponent implements OnInit, OnDestroy {
     return nome || '-';
   }
 
+  getEquipmentNameLabel(element: CustodiaResponse): string {
+    const nome = String(element?.equipmentName ?? '').trim();
+    return nome || '-';
+  }
+
+  getProprietarioLabel(element: CustodiaResponse): string {
+    const nome = String(element?.proprietarioNome ?? '').trim();
+    return nome || '-';
+  }
+
   private getMovementsForEquipment(equipmentId: string): CustodiaResponse[] {
     const key = String(equipmentId ?? '').trim();
     if (!key) return [];
@@ -179,7 +205,15 @@ export class ManagerAreaComponent implements OnInit, OnDestroy {
 
   private refreshPermissions(): void {
     this.canEditCustody = this.permissionService.canEdit('custody');
-    this.displayedColumns = ['equipmentId', 'custodianteNome', 'inicioPeriodo', 'fimPeriodo', 'acoes'];
+    this.displayedColumns = [
+      'equipmentId',
+      'equipmentName',
+      'proprietarioNome',
+      'custodianteNome',
+      'inicioPeriodo',
+      'fimPeriodo',
+      'acoes'
+    ];
   }
 
   ngOnDestroy(): void {
@@ -434,18 +468,36 @@ export class ManagerAreaComponent implements OnInit, OnDestroy {
     }
 
     return forkJoin(
-      equipmentIds.map((equipmentKey) => this.fetchEquipmentStatusForCustodyKey(equipmentKey))
+      equipmentIds.map((equipmentKey) => this.fetchEquipmentDetailsForCustodyKey(equipmentKey))
     ).pipe(
       map((rows) => {
+        const equipmentByKey = new Map(rows.map((row) => [row.equipmentId, row]));
         const availableIds = new Set(
           rows
             .filter((row) => row.status === StatusType.DISPONIVEL)
             .map((row) => row.equipmentId)
         );
-        return items.filter((item) => !availableIds.has(String(item?.equipmentId ?? '').trim()));
+        return items
+          .filter((item) => !availableIds.has(String(item?.equipmentId ?? '').trim()))
+          .map((item) => this.enrichCustodyItemWithEquipment(item, equipmentByKey));
       }),
       catchError(() => of(items))
     );
+  }
+
+  private enrichCustodyItemWithEquipment(
+    item: CustodiaResponse,
+    equipmentByKey: Map<string, CustodyEquipmentDetails>
+  ): CustodiaResponse {
+    const key = String(item?.equipmentId ?? '').trim();
+    const equipment = key ? equipmentByKey.get(key) : undefined;
+    if (!equipment) return item;
+
+    return {
+      ...item,
+      equipmentName: equipment.name ?? item.equipmentName,
+      proprietarioNome: equipment.proprietaryName ?? item.proprietarioNome
+    };
   }
 
   private readEquipmentStatus(equipment: unknown): StatusType | null {
@@ -458,9 +510,9 @@ export class ManagerAreaComponent implements OnInit, OnDestroy {
    * Custódia pode trazer equipmentId como UUID ou como tombo/código (ex.: "1112").
    * findById só aceita UUID — tombo usa advanced-search para não gerar BUSINESS_ERROR no interceptor.
    */
-  private fetchEquipmentStatusForCustodyKey(
+  private fetchEquipmentDetailsForCustodyKey(
     equipmentKey: string
-  ): Observable<{ equipmentId: string; status: StatusType | null }> {
+  ): Observable<CustodyEquipmentDetails> {
     const lookup$ = this.isUuid(equipmentKey)
       ? this.equipamentService.findById(equipmentKey)
       : this.equipamentService.advancedSearch({ tombo: equipmentKey }, 0, 1).pipe(
@@ -470,10 +522,32 @@ export class ManagerAreaComponent implements OnInit, OnDestroy {
     return lookup$.pipe(
       map((equipment) => ({
         equipmentId: equipmentKey,
-        status: this.readEquipmentStatus(equipment)
+        status: this.readEquipmentStatus(equipment),
+        name: this.readEquipmentName(equipment),
+        proprietaryName: this.readEquipmentProprietaryName(equipment)
       })),
-      catchError(() => of({ equipmentId: equipmentKey, status: null as StatusType | null }))
+      catchError(() =>
+        of({
+          equipmentId: equipmentKey,
+          status: null as StatusType | null,
+          name: null,
+          proprietaryName: null
+        })
+      )
     );
+  }
+
+  private readEquipmentName(equipment: unknown): string | null {
+    if (!equipment || typeof equipment !== 'object') return null;
+    const name = String((equipment as Record<string, unknown>)['name'] ?? '').trim();
+    return name || null;
+  }
+
+  private readEquipmentProprietaryName(equipment: unknown): string | null {
+    if (!equipment || typeof equipment !== 'object') return null;
+    const record = equipment as Record<string, unknown>;
+    const proprietaryName = String(record['proprietaryName'] ?? record['proprietario'] ?? '').trim();
+    return proprietaryName || null;
   }
 
   aplicarFiltros(): void {
@@ -873,7 +947,7 @@ export class ManagerAreaComponent implements OnInit, OnDestroy {
             this.carregarItensCustodia(this.pageIndex, this.pageSize);
           },
           error: (err) =>
-            this.lidarComErro(
+            this.showCustodyChangeError(
               equipmentIds.length > 1
                 ? 'Não foi possível alterar a custódia em lote. Verifique os IDs e tente novamente.'
                 : 'Não foi possível alterar a custódia. Verifique os IDs e tente novamente.',
@@ -890,6 +964,14 @@ export class ManagerAreaComponent implements OnInit, OnDestroy {
     this.dataSource = [];
     this.visibleCustodyItems = [];
     this.totalElements = 0;
+  }
+
+  private showCustodyChangeError(fallback: string, err: unknown): void {
+    console.error(fallback, err);
+    const apiMessage = extractApiErrorMessage(err, '');
+    const violations = formatApiViolations(extractApiErrorViolations(err));
+    const message = apiMessage || violations || fallback;
+    this.snackBar.open(message, 'Fechar', { duration: 7000 });
   }
 
   private resolveManagerIdFromApiAndReload(page: number, size: number): void {

@@ -94,8 +94,22 @@
               </td>
             </ng-container>
 
+            <ng-container matColumnDef="equipmentName">
+              <th mat-header-cell *matHeaderCellDef> Equipamento </th>
+              <td mat-cell *matCellDef="let element">
+                <span [matTooltip]="getEquipmentNameLabel(element)">{{ getEquipmentNameLabel(element) }}</span>
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="proprietarioNome">
+              <th mat-header-cell *matHeaderCellDef> Proprietário </th>
+              <td mat-cell *matCellDef="let element">
+                <span [matTooltip]="getProprietarioLabel(element)">{{ getProprietarioLabel(element) }}</span>
+              </td>
+            </ng-container>
+
             <ng-container matColumnDef="custodianteNome">
-              <th mat-header-cell *matHeaderCellDef> Nome </th>
+              <th mat-header-cell *matHeaderCellDef> Custodiante </th>
               <td mat-cell *matCellDef="let element">
                 <span [matTooltip]="getCustodianteLabel(element)">{{ getCustodianteLabel(element) }}</span>
               </td>

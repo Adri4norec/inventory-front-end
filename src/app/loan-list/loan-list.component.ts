@@ -73,6 +73,8 @@ export class LoanListComponent implements OnInit, OnDestroy {
   pageSize = 10;
   pageIndex = 0;
   canEditLoans = false;
+  /** Reative para exibir "Adicionar Fotos de Devolução" no menu de ações. */
+  readonly showAddReturnPhotosMenuItem = false;
 
   filtros = {
     codigo: '',

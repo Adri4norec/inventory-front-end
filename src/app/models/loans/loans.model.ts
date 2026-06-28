@@ -127,6 +127,10 @@ export interface CustodiaResponse {
   inicioPeriodo: string;
   fimPeriodo: string | null;
   loanType?: LoanType;
+  /** Preenchido no frontend a partir de GET /equipments ou da lista de empréstimos. */
+  equipmentName?: string;
+  /** Proprietário/responsável do equipamento (proprietaryName). */
+  proprietarioNome?: string;
 }
 
 export interface ManagerCustodySearchFilters {

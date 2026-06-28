@@ -15,7 +15,10 @@
       <h1 class="home-hero__title">Inventário</h1>
     </section>
 
-    <section class="home-cards" *ngIf="visibleCards.length > 0">
+    <section
+      class="home-cards"
+      [class.home-cards--few]="visibleCards.length <= fewCardsThreshold"
+      *ngIf="visibleCards.length > 0">
       <button
         type="button"
         class="home-card"

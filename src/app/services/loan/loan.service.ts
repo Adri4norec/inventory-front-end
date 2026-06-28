@@ -248,7 +248,9 @@ export class LoanService {
           .filter((item) => this.isActiveLoanListItem(item))
           .map((item) => ({
             id: String(item?.id ?? '').trim(),
-            codigo: item?.codigo
+            codigo: item?.codigo,
+            name: item?.name,
+            proprietaryName: item?.proprietaryName
           }))
           .filter((entry) => !!entry.id);
 
@@ -262,8 +264,8 @@ export class LoanService {
         return forkJoin(
           activeEntries.map((entry) =>
             this.getLoanById(entry.id).pipe(
-              map((loan) => ({ loan, codigo: entry.codigo })),
-              catchError(() => of(null as { loan: LoanDetailResponse; codigo?: string } | null))
+              map((loan) => ({ loan, listItem: entry })),
+              catchError(() => of(null as { loan: LoanDetailResponse; listItem: typeof entry } | null))
             )
           )
         ).pipe(
@@ -288,7 +290,7 @@ export class LoanService {
                 enriched,
                 viewerId ?? '',
                 this.readLoanColaboradorName(enriched, null),
-                entry.codigo
+                entry.listItem
               );
               items.push(custody);
 
@@ -346,20 +348,37 @@ export class LoanService {
             this.getLoanById(id).pipe(
               map((loan) => {
                 const listItem = (list ?? []).find((entry) => String(entry?.id ?? '').trim() === id);
-                return { loan, codigo: listItem?.codigo };
+                return {
+                  loan,
+                  listItem: {
+                    codigo: listItem?.codigo,
+                    name: listItem?.name,
+                    proprietaryName: listItem?.proprietaryName
+                  }
+                };
               }),
-              catchError(() => of(null as { loan: LoanDetailResponse; codigo?: string } | null))
+              catchError(() =>
+                of(null as {
+                  loan: LoanDetailResponse;
+                  listItem: Pick<LoanListResponse, 'codigo' | 'name' | 'proprietaryName'>;
+                } | null)
+              )
             )
           )
         ).pipe(
           map((details) =>
             (details ?? [])
               .filter(
-                (entry): entry is { loan: LoanDetailResponse; codigo?: string } =>
+                (
+                  entry
+                ): entry is {
+                  loan: LoanDetailResponse;
+                  listItem: Pick<LoanListResponse, 'codigo' | 'name' | 'proprietaryName'>;
+                } =>
                   !!entry?.loan && this.isProjectLoanForCustodian(entry.loan, userId, custodianName)
               )
-              .map(({ loan, codigo }) =>
-                this.mapLoanToCustodiaResponse(loan, userId, custodianName, codigo)
+              .map(({ loan, listItem }) =>
+                this.mapLoanToCustodiaResponse(loan, userId, custodianName, listItem)
               )
               .filter((item) => this.matchesEquipmentKey(item, equipmentKey))
           )
@@ -428,12 +447,14 @@ export class LoanService {
     loan: LoanDetailResponse,
     custodianUserId: string,
     custodianName?: string | null,
-    listCodigo?: string
+    listItem?: Pick<LoanListResponse, 'codigo' | 'name' | 'proprietaryName'>
   ): CustodiaResponse {
     const record = loan as LoanDetailResponse & { codigo?: string; topo?: string | number };
     const equipmentId = String(
-      listCodigo ?? record.codigo ?? record.equipmentId ?? record.topo ?? ''
+      listItem?.codigo ?? record.codigo ?? record.equipmentId ?? record.topo ?? ''
     ).trim();
+
+    const proprietarioFromLoan = String(loan.proprietario ?? '').trim();
 
     return {
       id: String(loan.id),
@@ -442,7 +463,10 @@ export class LoanService {
       custodianteId: custodianUserId,
       inicioPeriodo: loan.loanDate ?? new Date().toISOString(),
       fimPeriodo: loan.expectedReturnDate ?? loan.returnDate ?? null,
-      loanType: 'PROJECT'
+      loanType: 'PROJECT',
+      equipmentName: String(listItem?.name ?? '').trim() || undefined,
+      proprietarioNome:
+        String(listItem?.proprietaryName ?? '').trim() || proprietarioFromLoan || undefined
     };
   }
 
@@ -541,17 +565,22 @@ export class LoanService {
     return this.http.get<UserSearchResponse[]>(`${this.apiUrl}/search-users`, { ...options, params });
   }
 
-  /**
-   * Alteração de custódia em lote (AC4): um POST com todos os equipmentIds,
-   * mesmo colaborador e mesmo período para cada item.
-   */
   changeCustodyInBatch(request: CustodyChangeRequest): Observable<void> {
+    const equipmentIds = [...new Set(
+      (request.equipmentIds ?? []).map((id) => String(id).trim()).filter(Boolean)
+    )];
+
     const body: CustodyChangeRequest = {
-      ...request,
-      equipmentIds: [...new Set(
-        (request.equipmentIds ?? []).map((id) => String(id).trim()).filter(Boolean)
-      )]
+      equipmentIds,
+      collaboratorId: String(request.collaboratorId ?? '').trim(),
+      inicioPeriodo: String(request.inicioPeriodo ?? '').trim(),
     };
+
+    const fimPeriodo = request.fimPeriodo?.trim();
+    if (fimPeriodo) {
+      body.fimPeriodo = fimPeriodo;
+    }
+
     return this.http.post<void>(`${this.apiUrl}/change-custody`, body, this.getOptions());
   }
 

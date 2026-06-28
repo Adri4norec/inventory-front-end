@@ -255,9 +255,16 @@ export class ChangeCustodyDialogComponent implements OnInit, AfterViewInit, OnDe
       return;
     }
 
+    const collaboratorId = String(value.collaboratorId ?? '').trim();
+    if (!collaboratorId) {
+      this.form.controls.collaboratorId.setErrors({ required: true });
+      this.form.controls.collaboratorId.markAsTouched();
+      return;
+    }
+
     const payload: CustodyChangeRequest = {
       equipmentIds,
-      collaboratorId: value.collaboratorId,
+      collaboratorId,
       inicioPeriodo,
       fimPeriodo
     };

@@ -151,6 +151,9 @@ export class HomeComponent implements OnInit, OnDestroy {
     },
   ];
 
+  /** Até este número de cards, mantém largura fixa e alinhamento à esquerda. */
+  readonly fewCardsThreshold = 4;
+
   visibleCards: HomeCard[] = [];
   visibleLegendItems: Array<{ theme: HomeCardTheme; label: string }> = [];
   private subs = new Subscription();

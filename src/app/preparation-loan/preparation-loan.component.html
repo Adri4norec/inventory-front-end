@@ -139,7 +139,55 @@
                         <mat-datepicker #returnPicker></mat-datepicker>
                     </mat-form-field>
 
-                    <div class="field-full accessory-section" *ngIf="addedAccessories.length > 0">
+                    <div class="field-full"
+                        *ngIf="!isStatusUpdateMode && !isReturnSupportMode && !isReturnAdminMode && !isReturnFromUsoFlow">
+                        <div class="accessory-input-grid">
+                            <mat-form-field appearance="outline" class="field-half">
+                                <mat-label>Buscar acessório</mat-label>
+                                <input matInput [formControl]="accessoryControl" [matAutocomplete]="accessoryAuto"
+                                    autocomplete="off" placeholder="Digite para buscar..."
+                                    (focus)="onAccessoryInputFocus()">
+                                <mat-autocomplete #accessoryAuto="matAutocomplete" [displayWith]="displayAccessoryFn"
+                                    (optionSelected)="onAccessorySelected($event.option.value)">
+                                    <mat-option *ngFor="let item of filteredPerParts | async" [value]="item"
+                                        [disabled]="item.quantity === 0">
+                                        {{ getAccessoryOptionLabel(item) }}
+                                    </mat-option>
+                                </mat-autocomplete>
+                            </mat-form-field>
+
+                            <mat-form-field appearance="outline" class="field-quarter">
+                                <mat-label>Quantidade</mat-label>
+                                <input matInput type="number" [formControl]="accessoryQuantityControl" min="1"
+                                    [attr.max]="selectedAccessory?.quantity || null" step="1">
+                            </mat-form-field>
+
+                            <div class="accessory-add-button">
+                                <button type="button" class="custom-add-btn"
+                                    [disabled]="accessoryQuantityControl.invalid || !selectedAccessory"
+                                    (click)="addAccessoryToLoan()">
+                                    <mat-icon>add</mat-icon>
+                                    Adicionar item
+                                </button>
+                            </div>
+                        </div>
+
+                        <p class="field-error" *ngIf="accessoryError">{{ accessoryError }}</p>
+
+                        <div *ngIf="addedAccessories.length > 0" class="accessory-tags">
+                            <div *ngFor="let item of addedAccessories; let i = index" class="accessory-tag">
+                                <span>{{ item.name }} — {{ item.quantity }} / {{ item.originalTotalQuantity ||
+                                    item.availableQuantity }}</span>
+                                <button mat-icon-button color="warn" type="button" aria-label="Remover acessório"
+                                    (click)="removeAccessory(i)">
+                                    <mat-icon>close</mat-icon>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="field-full accessory-section"
+                        *ngIf="(isStatusUpdateMode || isReturnSupportMode || isReturnAdminMode || isReturnFromUsoFlow) && addedAccessories.length > 0">
                         <h3 class="section-subtitle">
                             <mat-icon>extension</mat-icon>
                             Acessórios vinculados
