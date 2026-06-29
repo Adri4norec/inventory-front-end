@@ -171,10 +171,10 @@ export class PreparationLoanComponent implements OnInit {
     });
 
     this.loanForm.get('loanType')?.valueChanges.subscribe((value) => {
-      if (!this.currentLoanId) return;
-      if (value === 'PROJECT' || value === 'PERSONAL') {
+      if (this.currentLoanId && (value === 'PROJECT' || value === 'PERSONAL')) {
         this.loanService.rememberLoanType(this.currentLoanId, value);
       }
+      this.onSearchResponsavel('');
     });
 
     this.setupAccessoryFiltering();
@@ -384,6 +384,7 @@ export class PreparationLoanComponent implements OnInit {
     this.setLoanAccessories(this.extractLoanAccessories(loan));
 
     this.syncLoanTypeFromLoan(loan);
+    this.onSearchResponsavel('');
   }
 
   private extractLoanAccessories(loan: unknown): LoanAcessorioResponse[] {
@@ -506,11 +507,50 @@ export class PreparationLoanComponent implements OnInit {
 
   onSearchResponsavel(term: string): void {
     const search = term?.trim() ?? '';
+
+    if (this.requiresManagerResponsavel()) {
+      this.userService.advancedSearch({ nome: search }, { page: 0, size: 500 }).pipe(
+        map((response) =>
+          (response.content ?? [])
+            .filter((user) => this.isGerenteProfile(user.profileName))
+            .map((user) => ({ id: user.id, fullName: user.fullName } as UserSearchResponse))
+        ),
+        catchError(() => of<UserSearchResponse[]>([]))
+      ).subscribe((users) => {
+        this.filteredUsers = users;
+        this.validateResponsavelForLoanType();
+      });
+      return;
+    }
+
     this.loanService.buscarColaboradores(search || '').pipe(
-      catchError(() => of([]))
-    ).subscribe(users => {
+      catchError(() => of<UserSearchResponse[]>([]))
+    ).subscribe((users) => {
       this.filteredUsers = users;
     });
+  }
+
+  private requiresManagerResponsavel(): boolean {
+    return this.loanForm?.get('loanType')?.value === 'PROJECT';
+  }
+
+  private isGerenteProfile(profileName: string | null | undefined): boolean {
+    return String(profileName ?? '').trim().toLowerCase() === 'gerente';
+  }
+
+  private validateResponsavelForLoanType(): void {
+    if (!this.requiresManagerResponsavel()) return;
+
+    const control = this.loanForm.get('responsavel');
+    if (!control || control.disabled) return;
+
+    const selectedId = String(control.value ?? '').trim();
+    if (!selectedId) return;
+
+    const stillAllowed = this.filteredUsers.some((user) => user.id === selectedId);
+    if (!stillAllowed) {
+      control.setValue('', { emitEvent: false });
+    }
   }
 
   displayAccessoryFn(item: PerPartResponse | string | null): string {

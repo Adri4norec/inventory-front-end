@@ -6,7 +6,7 @@ export class LayoutService {
   /** Largura do menu lateral em px (drawer overlay — mesmo valor no CSS). */
   readonly sidebarWidthPx = 260;
 
-  private readonly _menuOpen$ = new BehaviorSubject<boolean>(false);
+  private readonly _menuOpen$ = new BehaviorSubject<boolean>(true);
   readonly menuOpen$ = this._menuOpen$.asObservable();
 
   get isMenuOpen(): boolean {

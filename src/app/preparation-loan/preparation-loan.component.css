@@ -217,6 +217,16 @@
   width: 100%;
 }
 
+.form-row-triple {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px 20px;
+}
+
+.form-row-triple mat-form-field {
+  width: 100%;
+}
+
 .loan-type-container {
   display: flex;
   flex-direction: column;
@@ -290,6 +300,10 @@
 
   .field-half {
     grid-column: 1 / -1;
+  }
+
+  .form-row-triple {
+    grid-template-columns: 1fr;
   }
 }
 

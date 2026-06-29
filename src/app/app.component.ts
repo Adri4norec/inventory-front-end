@@ -3,6 +3,7 @@ import { Router, NavigationEnd } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { AppShellComponent } from './layout/app-shell.component';
 import { filter } from 'rxjs/operators';
+import { LayoutService } from './services/layout/layout.service';
 
 @Component({
   selector: 'app-root',
@@ -16,7 +17,10 @@ export class AppComponent implements OnInit {
 
   private readonly rotasSemMenu = ['/', '/login', '/register'];
 
-  constructor(private router: Router) {}
+  constructor(
+    private router: Router,
+    private layout: LayoutService
+  ) {}
 
   ngOnInit(): void {
     this.atualizarLayout(this.router.url);
@@ -28,6 +32,10 @@ export class AppComponent implements OnInit {
 
   private atualizarLayout(url: string): void {
     const path = url.split('?')[0].split('#')[0];
+    const hadSidebar = this.mostrarLayout;
     this.mostrarLayout = !this.rotasSemMenu.includes(path);
+    if (this.mostrarLayout && !hadSidebar) {
+      this.layout.setMenuOpen(true);
+    }
   }
 }

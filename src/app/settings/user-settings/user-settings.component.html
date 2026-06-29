@@ -37,9 +37,9 @@
               <span class="profile-name">{{ profile.name }}</span>
               <span class="profile-badge" [class.profile-badge--admin]="profile.isAdmin">
                 <mat-icon *ngIf="profile.isAdmin" class="profile-badge-icon">workspace_premium</mat-icon>
-                {{ profile.isAdmin ? 'Admin' : 'personalizado' }}
+                {{ profile.isAdmin ? 'Admin' : (profile.isFixed ? 'fixo' : 'personalizado') }}
               </span>
-              <mat-icon *ngIf="profile.isAdmin" class="admin-lock" matTooltip="Perfil fixo do sistema">lock</mat-icon>
+              <mat-icon *ngIf="profile.isFixed" class="admin-lock" matTooltip="Perfil fixo do sistema">lock</mat-icon>
             </div>
 
             <div class="profile-actions">
@@ -53,7 +53,7 @@
               </button>
 
               <button
-                *ngIf="!profile.isAdmin"
+                *ngIf="!profile.isFixed"
                 mat-stroked-button
                 type="button"
                 class="btn-delete-profile"

@@ -1,9 +1,10 @@
 import {
   ACCESS_MODULES,
+  AccessProfile,
   createDefaultPermissions,
+  isSystemAdminProfile,
   ModulePermissionLevel,
 } from './access-profile.model';
-import { AccessProfile } from './access-profile.model';
 import {
   ProfileApiRequest,
   ProfileApiResponse,
@@ -56,7 +57,8 @@ export function toAccessProfile(api: ProfileApiResponse, expanded = false): Acce
   return {
     id: api.id,
     name: api.name,
-    isAdmin: api.fixed,
+    isAdmin: isSystemAdminProfile(api.name),
+    isFixed: api.fixed,
     permissions,
     expanded,
   };

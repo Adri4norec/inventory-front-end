@@ -133,7 +133,7 @@ export class UserSettingsComponent implements OnInit {
 
   excluirPerfil(profile: AccessProfile, event: Event): void {
     event.stopPropagation();
-    if (profile.isAdmin) return;
+    if (profile.isFixed) return;
 
     const ref = this.dialog.open(ConfirmDialogComponent, {
       width: '420px',

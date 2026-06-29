@@ -28,7 +28,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
     {
       label: 'Inventário',
       module: 'inventory',
-      expanded: true,
+      expanded: false,
       children: [
         { label: 'Lista de Equipamentos', route: '/equipaments', module: 'inventory' },
         { label: 'Novo Equipamento', route: '/cadastro', module: 'inventory', requiresEdit: true },

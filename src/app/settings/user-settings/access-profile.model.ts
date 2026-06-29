@@ -10,9 +10,16 @@ export interface AccessModule {
 export interface AccessProfile {
   id: string;
   name: string;
+  /** Perfil Admin do sistema — permissões somente leitura na UI de configuração. */
   isAdmin: boolean;
+  /** Perfil fixo — não pode ser excluído (ex.: Admin, Gerente). */
+  isFixed: boolean;
   permissions: Record<string, ModulePermissionLevel>;
   expanded: boolean;
+}
+
+export function isSystemAdminProfile(name: string): boolean {
+  return name.trim().toLowerCase() === 'admin';
 }
 
 export const ACCESS_MODULES: AccessModule[] = [
@@ -39,6 +46,7 @@ export function createAdminProfile(): AccessProfile {
     id: 'admin',
     name: 'Admin',
     isAdmin: true,
+    isFixed: true,
     permissions: createDefaultPermissions('editar'),
     expanded: true
   };

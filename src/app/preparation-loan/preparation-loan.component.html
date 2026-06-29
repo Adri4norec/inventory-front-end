@@ -98,26 +98,6 @@
             <mat-card-content>
                 <form [formGroup]="loanForm" class="form-grid">
 
-                    <app-autocomplete-create class="field-half" label="Responsável"
-                        placeholder="Digite para buscar responsável..." icon="person" [options]="filteredUsers"
-                        bindLabel="fullName" bindValue="id" formControlName="responsavel"
-                        requiredError="Responsável é obrigatório" [showCreateButton]="false"
-                        (search)="onSearchResponsavel($event)">
-                    </app-autocomplete-create>
-
-                    <mat-form-field appearance="outline" class="field-half">
-                        <mat-label>Projeto</mat-label>
-                        <mat-icon matPrefix>work</mat-icon>
-                        <input matInput formControlName="projeto" />
-                    </mat-form-field>
-
-                    <mat-form-field appearance="outline" class="field-half">
-                        <mat-label>Data do Empréstimo</mat-label>
-                        <input matInput [matDatepicker]="picker" formControlName="loanDate" (click)="picker.open()">
-                        <mat-datepicker-toggle matSuffix [for]="picker"></mat-datepicker-toggle>
-                        <mat-datepicker #picker></mat-datepicker>
-                    </mat-form-field>
-
                     <div class="loan-type-container field-half">
                         <label class="loan-type-label">Tipo de Empréstimo *</label>
                         <mat-radio-group formControlName="loanType" color="primary" class="loan-type-radio-group">
@@ -131,13 +111,35 @@
                         </mat-error>
                     </div>
 
-                    <mat-form-field appearance="outline" class="field-half">
-                        <mat-label>Data de Devolução (Opcional)</mat-label>
-                        <input matInput [matDatepicker]="returnPicker" formControlName="returnDate"
-                            (click)="returnPicker.open()">
-                        <mat-datepicker-toggle matSuffix [for]="returnPicker"></mat-datepicker-toggle>
-                        <mat-datepicker #returnPicker></mat-datepicker>
-                    </mat-form-field>
+                    <app-autocomplete-create class="field-half" label="Responsável"
+                        placeholder="Digite para buscar responsável..." icon="person" [options]="filteredUsers"
+                        bindLabel="fullName" bindValue="id" formControlName="responsavel"
+                        requiredError="Responsável é obrigatório" [showCreateButton]="false"
+                        (search)="onSearchResponsavel($event)">
+                    </app-autocomplete-create>
+
+                    <div class="field-full form-row-triple">
+                        <mat-form-field appearance="outline">
+                            <mat-label>Projeto</mat-label>
+                            <mat-icon matPrefix>work</mat-icon>
+                            <input matInput formControlName="projeto" />
+                        </mat-form-field>
+
+                        <mat-form-field appearance="outline">
+                            <mat-label>Data do Empréstimo</mat-label>
+                            <input matInput [matDatepicker]="picker" formControlName="loanDate" (click)="picker.open()">
+                            <mat-datepicker-toggle matSuffix [for]="picker"></mat-datepicker-toggle>
+                            <mat-datepicker #picker></mat-datepicker>
+                        </mat-form-field>
+
+                        <mat-form-field appearance="outline">
+                            <mat-label>Data de Devolução (Opcional)</mat-label>
+                            <input matInput [matDatepicker]="returnPicker" formControlName="returnDate"
+                                (click)="returnPicker.open()">
+                            <mat-datepicker-toggle matSuffix [for]="returnPicker"></mat-datepicker-toggle>
+                            <mat-datepicker #returnPicker></mat-datepicker>
+                        </mat-form-field>
+                    </div>
 
                     <div class="field-full"
                         *ngIf="!isStatusUpdateMode && !isReturnSupportMode && !isReturnAdminMode && !isReturnFromUsoFlow">
