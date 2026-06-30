@@ -15,7 +15,7 @@
       <div class="inventory-panel-header">
         <div class="inventory-panel-intro">
           <h1 class="inventory-panel-title">Configuração de inventário</h1>
-          <p class="inventory-panel-subtitle">Gerencie categorias e proprietários dos equipamentos.</p>
+          <p class="inventory-panel-subtitle">Gerencie categorias, proprietários e projetos dos equipamentos.</p>
         </div>
 
         <button mat-flat-button color="primary" type="button" class="btn-new-record" (click)="openCreateDialog()">
@@ -29,11 +29,12 @@
           class="inventory-tabs"
           mat-align-tabs="start"
           [mat-stretch-tabs]="false"
-          [selectedIndex]="activeTab === 'categories' ? 0 : 1"
+          [selectedIndex]="activeTab === 'categories' ? 0 : activeTab === 'proprietaries' ? 1 : 2"
           (selectedIndexChange)="onTabChange($event)"
           animationDuration="0ms">
           <mat-tab label="Categorias"></mat-tab>
           <mat-tab label="Proprietários"></mat-tab>
+          <mat-tab label="Projetos"></mat-tab>
         </mat-tab-group>
       </div>
 

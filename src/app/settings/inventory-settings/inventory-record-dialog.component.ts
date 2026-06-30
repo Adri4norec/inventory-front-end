@@ -8,7 +8,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 
-export type InventoryRecordType = 'category' | 'proprietary';
+export type InventoryRecordType = 'category' | 'proprietary' | 'project';
 
 export interface InventoryRecordDialogData {
   mode: 'create' | 'edit';
@@ -43,6 +43,7 @@ export class InventoryRecordDialogComponent {
   readonly typeOptions: { value: InventoryRecordType; label: string }[] = [
     { value: 'category', label: 'Categoria' },
     { value: 'proprietary', label: 'Proprietário' },
+    { value: 'project', label: 'Projeto' },
   ];
 
   readonly isEdit = this.data.mode === 'edit';

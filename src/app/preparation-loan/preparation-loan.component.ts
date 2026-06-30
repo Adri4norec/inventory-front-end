@@ -26,6 +26,7 @@ import { MatRadioModule } from '@angular/material/radio';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 
 import { EquipamentService } from '../services/equipament/equipment.service';
+import { ProjectService } from '../services/equipament/project.service';
 import { LoanService } from '../services/loan/loan.service';
 import { PerPartService } from '../services/per-part/per-part.service';
 import { PerPartResponse } from '../models/per-part/per-part.model';
@@ -46,6 +47,7 @@ import { ToolbarLogoComponent } from '../shared/toolbar-logo/toolbar-logo.compon
 import { ImageLightboxComponent } from '../shared/components/image-lightbox/image-lightbox.component';
 import { AutocompleteCreateComponent } from '../shared/components/autocomplete-create/autocomplete-create.component';
 import { writeCustodyViewerPin } from '../core/custody-viewer-pins.util';
+import { ProjectResponse } from '../models/projects/project';
 import { environment } from '../../environments/environment';
 import { provideBrazilianDate } from '../core/provide-brazilian-date';
 
@@ -111,6 +113,8 @@ export class PreparationLoanComponent implements OnInit {
   imagensExcluidasIds: string[] = [];
   writeOffPdfFile: File | null = null;
   filteredUsers: UserSearchResponse[] = [];
+  projects: ProjectResponse[] = [];
+  private allProjects: ProjectResponse[] = [];
   currentLoanId?: string;
   loanDetails: LoanDetailResponse | null = null;
   isStatusUpdateMode = false;
@@ -128,6 +132,7 @@ export class PreparationLoanComponent implements OnInit {
   constructor(
     private route: ActivatedRoute,
     private equipamentService: EquipamentService,
+    private projectService: ProjectService,
     private loanService: LoanService,
     private perPartService: PerPartService,
     private userService: UserService,
@@ -158,6 +163,7 @@ export class PreparationLoanComponent implements OnInit {
     }
 
     this.onSearchResponsavel('');
+    this.loadProjects();
 
     this.loanForm.get('enviadoSedex')?.valueChanges.subscribe(enviado => {
       const dataSedexControl = this.loanForm.get('dataSedex');
@@ -190,7 +196,7 @@ export class PreparationLoanComponent implements OnInit {
       loanType: ['', Validators.required],
       loanStatus: ['', Validators.required],
       responsavel: ['', Validators.required],
-      projeto: ['', Validators.required],
+      projectId: [null as string | null, Validators.required],
       loanDate: [new Date(), Validators.required],
       returnDate: [null],
       observacao: [''],
@@ -364,12 +370,7 @@ export class PreparationLoanComponent implements OnInit {
     this.loanForm.patchValue({
       loanStatus: (loan as any).status ?? this.loanForm.get('loanStatus')?.value,
       responsavel: colaboradorId || '',
-      projeto: (loan as any).helpdeskTicket ??
-        (loan as any).helpdesk_ticket ??
-        (loan as any).helpDeskTicket ??
-        (loan as any).projeto ??
-        (loan as any).project ??
-        '',
+      projectId: this.resolveProjectIdFromLoan(loan as Record<string, unknown>),
       loanDate: this.coerceApiDate((loan as any).loanDate) ?? new Date(),
       returnDate: this.coerceApiDate((loan as any).returnDate) ?? null,
       observacao: (loan as any).observation ?? (loan as any).description ?? '',
@@ -385,6 +386,19 @@ export class PreparationLoanComponent implements OnInit {
 
     this.syncLoanTypeFromLoan(loan);
     this.onSearchResponsavel('');
+    this.reconcileProjectSelection();
+  }
+
+  private reconcileProjectSelection(): void {
+    if (this.loanForm.get('projectId')?.value) {
+      return;
+    }
+
+    const loanRecord = (this.loanDetails ?? {}) as Record<string, unknown>;
+    const projectId = this.resolveProjectIdFromLoan(loanRecord);
+    if (projectId) {
+      this.loanForm.patchValue({ projectId }, { emitEvent: false });
+    }
   }
 
   private extractLoanAccessories(loan: unknown): LoanAcessorioResponse[] {
@@ -408,9 +422,9 @@ export class PreparationLoanComponent implements OnInit {
     );
     const originalTotalQuantity = Number(
       record['originalTotalQuantity'] ??
-        record['totalQuantity'] ??
-        record['availableQuantity'] ??
-        quantidadeEmprestada
+      record['totalQuantity'] ??
+      record['availableQuantity'] ??
+      quantidadeEmprestada
     );
     const name = String(record['name'] ?? record['perPartName'] ?? record['nome'] ?? 'Acessório').trim();
 
@@ -488,7 +502,7 @@ export class PreparationLoanComponent implements OnInit {
       const controlsToEnable = [
         'loanType',
         'responsavel',
-        'projeto',
+        'projectId',
         'loanDate',
         'returnDate',
         'observacao',
@@ -528,6 +542,79 @@ export class PreparationLoanComponent implements OnInit {
     ).subscribe((users) => {
       this.filteredUsers = users;
     });
+  }
+
+  private loadProjects(): void {
+    this.projectService.listAll().pipe(
+      catchError(() => of<ProjectResponse[]>([]))
+    ).subscribe((projects) => {
+      this.allProjects = projects ?? [];
+      this.projects = [...this.allProjects];
+      this.reconcileProjectSelection();
+    });
+  }
+
+  onSearchProjeto(term: string): void {
+    const trimmed = term?.trim() ?? '';
+    this.projects = trimmed
+      ? this.allProjects.filter((p) => p.name.toLowerCase().includes(trimmed.toLowerCase()))
+      : [...this.allProjects];
+  }
+
+  onCreateNewProjeto(term: string): void {
+    const name = term?.trim();
+    if (!name) {
+      this.snackBar.open('Informe o nome do projeto.', 'Fechar', { duration: 5000 });
+      return;
+    }
+
+    this.projectService.create({ name }).subscribe({
+      next: (created) => {
+        this.allProjects = this.mergeProject(this.allProjects, created);
+        this.projects = this.mergeProject(this.projects, created);
+        this.loanForm.get('projectId')?.setValue(created.id);
+        this.snackBar.open(`Projeto "${created.name}" criado com sucesso.`, 'Fechar', {
+          duration: 4000,
+        });
+      },
+      error: (err) => {
+        const message = (err as { error?: { message?: string } })?.error?.message ?? 'Erro ao criar projeto.';
+        this.snackBar.open(message, 'Fechar', { duration: 5000 });
+      },
+    });
+  }
+
+  private mergeProject(list: ProjectResponse[], created: ProjectResponse): ProjectResponse[] {
+    if (list.some((p) => p.id === created.id)) {
+      return list;
+    }
+    return [...list, created].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+  }
+
+  private resolveProjectIdFromLoan(loan: Record<string, unknown>): string | null {
+    const directId = String(loan['projectId'] ?? '').trim();
+    if (directId) {
+      return directId;
+    }
+
+    const legacyName = String(
+      loan['projectName'] ??
+      loan['helpdeskTicket'] ??
+      loan['helpdesk_ticket'] ??
+      loan['helpDeskTicket'] ??
+      loan['projeto'] ??
+      loan['project'] ??
+      ''
+    ).trim();
+
+    if (!legacyName) {
+      return null;
+    }
+
+    const match = this.allProjects.find(
+      (project) => project.name.localeCompare(legacyName, 'pt-BR', { sensitivity: 'base' }) === 0
+    );
+    return match?.id ?? null;
   }
 
   private requiresManagerResponsavel(): boolean {
@@ -742,7 +829,7 @@ export class PreparationLoanComponent implements OnInit {
     const controlsToDisable = [
       'loanType',
       'responsavel',
-      'projeto',
+      'projectId',
       'loanDate',
       'returnDate',
       'observacao',
@@ -1252,7 +1339,7 @@ export class PreparationLoanComponent implements OnInit {
       equipmentId: this.equipamentId,
       colaboradorId,
       loanType: formValue.loanType as LoanType,
-      helpdeskTicket: formValue.projeto ?? '',
+      projectId: String(formValue.projectId ?? ''),
       loanDate: formValue.loanDate ? new Date(formValue.loanDate).toISOString() : new Date().toISOString(),
       returnDate: formValue.returnDate ? new Date(formValue.returnDate).toISOString() : null,
       observation: formValue.observacao ?? null,

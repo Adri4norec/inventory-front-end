@@ -223,8 +223,10 @@
   gap: 8px 20px;
 }
 
-.form-row-triple mat-form-field {
+.form-row-triple mat-form-field,
+.form-row-triple app-autocomplete-create {
   width: 100%;
+  min-width: 0;
 }
 
 .loan-type-container {

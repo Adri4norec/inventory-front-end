@@ -17,8 +17,10 @@ import { catchError } from 'rxjs/operators';
 import { LayoutService } from '../../services/layout/layout.service';
 import { CategoryService } from '../../services/equipament/category.service';
 import { ProprietaryService } from '../../services/equipament/proprietary.service';
+import { ProjectService } from '../../services/equipament/project.service';
 import { CategoryResponse } from '../../models/equipaments/equipament.model';
 import { ProprietaryResponse } from '../../models/proprietaries/proprietary';
+import { ProjectResponse } from '../../models/projects/project';
 import { extractApiErrorMessage } from '../../core/http/api-error.util';
 import { ToolbarUserActionsComponent } from '../../shared/toolbar-user-actions/toolbar-user-actions.component';
 import { ToolbarLogoComponent } from '../../shared/toolbar-logo/toolbar-logo.component';
@@ -33,7 +35,7 @@ import {
   InventoryRecordType,
 } from './inventory-record-dialog.component';
 
-type InventoryTab = 'categories' | 'proprietaries';
+type InventoryTab = 'categories' | 'proprietaries' | 'projects';
 
 interface InventoryTableRow {
   id: string;
@@ -68,6 +70,7 @@ export class InventorySettingsComponent implements OnInit {
   activeTab: InventoryTab = 'categories';
   categories: CategoryResponse[] = [];
   proprietaries: ProprietaryResponse[] = [];
+  projects: ProjectResponse[] = [];
   visibleRows: InventoryTableRow[] = [];
 
   loading = true;
@@ -78,6 +81,7 @@ export class InventorySettingsComponent implements OnInit {
     public layout: LayoutService,
     private categoryService: CategoryService,
     private proprietaryService: ProprietaryService,
+    private projectService: ProjectService,
     private dialog: MatDialog,
     private snackBar: MatSnackBar
   ) {}
@@ -87,11 +91,13 @@ export class InventorySettingsComponent implements OnInit {
   }
 
   get totalElements(): number {
-    return this.activeTab === 'categories' ? this.categories.length : this.proprietaries.length;
+    if (this.activeTab === 'categories') return this.categories.length;
+    if (this.activeTab === 'proprietaries') return this.proprietaries.length;
+    return this.projects.length;
   }
 
   onTabChange(index: number): void {
-    this.activeTab = index === 0 ? 'categories' : 'proprietaries';
+    this.activeTab = index === 0 ? 'categories' : index === 1 ? 'proprietaries' : 'projects';
     this.pageIndex = 0;
     this.refreshVisibleRows();
   }
@@ -104,7 +110,11 @@ export class InventorySettingsComponent implements OnInit {
 
   openCreateDialog(): void {
     const defaultType: InventoryRecordType =
-      this.activeTab === 'categories' ? 'category' : 'proprietary';
+      this.activeTab === 'categories'
+        ? 'category'
+        : this.activeTab === 'proprietaries'
+          ? 'proprietary'
+          : 'project';
 
     const ref = this.dialog.open(InventoryRecordDialogComponent, {
       width: '520px',
@@ -145,7 +155,8 @@ export class InventorySettingsComponent implements OnInit {
   }
 
   deleteRecord(row: InventoryTableRow): void {
-    const label = row.type === 'category' ? 'categoria' : 'proprietário';
+    const label =
+      row.type === 'category' ? 'categoria' : row.type === 'proprietary' ? 'proprietário' : 'projeto';
     const ref = this.dialog.open(ConfirmDialogComponent, {
       width: '420px',
       data: {
@@ -163,7 +174,9 @@ export class InventorySettingsComponent implements OnInit {
       const request =
         row.type === 'category'
           ? this.categoryService.delete(row.id)
-          : this.proprietaryService.delete(row.id);
+          : row.type === 'proprietary'
+            ? this.proprietaryService.delete(row.id)
+            : this.projectService.delete(row.id);
 
       request.subscribe({
         next: () => {
@@ -191,10 +204,12 @@ export class InventorySettingsComponent implements OnInit {
     forkJoin({
       categories: this.categoryService.listAll().pipe(catchError(() => of([] as CategoryResponse[]))),
       proprietaries: this.proprietaryService.listAll().pipe(catchError(() => of([] as ProprietaryResponse[]))),
+      projects: this.projectService.listAll().pipe(catchError(() => of([] as ProjectResponse[]))),
     }).subscribe({
-      next: ({ categories, proprietaries }) => {
+      next: ({ categories, proprietaries, projects }) => {
         this.categories = categories ?? [];
         this.proprietaries = proprietaries ?? [];
+        this.projects = projects ?? [];
         this.loading = false;
         this.refreshVisibleRows();
       },
@@ -214,16 +229,21 @@ export class InventorySettingsComponent implements OnInit {
     const request =
       result.type === 'category'
         ? this.categoryService.create(payload)
-        : this.proprietaryService.create(payload);
+        : result.type === 'proprietary'
+          ? this.proprietaryService.create(payload)
+          : this.projectService.create(payload);
 
     request.subscribe({
       next: (created) => {
         if (result.type === 'category') {
           this.categories = this.sortByName([...this.categories, created as CategoryResponse]);
           this.activeTab = 'categories';
-        } else {
+        } else if (result.type === 'proprietary') {
           this.proprietaries = this.sortByName([...this.proprietaries, created as ProprietaryResponse]);
           this.activeTab = 'proprietaries';
+        } else {
+          this.projects = this.sortByName([...this.projects, created as ProjectResponse]);
+          this.activeTab = 'projects';
         }
         this.pageIndex = 0;
         this.refreshVisibleRows();
@@ -244,7 +264,9 @@ export class InventorySettingsComponent implements OnInit {
     const request =
       row.type === 'category'
         ? this.categoryService.update(row.id, payload)
-        : this.proprietaryService.update(row.id, payload);
+        : row.type === 'proprietary'
+          ? this.proprietaryService.update(row.id, payload)
+          : this.projectService.update(row.id, payload);
 
     request.subscribe({
       next: (updated) => {
@@ -252,9 +274,13 @@ export class InventorySettingsComponent implements OnInit {
           this.categories = this.sortByName(
             this.categories.map((item) => (item.id === row.id ? (updated as CategoryResponse) : item))
           );
-        } else {
+        } else if (row.type === 'proprietary') {
           this.proprietaries = this.sortByName(
             this.proprietaries.map((item) => (item.id === row.id ? (updated as ProprietaryResponse) : item))
+          );
+        } else {
+          this.projects = this.sortByName(
+            this.projects.map((item) => (item.id === row.id ? (updated as ProjectResponse) : item))
           );
         }
         this.refreshVisibleRows();
@@ -273,8 +299,10 @@ export class InventorySettingsComponent implements OnInit {
   private removeLocalRecord(row: InventoryTableRow): void {
     if (row.type === 'category') {
       this.categories = this.categories.filter((item) => item.id !== row.id);
-    } else {
+    } else if (row.type === 'proprietary') {
       this.proprietaries = this.proprietaries.filter((item) => item.id !== row.id);
+    } else {
+      this.projects = this.projects.filter((item) => item.id !== row.id);
     }
     this.refreshVisibleRows();
   }
@@ -283,14 +311,21 @@ export class InventorySettingsComponent implements OnInit {
     const source =
       this.activeTab === 'categories'
         ? this.categories.map((item) => ({ id: item.id, name: item.name, type: 'category' as const }))
-        : this.proprietaries.map((item) => ({ id: item.id, name: item.name, type: 'proprietary' as const }));
+        : this.activeTab === 'proprietaries'
+          ? this.proprietaries.map((item) => ({ id: item.id, name: item.name, type: 'proprietary' as const }))
+          : this.projects.map((item) => ({ id: item.id, name: item.name, type: 'project' as const }));
 
     const start = this.pageIndex * this.pageSize;
     this.visibleRows = source.slice(start, start + this.pageSize);
   }
 
   private getExistingNames(type: InventoryRecordType): string[] {
-    const source = type === 'category' ? this.categories : this.proprietaries;
+    const source =
+      type === 'category'
+        ? this.categories
+        : type === 'proprietary'
+          ? this.proprietaries
+          : this.projects;
     return source.map((item) => item.name);
   }
 

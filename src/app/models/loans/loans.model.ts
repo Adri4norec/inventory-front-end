@@ -40,7 +40,8 @@ export interface LoanRequest {
   equipmentId: string;
   colaboradorId: string;
   loanType: LoanType;
-  helpdeskTicket: string;
+  projectId: string;
+  helpdeskTicket?: string;
   loanDate: string;
   returnDate: string | null;
   observation: string | null;
@@ -77,7 +78,8 @@ export interface LoanDetailResponse {
   expectedReturnDate?: string;
   returnDate?: string;
   helpdeskTicket?: string;
-  project?: string;
+  projectId?: string;
+  projectName?: string;
   colaboradorId?: string;
   responsavel?: string | { id?: string; fullName?: string };
   fullName?: string;

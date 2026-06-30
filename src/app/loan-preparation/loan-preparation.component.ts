@@ -258,6 +258,7 @@ export class LoanPreparationComponent implements OnInit {
       equipmentId: this.loanForm.value.equipmentId,
       colaboradorId: this.loanForm.value.colaboradorId,
       loanType: this.loanForm.value.loanType as LoanType,
+      projectId: '',
       loanDate: loanDateIso,
       returnDate: null,
       helpdeskTicket: 'N/A',

@@ -119,11 +119,18 @@
                     </app-autocomplete-create>
 
                     <div class="field-full form-row-triple">
-                        <mat-form-field appearance="outline">
-                            <mat-label>Projeto</mat-label>
-                            <mat-icon matPrefix>work</mat-icon>
-                            <input matInput formControlName="projeto" />
-                        </mat-form-field>
+                        <app-autocomplete-create
+                            label="Projeto"
+                            placeholder="Digite para buscar projeto..."
+                            icon="work"
+                            [options]="projects"
+                            bindLabel="name"
+                            bindValue="id"
+                            formControlName="projectId"
+                            requiredError="Projeto é obrigatório"
+                            (search)="onSearchProjeto($event)"
+                            (createNew)="onCreateNewProjeto($event)">
+                        </app-autocomplete-create>
 
                         <mat-form-field appearance="outline">
                             <mat-label>Data do Empréstimo</mat-label>

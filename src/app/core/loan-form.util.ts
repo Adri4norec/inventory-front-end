@@ -38,7 +38,8 @@ export function extractLoanFormDefaults(activeLoan: ActiveLoanSummaryResponse | 
   ).trim();
 
   const projeto = String(
-    record['helpdeskTicket'] ??
+    record['projectName'] ??
+      record['helpdeskTicket'] ??
       record['helpdesk_ticket'] ??
       record['helpDeskTicket'] ??
       record['projeto'] ??
