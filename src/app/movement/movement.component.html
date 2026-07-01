@@ -102,11 +102,20 @@
             [showCreateButton]="false" (search)="onSearchResponsavel($event)">
           </app-autocomplete-create>
 
-          <mat-form-field appearance="outline" class="field-half">
-            <mat-label>Projeto</mat-label>
-            <mat-icon matPrefix>work</mat-icon>
-            <input matInput formControlName="projeto" />
-          </mat-form-field>
+          <app-autocomplete-create
+            [ngClass]="movementForm.get('movementType')?.value === 'DESCARTE' ? 'field-third' : 'field-half'"
+            label="Projeto"
+            placeholder="Digite para buscar projeto..."
+            icon="work"
+            [options]="projects"
+            bindLabel="name"
+            bindValue="id"
+            formControlName="projeto"
+            requiredError="Projeto é obrigatório"
+            [showCreateButton]="!isLoanFieldsLocked"
+            (search)="onSearchProjeto($event)"
+            (createNew)="onCreateNewProjeto($event)">
+          </app-autocomplete-create>
 
           <mat-form-field appearance="outline" class="field-half">
             <mat-label>Local / Destino</mat-label>

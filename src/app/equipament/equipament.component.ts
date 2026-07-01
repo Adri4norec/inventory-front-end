@@ -290,7 +290,8 @@ export class EquipamentComponent implements OnInit, OnDestroy {
   }
 
   podeMovimentar(status: unknown): boolean {
-    return normalizeStatusType(status) !== StatusType.EM_DEVOLUCAO;
+    const normalized = normalizeStatusType(status);
+    return normalized !== StatusType.EM_DEVOLUCAO && normalized !== StatusType.EM_PREPARACAO;
   }
 
   podeExcluir(status: unknown): boolean {

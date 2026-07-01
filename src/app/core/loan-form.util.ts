@@ -10,12 +10,13 @@ export const ACTIVE_LOAN_STATUSES = new Set<StatusType>([
 export interface LoanFormDefaults {
   responsavel: string;
   projeto: string;
+  projectId: string;
   colaboradorId: string;
 }
 
 export function extractLoanFormDefaults(activeLoan: ActiveLoanSummaryResponse | null | undefined): LoanFormDefaults {
   if (!activeLoan || typeof activeLoan !== 'object') {
-    return { responsavel: '', projeto: '', colaboradorId: '' };
+    return { responsavel: '', projeto: '', projectId: '', colaboradorId: '' };
   }
 
   const record = activeLoan as Record<string, unknown>;
@@ -37,21 +38,36 @@ export function extractLoanFormDefaults(activeLoan: ActiveLoanSummaryResponse | 
       ''
   ).trim();
 
-  const projeto = String(
-    record['projectName'] ??
-      record['helpdeskTicket'] ??
-      record['helpdesk_ticket'] ??
-      record['helpDeskTicket'] ??
-      record['projeto'] ??
-      record['project'] ??
-      ''
-  ).trim();
+  const projectRaw = record['project'];
+  let projectId = String(record['projectId'] ?? '').trim();
+  let projeto = '';
 
-  return { responsavel, projeto, colaboradorId };
+  if (projectRaw && typeof projectRaw === 'object') {
+    const project = projectRaw as Record<string, unknown>;
+    if (!projectId) {
+      projectId = String(project['id'] ?? '').trim();
+    }
+    projeto = String(project['name'] ?? project['nome'] ?? '').trim();
+  } else if (typeof projectRaw === 'string') {
+    projeto = projectRaw.trim();
+  }
+
+  if (!projeto) {
+    projeto = String(
+      record['projectName'] ??
+        record['helpdeskTicket'] ??
+        record['helpdesk_ticket'] ??
+        record['helpDeskTicket'] ??
+        record['projeto'] ??
+        ''
+    ).trim();
+  }
+
+  return { responsavel, projeto, projectId, colaboradorId };
 }
 
 export function hasLoanFormDefaults(defaults: LoanFormDefaults): boolean {
-  return !!(defaults.projeto || defaults.responsavel || defaults.colaboradorId);
+  return !!(defaults.projeto || defaults.responsavel || defaults.colaboradorId || defaults.projectId);
 }
 
 export function isMovementLoanPrefillStatus(status: unknown): boolean {

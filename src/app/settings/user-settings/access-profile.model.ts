@@ -22,6 +22,23 @@ export function isSystemAdminProfile(name: string): boolean {
   return name.trim().toLowerCase() === 'admin';
 }
 
+/** Perfis fixos no topo; Admin antes dos demais fixos; ordem alfabética no restante. */
+export function compareAccessProfiles(a: AccessProfile, b: AccessProfile): number {
+  if (a.isFixed !== b.isFixed) {
+    return a.isFixed ? -1 : 1;
+  }
+
+  if (a.isFixed && b.isFixed && a.isAdmin !== b.isAdmin) {
+    return a.isAdmin ? -1 : 1;
+  }
+
+  return a.name.localeCompare(b.name, 'pt-BR');
+}
+
+export function sortAccessProfiles(profiles: AccessProfile[]): AccessProfile[] {
+  return [...profiles].sort(compareAccessProfiles);
+}
+
 export const ACCESS_MODULES: AccessModule[] = [
   { key: 'inventory', label: 'Inventário' },
   { key: 'loans', label: 'Empréstimo' },
@@ -48,6 +65,6 @@ export function createAdminProfile(): AccessProfile {
     isAdmin: true,
     isFixed: true,
     permissions: createDefaultPermissions('editar'),
-    expanded: true
+    expanded: false
   };
 }

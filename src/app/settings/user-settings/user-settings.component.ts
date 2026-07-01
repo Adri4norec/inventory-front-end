@@ -27,7 +27,8 @@ import {
   ACCESS_MODULES,
   AccessProfile,
   ModulePermissionLevel,
-  PERMISSION_OPTIONS
+  PERMISSION_OPTIONS,
+  sortAccessProfiles
 } from './access-profile.model';
 import { toAccessProfile, toProfileApiRequest } from './access-profile.mapper';
 
@@ -88,7 +89,7 @@ export class UserSettingsComponent implements OnInit {
       const payload = toProfileApiRequest(result.name, result.permissions);
       this.userService.createProfile(payload).subscribe({
         next: (response) => {
-          this.profiles = [...this.profiles, toAccessProfile(response, true)];
+          this.profiles = sortAccessProfiles([...this.profiles, toAccessProfile(response)]);
           this.snackBar.open('Perfil criado com sucesso.', 'OK', { duration: 3000 });
         },
         error: (err) => {
@@ -185,7 +186,7 @@ export class UserSettingsComponent implements OnInit {
 
     this.userService.listProfiles().subscribe({
       next: (apiProfiles) => {
-        this.profiles = apiProfiles.map((p) => toAccessProfile(p, p.fixed));
+        this.profiles = sortAccessProfiles(apiProfiles.map((p) => toAccessProfile(p)));
         this.loading = false;
       },
       error: (err) => {

@@ -2,7 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { of } from 'rxjs';
+import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 
 import { LoanService } from '../services/loan/loan.service';
@@ -26,19 +26,21 @@ import { MatAutocompleteModule } from '@angular/material/autocomplete';
 
 import { EquipamentService } from '../services/equipament/equipment.service';
 import { MovementService } from '../services/movement/movement.service';
+import { ProjectService } from '../services/equipament/project.service';
 import { PhotoGaleryDialogComponent } from '../photo-galery-dialog/photo-galery-dialog.component';
 import { ImageLightboxComponent } from '../shared/components/image-lightbox/image-lightbox.component';
 import { AutocompleteCreateComponent } from '../shared/components/autocomplete-create/autocomplete-create.component';
 import { MovementRequest, MovementResponse, MovementType } from '../models/movement/movement.model';
-import { UserSearchResponse, ActiveLoanSummaryResponse, LoanDetailResponse } from '../models/loans/loans.model';
+import { UserSearchResponse, LoanDetailResponse } from '../models/loans/loans.model';
 import { EquipmentResponse } from '../models/equipaments/equipament.model';
-import { extractLoanFormDefaults, hasLoanFormDefaults, isMovementLoanPrefillStatus, LoanFormDefaults } from '../core/loan-form.util';
+import { extractLoanFormDefaults, isMovementLoanPrefillStatus, LoanFormDefaults } from '../core/loan-form.util';
 import { resolveMovementErrorMessage } from '../core/movement-error.util';
 import { LayoutService } from '../services/layout/layout.service';
 import { formatStatusLabel, statusColorClass } from '../models/status/status-type';
 import { ToolbarUserActionsComponent } from '../shared/toolbar-user-actions/toolbar-user-actions.component';
 import { ToolbarLogoComponent } from '../shared/toolbar-logo/toolbar-logo.component';
 import { environment } from '../../environments/environment';
+import { ProjectResponse } from '../models/projects/project';
 
 @Component({
   selector: 'app-movement',
@@ -65,6 +67,8 @@ export class MovementComponent implements OnInit {
   isViewMode = false;
   viewedMovement: MovementResponse | null = null;
   filteredUsers: UserSearchResponse[] = [];
+  projects: ProjectResponse[] = [];
+  allProjects: ProjectResponse[] = [];
 
   private readonly apiBase = environment.apiUrl;
   imagensSalvas: Array<{ id: string; url: string }> = [];
@@ -80,6 +84,7 @@ export class MovementComponent implements OnInit {
     private movementService: MovementService,
     private loanService: LoanService,
     private userService: UserService,
+    private projectService: ProjectService,
     private router: Router,
     private dialog: MatDialog,
     private fb: FormBuilder,
@@ -176,22 +181,31 @@ export class MovementComponent implements OnInit {
   }
 
   carregarDados(): void {
-    this.equipamentService.findById(this.equipamentId).subscribe({
-      next: (res) => {
-        this.equipamento = res;
-        if (res.imageUrls?.length) {
-          this.inicializarGaleria(res.imageUrls);
+    forkJoin({
+      equipment: this.equipamentService.findById(this.equipamentId),
+      projects: this.projectService.listAll().pipe(catchError(() => of<ProjectResponse[]>([]))),
+      history: this.movementService.findHistoryByEquipament(this.equipamentId, 0, 10).pipe(
+        catchError(() => of({ content: [] }))
+      ),
+    }).subscribe({
+      next: ({ equipment, projects, history }) => {
+        this.allProjects = projects ?? [];
+        this.projects = [...this.allProjects];
+        this.equipamento = equipment;
+        this.historico = (history as { content?: unknown[] }).content || history;
+
+        if (equipment.imageUrls?.length) {
+          this.inicializarGaleria(equipment.imageUrls);
         }
+
         if (!this.isViewMode) {
           this.configurarOpcoesMovimentacao(this.equipamento?.statusName || '');
-          this.applyLoanFieldsLock();
-          this.prefillFromActiveLoan(res);
+          this.prefillFromActiveLoan(equipment);
+          if (!isMovementLoanPrefillStatus(equipment.statusName)) {
+            this.applyLoanFieldsLock();
+          }
         }
       }
-    });
-
-    this.movementService.findHistoryByEquipament(this.equipamentId, 0, 10).subscribe({
-      next: (res: any) => this.historico = res.content || res
     });
   }
 
@@ -200,60 +214,197 @@ export class MovementComponent implements OnInit {
     if (!isMovementLoanPrefillStatus(equipment.statusName)) return;
 
     const embedded = extractLoanFormDefaults(equipment.activeLoan);
-    if (hasLoanFormDefaults(embedded)) {
-      this.applyLoanFormDefaults(embedded);
+    this.applyLoanFormDefaults(embedded);
+
+    if (this.movementForm.get('projeto')?.value) {
+      this.loanDefaultsApplied = true;
+      this.applyLoanFieldsLock();
       return;
     }
 
-    const preferredLoanId = String(equipment.activeLoanId ?? equipment.activeLoan?.id ?? '').trim();
-    this.loanService
-      .findActiveLoanByEquipment(this.equipamentId, undefined, undefined, preferredLoanId || undefined)
-      .pipe(catchError(() => of(null)))
-      .subscribe((loan) => this.applyLoanDefaultsFromDetail(loan));
+    const loanId = String(equipment.activeLoanId ?? equipment.activeLoan?.id ?? '').trim();
+    if (!loanId) {
+      this.loanDefaultsApplied = true;
+      this.applyLoanFieldsLock();
+      return;
+    }
+
+    this.loanService.getLoanById(loanId).pipe(
+      catchError(() => of(null))
+    ).subscribe((loan) => {
+      if (loan) {
+        this.applyLoanProjectFromDetail(loan);
+      }
+      this.loanDefaultsApplied = true;
+      this.applyLoanFieldsLock();
+    });
   }
 
-  private applyLoanDefaultsFromDetail(loan: LoanDetailResponse | null): void {
-    if (!loan || this.loanDefaultsApplied) return;
-
-    const defaults = extractLoanFormDefaults(loan as unknown as ActiveLoanSummaryResponse);
-    if (!defaults.responsavel && defaults.colaboradorId) {
-      this.userService.findById(defaults.colaboradorId).pipe(
-        catchError(() => of(null))
-      ).subscribe((user) => {
-        const fullName = String(user?.fullName ?? '').trim();
-        const resolved = fullName ? { ...defaults, responsavel: fullName } : defaults;
-        if (hasLoanFormDefaults(resolved)) {
-          this.applyLoanFormDefaults(resolved);
-        }
-      });
+  private applyLoanProjectFromDetail(loan: LoanDetailResponse): void {
+    if (this.movementForm.get('projeto')?.value) {
       return;
     }
 
-    if (hasLoanFormDefaults(defaults)) {
-      this.applyLoanFormDefaults(defaults);
+    const projectId = this.resolveProjectIdFromLoan(loan as unknown as Record<string, unknown>);
+    if (!projectId) {
+      return;
     }
+
+    const known = this.allProjects.find((project) => project.id === projectId);
+    if (known) {
+      this.patchProjeto(projectId);
+      return;
+    }
+
+    const loanName = String(loan.projectName ?? '').trim();
+    if (loanName) {
+      this.ensureProjectOption(projectId, loanName);
+      this.patchProjeto(projectId);
+      return;
+    }
+
+    this.projectService.findById(projectId).pipe(
+      catchError(() => of(null))
+    ).subscribe((project) => {
+      if (!project?.id || this.movementForm.get('projeto')?.value) {
+        return;
+      }
+      this.ensureProjectOption(project.id, project.name);
+      this.patchProjeto(project.id);
+    });
+  }
+
+  private resolveProjectIdFromLoan(loan: Record<string, unknown>): string {
+    const directId = String(loan['projectId'] ?? '').trim();
+    if (directId) {
+      return directId;
+    }
+
+    const legacyName = String(
+      loan['projectName'] ??
+      loan['helpdeskTicket'] ??
+      loan['helpdesk_ticket'] ??
+      loan['helpDeskTicket'] ??
+      loan['projeto'] ??
+      ''
+    ).trim();
+
+    if (!legacyName) {
+      return '';
+    }
+
+    const match = this.allProjects.find(
+      (project) => project.name.localeCompare(legacyName, 'pt-BR', { sensitivity: 'base' }) === 0
+    );
+    return match?.id ?? '';
+  }
+
+  private patchProjeto(projectId: string): void {
+    const control = this.movementForm.get('projeto');
+    if (!projectId || control?.value) {
+      return;
+    }
+
+    const wasDisabled = control?.disabled ?? false;
+    if (wasDisabled) {
+      control?.enable({ emitEvent: false });
+    }
+    control?.setValue(projectId, { emitEvent: false });
+    if (wasDisabled) {
+      control?.disable({ emitEvent: false });
+    }
+  }
+
+  private ensureProjectOption(projectId: string, name: string): void {
+    if (this.allProjects.some((project) => project.id === projectId)) {
+      return;
+    }
+    const project: ProjectResponse = { id: projectId, name, active: true };
+    this.allProjects = [...this.allProjects, project].sort((a, b) =>
+      a.name.localeCompare(b.name, 'pt-BR')
+    );
+    this.projects = [...this.allProjects];
+  }
+
+  onSearchProjeto(term: string): void {
+    const trimmed = term?.trim() ?? '';
+    this.projects = trimmed
+      ? this.allProjects.filter((project) => project.name.toLowerCase().includes(trimmed.toLowerCase()))
+      : [...this.allProjects];
+  }
+
+  onCreateNewProjeto(term: string): void {
+    const name = term?.trim();
+    if (!name) {
+      this.snackBar.open('Informe o nome do projeto.', 'Fechar', { duration: 5000 });
+      return;
+    }
+
+    this.projectService.create({ name }).subscribe({
+      next: (created) => {
+        this.allProjects = [...this.allProjects, created].sort((a, b) =>
+          a.name.localeCompare(b.name, 'pt-BR')
+        );
+        this.projects = [...this.allProjects];
+        this.patchProjeto(created.id);
+        this.snackBar.open(`Projeto "${created.name}" criado com sucesso.`, 'Fechar', { duration: 4000 });
+      },
+      error: (err) => {
+        const message = (err as { error?: { message?: string } })?.error?.message ?? 'Erro ao criar projeto.';
+        this.snackBar.open(message, 'Fechar', { duration: 5000 });
+      },
+    });
+  }
+
+  private resolveProjetoNameForSubmit(rawValue: unknown): string {
+    const value = String(rawValue ?? '').trim();
+    if (!value) {
+      return '';
+    }
+    const byId = this.allProjects.find((project) => project.id === value);
+    return byId?.name ?? value;
   }
 
   private applyLoanFormDefaults(defaults: LoanFormDefaults): void {
-    const patch: { responsavel?: string; projeto?: string } = {};
+    const patch: { responsavel?: string } = {};
 
-    if (defaults.projeto && !this.movementForm.get('projeto')?.value) {
-      patch.projeto = defaults.projeto;
+    const projectId = defaults.projectId || this.resolveProjectIdFromLoan({
+      projectId: defaults.projectId,
+      projectName: defaults.projeto,
+      projeto: defaults.projeto,
+    } as Record<string, unknown>);
+
+    if (projectId && !this.movementForm.get('projeto')?.value) {
+      this.patchProjeto(projectId);
+    } else if (defaults.projeto && !this.movementForm.get('projeto')?.value) {
+      const match = this.allProjects.find(
+        (project) => project.name.localeCompare(defaults.projeto, 'pt-BR', { sensitivity: 'base' }) === 0
+      );
+      if (match) {
+        this.patchProjeto(match.id);
+      }
     }
 
     const needsResponsavel = !this.movementForm.get('responsavel')?.value;
     if (needsResponsavel && defaults.responsavel) {
       patch.responsavel = defaults.responsavel;
       this.ensureUserInOptions(defaults.responsavel, defaults.colaboradorId);
-    }
-
-    if (Object.keys(patch).length > 0) {
-      queueMicrotask(() => {
-        this.movementForm.patchValue(patch, { emitEvent: false });
+    } else if (needsResponsavel && defaults.colaboradorId) {
+      this.userService.findById(defaults.colaboradorId).pipe(
+        catchError(() => of(null))
+      ).subscribe((user) => {
+        const fullName = String(user?.fullName ?? '').trim();
+        if (!fullName || this.movementForm.get('responsavel')?.value) {
+          return;
+        }
+        this.ensureUserInOptions(fullName, defaults.colaboradorId);
+        this.movementForm.get('responsavel')?.setValue(fullName, { emitEvent: false });
       });
     }
 
-    this.loanDefaultsApplied = true;
+    if (patch.responsavel) {
+      this.movementForm.get('responsavel')?.setValue(patch.responsavel, { emitEvent: false });
+    }
   }
 
   private applyLoanFieldsLock(): void {
@@ -358,7 +509,8 @@ export class MovementComponent implements OnInit {
 
     const dados: MovementRequest = {
       equipamentId: this.equipamentId,
-      ...this.movementForm.getRawValue()
+      ...this.movementForm.getRawValue(),
+      projeto: this.resolveProjetoNameForSubmit(this.movementForm.getRawValue().projeto),
     };
 
     const equipmentId = this.equipamentId;
@@ -405,8 +557,10 @@ export class MovementComponent implements OnInit {
     this.movementForm.reset();
     if (this.equipamento) {
       this.configurarOpcoesMovimentacao(this.equipamento.statusName || '');
-      this.applyLoanFieldsLock();
       this.prefillFromActiveLoan(this.equipamento);
+      if (!isMovementLoanPrefillStatus(this.equipamento.statusName)) {
+        this.applyLoanFieldsLock();
+      }
     }
   }
 
