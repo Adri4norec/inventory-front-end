@@ -70,7 +70,7 @@
 }
 
 .table-card mat-card-header {
-  padding: 20px 24px 8px;
+  padding: 16px 24px 8px;
   background: #fff;
 }
 
@@ -105,14 +105,17 @@
   color: #374151 !important;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  padding: 0 12px !important;
+  padding: 0 16px !important;
   white-space: nowrap !important;
 }
 
 .mat-mdc-cell {
   font-size: 14px;
   color: #1f2937;
-  padding: 8px 12px !important;
+  padding: 0 16px !important;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .table-row:hover {
@@ -165,8 +168,10 @@
   font-size: 12px !important;
   font-weight: 600 !important;
   border-radius: 20px !important;
-  height: 28px !important;
-  padding: 0 10px !important;
+  padding: 4px 12px !important;
+  display: inline-block;
+  text-align: center;
+  white-space: nowrap;
 }
 
 .chip-admin {

@@ -136,21 +136,26 @@ body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
 }
 
 .page-toolbar app-toolbar-logo {
-  position: absolute;
-  left: 50%;
-  top: 50%;
+  position: fixed;
+  left: 50vw;
+  top: calc(var(--page-toolbar-height) / 2);
   transform: translate(-50%, -50%);
-  z-index: 0;
-  pointer-events: auto;
+  z-index: 201;
+  pointer-events: none;
   overflow: visible;
+}
+
+.page-toolbar app-toolbar-logo .toolbar-logo-btn {
+  pointer-events: auto;
 }
 
 .toolbar-logo {
   display: block;
-  height: 72px;
+  height: 96px;
   width: auto;
-  max-width: min(400px, 62vw);
+  max-width: min(560px, 76vw);
   object-fit: contain;
+  object-position: center center;
 }
 
 .content {

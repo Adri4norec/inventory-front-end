@@ -22,20 +22,36 @@ export function isSystemAdminProfile(name: string): boolean {
   return name.trim().toLowerCase() === 'admin';
 }
 
-export function compareAccessProfiles(a: AccessProfile, b: AccessProfile): number {
+export function compareAccessProfiles(
+  a: AccessProfile,
+  b: AccessProfile,
+  creationOrder: ReadonlyMap<string, number> = new Map()
+): number {
   if (a.isFixed !== b.isFixed) {
     return a.isFixed ? -1 : 1;
   }
 
-  if (a.isFixed && b.isFixed && a.isAdmin !== b.isAdmin) {
-    return a.isAdmin ? -1 : 1;
+  if (a.isFixed && b.isFixed) {
+    if (a.isAdmin !== b.isAdmin) {
+      return a.isAdmin ? -1 : 1;
+    }
+    return a.name.localeCompare(b.name, 'pt-BR');
   }
 
-  return a.name.localeCompare(b.name, 'pt-BR');
+  return (creationOrder.get(b.id) ?? 0) - (creationOrder.get(a.id) ?? 0);
 }
 
-export function sortAccessProfiles(profiles: AccessProfile[]): AccessProfile[] {
-  return [...profiles].sort(compareAccessProfiles);
+export function sortAccessProfiles(
+  profiles: AccessProfile[],
+  creationOrder: ReadonlyMap<string, number> = new Map()
+): AccessProfile[] {
+  return [...profiles].sort((a, b) => compareAccessProfiles(a, b, creationOrder));
+}
+
+export function buildProfileCreationOrder(
+  profiles: readonly Pick<AccessProfile, 'id'>[]
+): Map<string, number> {
+  return new Map(profiles.map((profile, index) => [profile.id, index]));
 }
 
 export const ACCESS_MODULES: AccessModule[] = [

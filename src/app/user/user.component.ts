@@ -9,7 +9,6 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatCardModule } from '@angular/material/card';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatToolbarModule } from '@angular/material/toolbar';
-import { MatChipsModule } from '@angular/material/chips';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
@@ -37,7 +36,6 @@ import { ToolbarLogoComponent } from '../shared/toolbar-logo/toolbar-logo.compon
     MatCardModule,
     MatProgressBarModule,
     MatToolbarModule,
-    MatChipsModule,
     MatMenuModule,
     MatDividerModule,
     MatDialogModule,
@@ -111,7 +109,11 @@ export class UserComponent implements OnInit {
   carregarDados(page = this.pageIndex, size = this.pageSize): void {
     this.isLoading = true;
 
-    this.userService.advancedSearch(this.filtros, { page, size }).subscribe({
+    this.userService.advancedSearch(this.filtros, {
+      page,
+      size,
+      sort: 'createdAt,desc',
+    }).subscribe({
       next: (response) => {
         this.usuarios = response.content || [];
         this.totalElements = response.totalElements;
