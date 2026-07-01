@@ -108,8 +108,8 @@
             </div>
 
             <div class="gallery-grid" *ngIf="imagensSalvas.length > 0 || previsualizacoes.length > 0">
-              <div *ngFor="let img of imagensSalvas" class="gallery-thumb">
-                <img [src]="img.url" alt="Foto do equipamento" (click)="abrirLightbox(img.url)" />
+              <div *ngFor="let img of imagensSalvas; let i = index" class="gallery-thumb">
+                <img [src]="img.url" alt="Foto do equipamento" (click)="abrirLightbox(img.url, i)" />
                 <button type="button" mat-mini-fab color="warn" class="gallery-remove-btn"
                   (click)="removerFotoSalva(img.id)" *ngIf="!isVisualizacao">
                   X
@@ -117,7 +117,7 @@
               </div>
 
               <div *ngFor="let preview of previsualizacoes; let i = index" class="gallery-thumb gallery-thumb-new">
-                <img [src]="preview" alt="Nova foto" (click)="abrirLightbox(preview)" />
+                <img [src]="preview" alt="Nova foto" (click)="abrirLightbox(preview, imagensSalvas.length + i)" />
                 <span class="gallery-new-badge">Nova</span>
                 <button type="button" mat-mini-fab color="warn" class="gallery-remove-btn" (click)="removerNovaFoto(i)"
                   *ngIf="!isVisualizacao">

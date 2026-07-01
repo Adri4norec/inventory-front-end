@@ -13,6 +13,7 @@ import { LayoutService } from './services/layout/layout.service';
   styleUrls: ['./app.component.css']
 })
 export class AppComponent implements OnInit {
+  title = 'inventory';
   mostrarLayout = true;
 
   private readonly rotasSemMenu = ['/', '/login', '/register'];

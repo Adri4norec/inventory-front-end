@@ -12,7 +12,7 @@
         <div class="image-wrapper">
           <img [src]="url"
                [alt]="data.urls[i]"
-               (click)="openImageFull(url)">
+               (click)="openImageFull(url, i)">
         </div>
         <span class="file-name" [matTooltip]="data.urls[i]">{{ data.urls[i] }}</span>
       </div>

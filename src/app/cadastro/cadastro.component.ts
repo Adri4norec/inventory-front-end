@@ -170,10 +170,14 @@ export class CadastroComponent implements OnInit {
     this.equipamentoForm.get('imageUrls')?.setValue(this.imagensMantidasIds);
   }
 
-  abrirLightbox(imageUrl: string): void {
+  abrirLightbox(imageUrl: string, index?: number): void {
     if (!imageUrl) return;
+
+    const images = [...this.imagensSalvas.map(img => img.url), ...this.previsualizacoes];
+    const startIndex = typeof index === 'number' ? index : images.indexOf(imageUrl);
+
     this.dialog.open(ImageLightboxComponent, {
-      data: { imageUrl },
+      data: { images, initialIndex: startIndex >= 0 ? startIndex : 0 },
       panelClass: 'lightbox-dialog-panel',
       backdropClass: 'lightbox-dialog-backdrop',
       maxWidth: '100vw',
