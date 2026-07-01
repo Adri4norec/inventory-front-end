@@ -22,7 +22,6 @@ export function isSystemAdminProfile(name: string): boolean {
   return name.trim().toLowerCase() === 'admin';
 }
 
-/** Perfis fixos no topo; Admin antes dos demais fixos; ordem alfabética no restante. */
 export function compareAccessProfiles(a: AccessProfile, b: AccessProfile): number {
   if (a.isFixed !== b.isFixed) {
     return a.isFixed ? -1 : 1;
