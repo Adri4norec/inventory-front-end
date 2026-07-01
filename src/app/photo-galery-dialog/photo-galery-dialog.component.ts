@@ -6,7 +6,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { environment } from '../../environments/environment';
-import { ImageLightboxComponent } from '../shared/components/image-lightbox/image-lightbox.component';
+import { openImageLightbox } from '../shared/components/image-lightbox/image-lightbox.component';
 
 @Component({
   selector: 'app-photo-galery-dialog',
@@ -52,14 +52,9 @@ export class PhotoGaleryDialogComponent {
   openImageFull(url: string, index: number): void {
     if (!url) return;
     this.dialogRef.close();
-    this.dialog.open(ImageLightboxComponent, {
-      data: { images: this.resolvedUrls, initialIndex: index },
-      panelClass: 'lightbox-dialog-panel',
-      backdropClass: 'lightbox-dialog-backdrop',
-      maxWidth: '100vw',
-      maxHeight: '100vh',
-      width: '100vw',
-      height: '100vh'
+    openImageLightbox(this.dialog, {
+      images: this.resolvedUrls,
+      initialIndex: index,
     });
   }
 }

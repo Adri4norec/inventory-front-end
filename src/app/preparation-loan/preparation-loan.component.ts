@@ -44,7 +44,7 @@ import { LayoutService } from '../services/layout/layout.service';
 import { formatStatusLabel, STATUS_TYPE_LABEL, STATUS_TYPE_OPTIONS, StatusType, normalizeStatusType, statusColorClass } from '../models/status/status-type';
 import { ToolbarUserActionsComponent } from '../shared/toolbar-user-actions/toolbar-user-actions.component';
 import { ToolbarLogoComponent } from '../shared/toolbar-logo/toolbar-logo.component';
-import { ImageLightboxComponent } from '../shared/components/image-lightbox/image-lightbox.component';
+import { openImageLightbox } from '../shared/components/image-lightbox/image-lightbox.component';
 import { AutocompleteCreateComponent } from '../shared/components/autocomplete-create/autocomplete-create.component';
 import { writeCustodyViewerPin } from '../core/custody-viewer-pins.util';
 import { ProjectResponse } from '../models/projects/project';
@@ -904,14 +904,9 @@ export class PreparationLoanComponent implements OnInit {
     const images = [...this.imagensSalvas.map(img => img.url), ...this.previsualizacoes];
     const startIndex = typeof index === 'number' ? index : images.indexOf(imageUrl);
 
-    this.dialog.open(ImageLightboxComponent, {
-      data: { images, initialIndex: startIndex >= 0 ? startIndex : 0 },
-      panelClass: 'lightbox-dialog-panel',
-      backdropClass: 'lightbox-dialog-backdrop',
-      maxWidth: '100vw',
-      maxHeight: '100vh',
-      width: '100vw',
-      height: '100vh',
+    openImageLightbox(this.dialog, {
+      images,
+      initialIndex: startIndex >= 0 ? startIndex : 0,
     });
   }
 

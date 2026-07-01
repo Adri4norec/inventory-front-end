@@ -1,6 +1,11 @@
 import { Component, HostListener, Inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
+import {
+  MatDialog,
+  MatDialogModule,
+  MatDialogRef,
+  MAT_DIALOG_DATA,
+} from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
@@ -10,18 +15,47 @@ export interface ImageLightboxData {
   initialIndex?: number;
 }
 
+export function openImageLightbox(
+  dialog: MatDialog,
+  data: ImageLightboxData
+): MatDialogRef<ImageLightboxComponent> {
+  return dialog.open(ImageLightboxComponent, {
+    data,
+    panelClass: 'lightbox-dialog-panel',
+    width: '1100px',
+    maxWidth: '94vw',
+    maxHeight: '90vh',
+    autoFocus: false,
+  });
+}
+
 @Component({
   selector: 'app-image-lightbox',
   standalone: true,
   imports: [CommonModule, MatDialogModule, MatButtonModule, MatIconModule],
   template: `
-    <div class="lightbox-backdrop" (click)="close()">
-      <div class="lightbox-container" (click)="$event.stopPropagation()">
-        <button mat-mini-fab class="lightbox-close" (click)="close(); $event.stopPropagation()">
+    <div class="lightbox-shell">
+      <div class="lightbox-header">
+        <div class="lightbox-title">
+          <mat-icon class="lightbox-title-icon">photo_library</mat-icon>
+          <span>Visualização de imagem</span>
+          <span class="lightbox-counter" *ngIf="resolvedImages.length > 1">
+            {{ currentIndex + 1 }} / {{ resolvedImages.length }}
+          </span>
+        </div>
+        <button mat-icon-button type="button" (click)="close()" aria-label="Fechar visualização">
           <mat-icon>close</mat-icon>
         </button>
+      </div>
 
-        <button mat-mini-fab class="lightbox-nav lightbox-nav-prev" [disabled]="!hasPrev" (click)="prev(); $event.stopPropagation()">
+      <div class="lightbox-body">
+        <button
+          mat-mini-fab
+          type="button"
+          class="lightbox-nav lightbox-nav-prev"
+          [disabled]="!hasPrev"
+          (click)="prev()"
+          aria-label="Imagem anterior">
           <mat-icon>chevron_left</mat-icon>
         </button>
 
@@ -33,91 +67,144 @@ export interface ImageLightboxData {
           </div>
         </div>
 
-        <button mat-mini-fab class="lightbox-nav lightbox-nav-next" [disabled]="!hasNext" (click)="next(); $event.stopPropagation()">
+        <button
+          mat-mini-fab
+          type="button"
+          class="lightbox-nav lightbox-nav-next"
+          [disabled]="!hasNext"
+          (click)="next()"
+          aria-label="Próxima imagem">
           <mat-icon>chevron_right</mat-icon>
         </button>
-      </div>
-
-      <div class="lightbox-footer" *ngIf="resolvedImages.length > 1">
-        <span>{{ currentIndex + 1 }} / {{ resolvedImages.length }}</span>
       </div>
     </div>
   `,
   styles: [`
-    :host { display: block; }
-    .lightbox-backdrop {
-      position: fixed;
-      inset: 0;
-      background: rgba(0, 0, 0, 0.92);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 2000;
-      padding: 24px;
-      box-sizing: border-box;
-      cursor: pointer;
+    :host {
+      display: block;
+      border-radius: var(--app-dialog-border-radius, 16px);
+      overflow: hidden;
     }
-    .lightbox-container {
-      position: relative;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+
+    .lightbox-shell {
       width: 100%;
-      max-width: 1200px;
-      max-height: 90vh;
-      gap: 16px;
-      cursor: default;
+      background: #fff;
+      overflow: hidden;
     }
-    .lightbox-close {
-      position: absolute;
-      top: 16px;
-      right: 16px;
-      z-index: 10;
-      background: rgba(0, 0, 0, 0.65) !important;
-      color: #fff !important;
+
+    .lightbox-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 20px 20px 12px 24px;
+      border-bottom: 1px solid #eef2f9;
     }
+
+    .lightbox-title {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 20px;
+      font-weight: 600;
+      color: #0b1c33;
+      min-width: 0;
+    }
+
+    .lightbox-title-icon {
+      color: #2f76c7;
+    }
+
+    .lightbox-counter {
+      margin-left: 4px;
+      font-size: 0.9rem;
+      font-weight: 500;
+      color: #64748b;
+    }
+
+    .lightbox-body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      padding: 16px 20px 24px;
+      box-sizing: border-box;
+    }
+
     .lightbox-nav {
-      background: rgba(0, 0, 0, 0.65) !important;
-      color: #fff !important;
+      flex: 0 0 auto;
+      background: #f1f5f9 !important;
+      color: #1f3255 !important;
       width: 44px;
       height: 44px;
       min-width: 44px;
       min-height: 44px;
-      box-shadow: 0 16px 32px rgba(0, 0, 0, 0.35);
+      box-shadow: none !important;
     }
+
+    .lightbox-nav[disabled] {
+      opacity: 0.35;
+    }
+
     .lightbox-image-wrapper {
       display: flex;
       align-items: center;
       justify-content: center;
-      width: min(100%, 1040px);
-      max-height: 84vh;
-      background: #121212;
-      border-radius: 20px;
+      flex: 1 1 auto;
+      width: 100%;
+      min-width: 0;
+      height: min(68vh, 720px);
+      min-height: min(68vh, 720px);
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
       overflow: hidden;
-      box-shadow: 0 24px 80px rgba(0, 0, 0, 0.35);
     }
+
     .lightbox-image {
-      max-width: 100%;
-      max-height: 84vh;
+      width: 100%;
+      height: 100%;
       object-fit: contain;
       display: block;
     }
+
     .lightbox-empty-state {
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      color: #fff;
-      padding: 32px;
+      color: #64748b;
+      padding: 48px 32px;
       gap: 8px;
     }
-    .lightbox-footer {
-      margin-top: 16px;
-      color: #fff;
-      font-size: 0.95rem;
-      letter-spacing: 0.02em;
+
+    @media (max-width: 720px) {
+      .lightbox-header {
+        padding: 16px 12px 10px 16px;
+      }
+
+      .lightbox-title {
+        font-size: 17px;
+      }
+
+      .lightbox-body {
+        padding: 12px 12px 16px;
+        gap: 8px;
+      }
+
+      .lightbox-nav {
+        width: 36px;
+        height: 36px;
+        min-width: 36px;
+        min-height: 36px;
+      }
+
+      .lightbox-image-wrapper {
+        height: 58vh;
+        min-height: 58vh;
+      }
     }
-  `]
+  `],
 })
 export class ImageLightboxComponent {
   public resolvedImages: string[] = [];
@@ -129,7 +216,10 @@ export class ImageLightboxComponent {
   ) {
     const rawImages = data.images ?? (data.imageUrl ? [data.imageUrl] : []);
     this.resolvedImages = rawImages.filter((url): url is string => !!url);
-    this.currentIndex = Math.min(Math.max(data.initialIndex ?? 0, 0), this.resolvedImages.length - 1);
+    this.currentIndex = Math.min(
+      Math.max(data.initialIndex ?? 0, 0),
+      Math.max(this.resolvedImages.length - 1, 0)
+    );
   }
 
   get currentImage(): string {

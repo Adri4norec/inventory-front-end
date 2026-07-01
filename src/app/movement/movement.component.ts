@@ -28,7 +28,7 @@ import { EquipamentService } from '../services/equipament/equipment.service';
 import { MovementService } from '../services/movement/movement.service';
 import { ProjectService } from '../services/equipament/project.service';
 import { PhotoGaleryDialogComponent } from '../photo-galery-dialog/photo-galery-dialog.component';
-import { ImageLightboxComponent } from '../shared/components/image-lightbox/image-lightbox.component';
+import { openImageLightbox } from '../shared/components/image-lightbox/image-lightbox.component';
 import { AutocompleteCreateComponent } from '../shared/components/autocomplete-create/autocomplete-create.component';
 import { MovementRequest, MovementResponse, MovementType } from '../models/movement/movement.model';
 import { UserSearchResponse, LoanDetailResponse } from '../models/loans/loans.model';
@@ -492,14 +492,9 @@ export class MovementComponent implements OnInit {
     const images = [...this.imagensSalvas.map(img => img.url), ...this.previsualizacoes];
     const startIndex = typeof index === 'number' ? index : images.indexOf(imageUrl);
 
-    this.dialog.open(ImageLightboxComponent, {
-      data: { images, initialIndex: startIndex >= 0 ? startIndex : 0 },
-      panelClass: 'lightbox-dialog-panel',
-      backdropClass: 'lightbox-dialog-backdrop',
-      maxWidth: '100vw',
-      maxHeight: '100vh',
-      width: '100vw',
-      height: '100vh',
+    openImageLightbox(this.dialog, {
+      images,
+      initialIndex: startIndex >= 0 ? startIndex : 0,
     });
   }
 

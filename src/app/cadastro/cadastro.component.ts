@@ -31,7 +31,7 @@ import { environment } from "../../environments/environment";
 import { ToolbarUserActionsComponent } from "../shared/toolbar-user-actions/toolbar-user-actions.component";
 import { ToolbarLogoComponent } from '../shared/toolbar-logo/toolbar-logo.component';
 import { AutocompleteCreateComponent } from "../shared/components/autocomplete-create/autocomplete-create.component";
-import { ImageLightboxComponent } from "../shared/components/image-lightbox/image-lightbox.component";
+import { openImageLightbox } from "../shared/components/image-lightbox/image-lightbox.component";
 
 @Component({
   selector: 'app-cadastro',
@@ -176,14 +176,9 @@ export class CadastroComponent implements OnInit {
     const images = [...this.imagensSalvas.map(img => img.url), ...this.previsualizacoes];
     const startIndex = typeof index === 'number' ? index : images.indexOf(imageUrl);
 
-    this.dialog.open(ImageLightboxComponent, {
-      data: { images, initialIndex: startIndex >= 0 ? startIndex : 0 },
-      panelClass: 'lightbox-dialog-panel',
-      backdropClass: 'lightbox-dialog-backdrop',
-      maxWidth: '100vw',
-      maxHeight: '100vh',
-      width: '100vw',
-      height: '100vh'
+    openImageLightbox(this.dialog, {
+      images,
+      initialIndex: startIndex >= 0 ? startIndex : 0,
     });
   }
 

@@ -184,21 +184,6 @@ body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
   max-width: 100%;
 }
 
-.lightbox-dialog-panel {
-  background: transparent !important;
-  box-shadow: none !important;
-  max-width: 100vw !important;
-  max-height: 100vh !important;
-}
-.lightbox-dialog-panel .mat-mdc-dialog-container {
-  background: transparent !important;
-  box-shadow: none !important;
-  padding: 0 !important;
-}
-.lightbox-dialog-backdrop {
-  background: rgba(0, 0, 0, 0.85) !important;
-}
-
 /* Diálogos com shell customizado — arredondamento moderado e consistente */
 .cdk-overlay-pane.inventory-record-dialog-panel .mat-mdc-dialog-container,
 .cdk-overlay-pane.inventory-record-dialog-panel .mat-mdc-dialog-surface,
@@ -209,6 +194,9 @@ body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
 .cdk-overlay-pane.change-custody-dialog-panel .mat-mdc-dialog-container,
 .cdk-overlay-pane.change-custody-dialog-panel .mat-mdc-dialog-surface,
 .cdk-overlay-pane.change-custody-dialog-panel .mdc-dialog__surface,
+.cdk-overlay-pane.lightbox-dialog-panel .mat-mdc-dialog-container,
+.cdk-overlay-pane.lightbox-dialog-panel .mat-mdc-dialog-surface,
+.cdk-overlay-pane.lightbox-dialog-panel .mdc-dialog__surface,
 .inventory-record-dialog-panel .mat-mdc-dialog-container,
 .inventory-record-dialog-panel .mat-mdc-dialog-surface,
 .inventory-record-dialog-panel .mdc-dialog__surface,
@@ -217,7 +205,10 @@ body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
 .add-profile-dialog-panel .mdc-dialog__surface,
 .change-custody-dialog-panel .mat-mdc-dialog-container,
 .change-custody-dialog-panel .mat-mdc-dialog-surface,
-.change-custody-dialog-panel .mdc-dialog__surface {
+.change-custody-dialog-panel .mdc-dialog__surface,
+.lightbox-dialog-panel .mat-mdc-dialog-container,
+.lightbox-dialog-panel .mat-mdc-dialog-surface,
+.lightbox-dialog-panel .mdc-dialog__surface {
   padding: 0 !important;
   border-radius: var(--app-dialog-border-radius) !important;
   overflow: hidden;
@@ -225,7 +216,8 @@ body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
 
 .inventory-record-dialog-panel .mat-mdc-dialog-content,
 .add-profile-dialog-panel .mat-mdc-dialog-content,
-.change-custody-dialog-panel .mat-mdc-dialog-content {
+.change-custody-dialog-panel .mat-mdc-dialog-content,
+.lightbox-dialog-panel .mat-mdc-dialog-content {
   padding: 0 !important;
 }
 
