@@ -900,9 +900,12 @@ export class PreparationLoanComponent implements OnInit {
     this.imagensSalvas = this.imagensSalvas.filter(img => img.id !== id);
   }
 
-  abrirLightbox(imageUrl: string): void {
+  abrirLightbox(imageUrl: string, index?: number): void {
+    const images = [...this.imagensSalvas.map(img => img.url), ...this.previsualizacoes];
+    const startIndex = typeof index === 'number' ? index : images.indexOf(imageUrl);
+
     this.dialog.open(ImageLightboxComponent, {
-      data: { imageUrl },
+      data: { images, initialIndex: startIndex >= 0 ? startIndex : 0 },
       panelClass: 'lightbox-dialog-panel',
       backdropClass: 'lightbox-dialog-backdrop',
       maxWidth: '100vw',

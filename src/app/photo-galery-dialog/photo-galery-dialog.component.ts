@@ -1,19 +1,20 @@
 import { Component, Inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
+import { MAT_DIALOG_DATA, MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { environment } from '../../environments/environment';
+import { ImageLightboxComponent } from '../shared/components/image-lightbox/image-lightbox.component';
 
 @Component({
   selector: 'app-photo-galery-dialog',
   standalone: true,
   imports: [
-    CommonModule, 
-    MatDialogModule, 
-    MatButtonModule, 
+    CommonModule,
+    MatDialogModule,
+    MatButtonModule,
     MatIconModule,
     MatDividerModule,
     MatTooltipModule
@@ -27,7 +28,8 @@ export class PhotoGaleryDialogComponent {
 
   constructor(
     public dialogRef: MatDialogRef<PhotoGaleryDialogComponent>,
-    @Inject(MAT_DIALOG_DATA) public data: { urls: string[] }
+    @Inject(MAT_DIALOG_DATA) public data: { urls: string[] },
+    private dialog: MatDialog
   ) {
     const cacheBuster = Date.now();
     this.resolvedUrls = (data.urls ?? []).map(raw => this.buildUrl(raw, cacheBuster));
@@ -47,8 +49,17 @@ export class PhotoGaleryDialogComponent {
     return `${this.API_BASE}/${path}?t=${t}`;
   }
 
-  openImageFull(url: string) {
+  openImageFull(url: string, index: number): void {
     if (!url) return;
-    window.open(url, '_blank');
+    this.dialogRef.close();
+    this.dialog.open(ImageLightboxComponent, {
+      data: { images: this.resolvedUrls, initialIndex: index },
+      panelClass: 'lightbox-dialog-panel',
+      backdropClass: 'lightbox-dialog-backdrop',
+      maxWidth: '100vw',
+      maxHeight: '100vh',
+      width: '100vw',
+      height: '100vh'
+    });
   }
 }
